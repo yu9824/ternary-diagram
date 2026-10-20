@@ -57,6 +57,7 @@ PyPI = "https://pypi.org/project/ternary-diagram/"
 Source = "https://github.com/yu9824/ternary-diagram"
 Tracker = "https://github.com/yu9824/ternary-diagram/issues"
 "Release Notes" = "https://github.com/yu9824/ternary-diagram/releases"
+Changelog = "https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ternary-diagram = "ternary_diagram.__main__:entrypoint"

@@ -102,14 +102,7 @@ See also the [example](https://github.com/yu9824/ternary-diagram/tree/main/examp
 
 ## Histories
 
-### v3.1.0
-
-- Delete `.utils._BasePlotter.get_x_y` (we should access directly).
-- Resolve #10 (Create `fill` argument in `TernaryDiagram.contour`).
-- Resolve #11 (Create `auto_latex_notation` argument in `TernaryDiagram`).
-- Update documentation.
-- Update docstrings and typings.
-
+See [CHANGELOG.md](https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md) and [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases).
 
 ## LICENSE
 
