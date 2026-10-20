@@ -1,1 +1,3 @@
+# Exclude example notebooks and data from GitHub Linguist language statistics
 example/** linguist-vendored
+*.ipynb linguist-vendored
