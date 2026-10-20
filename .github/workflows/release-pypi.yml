@@ -1,5 +1,22 @@
-name: Publish Python 🐍 distribution 📦 to PyPI and TestPyPI
+name: Publish Python 🐍 distribution 📦
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
+
+# リリースは公開処理の途中でキャンセルされる方が危険（PyPI 公開や GitHub Release
+# 作成が中途半端な状態で止まりうる）ため、CI とは逆に cancel-in-progress は false。
+# 同一 ref への連続タグ push があっても、先に走っている公開処理は最後まで完走させる。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Set to "true" to enable publishing on tag push.
+  # Note: env context is unavailable in job-level `if` and `environment.url`,
+  # so these values are forwarded via the build job's outputs as a workaround.
+  PUBLISH_PYPI: "true"
+  PYPI_PACKAGE_NAME: "ternary-diagram"
+
+permissions:
+  contents: read
 
 on:
   workflow_dispatch:
@@ -12,18 +29,27 @@ jobs:
   build:
     name: Build distribution 📦
     runs-on: ubuntu-latest
+    outputs:
+      publish_pypi: ${{ steps.check.outputs.publish_pypi }}
+      package_name: ${{ steps.check.outputs.package_name }}
 
     steps:
-    - uses: actions/checkout@v4
+    # Forward env variables as job outputs so they can be referenced in
+    # job-level `if` conditions and `environment.url` of downstream jobs.
+    - id: check
+      run: |
+        echo "publish_pypi=${{ env.PUBLISH_PYPI }}" >> "$GITHUB_OUTPUT"
+        echo "package_name=${{ env.PYPI_PACKAGE_NAME }}" >> "$GITHUB_OUTPUT"
+    - uses: actions/checkout@v7
     - name: Set up Python
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
 
     - name: Install pypa/build
-      run: pip install .[dev]
+      run: pip install ".[dev]"
     - name: Build a binary wheel and a source tarball
       run: python3 -m build
     - name: Store the distribution packages
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: python-package-distributions
         path: dist/
@@ -31,19 +57,22 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    # Only publish to PyPI on tag pushes with version tags or release candidates
-    if: startsWith(github.ref, 'refs/tags/') && (!contains(github.ref_name, '-') || contains(github.ref_name, 'rc'))
+    # Publish only on stable/rc version tags (e.g. v1.2.3, v1.2.3rc1) when PUBLISH_PYPI is true.
+    if: >-
+      startsWith(github.ref, 'refs/tags/') &&
+      (!contains(github.ref_name, '-') || contains(github.ref_name, 'rc')) &&
+      needs.build.outputs.publish_pypi == 'true'
     needs:
     - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/ternary-diagram # FIXME: Replace 'ternary-diagram' with your PyPI project name
+      url: https://pypi.org/p/${{ needs.build.outputs.package_name }}
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: python-package-distributions
         path: dist/
@@ -54,7 +83,7 @@ jobs:
     name: >-
       Sign the Python 🐍 distribution 📦 with Sigstore
       and upload them to GitHub Release
-    # only publish to PyPI on tag pushes
+    # Run on any tag push regardless of PUBLISH_PYPI.
     if: startsWith(github.ref, 'refs/tags/')
     needs:
     - build
@@ -66,33 +95,37 @@ jobs:
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: python-package-distributions
         path: dist/
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.0.0
+      uses: sigstore/gh-action-sigstore-python@v3.5.0
       with:
         inputs: >-
           ./dist/*.tar.gz
           ./dist/*.whl
+    # The tag name is user-controlled (the `-*` tag pattern accepts quotes and
+    # `$(...)`), so never expand `${{ github.ref_name }}` inside `run:`.
+    # Read it from the runner's default env vars instead, always double-quoted.
     - name: Determine if pre-release
       id: prerelease
       run: |
-        if [[ "${GITHUB_REF#refs/tags/}" == *-* ]]; then
-          echo "pre_release=true" >> $GITHUB_OUTPUT
+        if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+          echo "pre_release=true" >> "$GITHUB_OUTPUT"
         else
-          echo "pre_release=false" >> $GITHUB_OUTPUT
+          echo "pre_release=false" >> "$GITHUB_OUTPUT"
         fi
     - name: Create GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
+        PRE_RELEASE: ${{ steps.prerelease.outputs.pre_release }}
       run: >-
         gh release create
-        '${{ github.ref_name }}'
-        --repo '${{ github.repository }}'
+        "$GITHUB_REF_NAME"
+        --repo "$GITHUB_REPOSITORY"
         --generate-notes
-        --prerelease=${{ steps.prerelease.outputs.pre_release }}
+        --prerelease="$PRE_RELEASE"
     - name: Upload artifact signatures to GitHub Release
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -101,25 +134,29 @@ jobs:
       # sigstore-produced signatures and certificates.
       run: >-
         gh release upload
-        '${{ github.ref_name }}' dist/**
-        --repo '${{ github.repository }}'
+        "$GITHUB_REF_NAME" dist/**
+        --repo "$GITHUB_REPOSITORY"
 
   publish-to-testpypi:
     name: Publish Python 🐍 distribution 📦 to TestPyPI
+    # Publish on any tag push (including pre-releases) when PUBLISH_PYPI is true.
+    if: >-
+      startsWith(github.ref, 'refs/tags/') &&
+      needs.build.outputs.publish_pypi == 'true'
     needs:
     - build
     runs-on: ubuntu-latest
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/ternary-diagram  # FIXME: Replace 'ternary-diagram' with your PyPI project name
+      url: https://test.pypi.org/p/${{ needs.build.outputs.package_name }}
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
 
     steps:
     - name: Download all the dists
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v8
       with:
         name: python-package-distributions
         path: dist/
