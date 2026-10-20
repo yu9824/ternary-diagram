@@ -1,0 +1,8 @@
+line-length = 79
+indent-width = 4
+
+[lint]
+unfixable = ["F401"]
+
+[lint.pydocstyle]
+convention = "numpy"

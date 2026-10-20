@@ -72,10 +72,3 @@ where = ["src/"]
 
 [tool.setuptools_scm]
 write_to = "src/ternary_diagram/_version.py"
-
-[tool.ruff]
-line-length = 79
-indent-width = 4
-
-[tool.ruff.lint]
-unfixable = ["F401"]
