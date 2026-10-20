@@ -1,3 +1,8 @@
+# custom
+docs/
+jupyter_execute/
+_version.py
+
 .DS_Store
 
 # Byte-compiled / optimized / DLL files

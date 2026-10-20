@@ -1,6 +1,6 @@
 # https://packaging.python.org/ja/latest/guides/writing-pyproject-toml/
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77.0.3", "setuptools-scm[toml]>=7"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -57,11 +57,11 @@ ternary-diagram = "ternary_diagram.__main__:entrypoint"
 [tool.setuptools]
 package-dir = { "" = "src" }
 
-[tool.setuptools.dynamic]
-version = { attr = "ternary_diagram.__version__" }
-
 [tool.setuptools.packages.find]
 where = ["src/"]
+
+[tool.setuptools_scm]
+write_to = "src/ternary_diagram/_version.py"
 
 [tool.ruff]
 line-length = 79
