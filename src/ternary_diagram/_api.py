@@ -761,7 +761,10 @@ class _ContourPlotter(_BasePlotter):
             num=N_LEVELS,
         )
         # solve issue#7
-        if levels.std() == 0:
+        # matplotlib requires strictly increasing levels. Checking the
+        # differences (not `levels.std() == 0`) also catches constant `z`,
+        # whose std can be a rounding error like 8.9e-16 instead of 0.
+        if not np.all(np.diff(levels) > 0):
             OFFSET = 0.001
             levels = np.linspace(
                 levels[0] - OFFSET * (N_LEVELS // 2),
