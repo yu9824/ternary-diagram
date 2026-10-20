@@ -9,21 +9,27 @@
 ### Package Source
 **Location**: `src/ternary_diagram/`
 **Purpose**: ライブラリ本体。`__init__.py` はメタデータ（`__version__` など）と公開 API の re-export だけを持つ
-**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数
+**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`
 
 ### Tests
 **Location**: `tests/`
-**Purpose**: pytest のテスト。`test_<描画種別>.py` という命名。`_` で始まるファイルは収集対象外の旧コード。まだ書いていないテストは `tests/TODO.md` に記録する
-**Example**: `test_scatter.py`, `test_mono_scatter.py`
+**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI）。共通 fixture は `conftest.py` に置く
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`
 
 ### Examples
 **Location**: `example/<use_case>/`
-**Purpose**: ユースケースごとにディレクトリを作り、Notebook・入力 CSV・出力 PNG を同じ場所に置く。README とテストはこの CSV / PNG を GitHub raw URL で参照する
+**Purpose**: ユースケースごとにディレクトリを作り、Notebook・入力 CSV・出力 PNG を同じ場所に置く。README は PNG を GitHub raw URL で、テストは CSV をリポジトリ内のパスで参照する。Notebook は先頭セルを H1 タイトルにする（ドキュメントのページタイトルになる）
 **Example**: `example/contour/example_contour.{ipynb,csv,png}`
 
 ### Documentation
 **Location**: `docs_src/`
-**Purpose**: Sphinx の設定と手書きページのみ。API リファレンスは CI で sphinx-apidoc が生成する
+**Purpose**: Sphinx の設定と手書きページ（MyST Markdown）のみ。API リファレンスは CI で sphinx-apidoc が生成する
+- `tutorials/` は `example/` の Notebook へのシンボリックリンク。Notebook を追加したらリンクと `tutorials/index.md` の toctree に足す
+- `_templates/layout.html` はフッターに広告スクリプトを差し込んでいる。テーマを変えるときは、ビルド結果に残っているか確認する
+
+### Release Docs
+**Location**: リポジトリ直下
+**Purpose**: `HOW_TO_RELEASE.md`（メンテナ向けのリリース手順）、`CHANGELOG.md`（利用者向けの変更点）
 
 ## Naming Conventions
 
@@ -38,7 +44,7 @@
 ## Import Organization
 
 ```python
-# Python 3.8 互換のための typing（isort の対象外としてファイル先頭に固定）
+# Python 3.8 時代の名残の typing（isort の対象外としてファイル先頭に固定）
 from typing import Tuple, List  # isort: skip
 
 # 標準ライブラリ
@@ -90,6 +96,7 @@ def new(self, vector: ArrayLike, **kwargs):
 - 3 成分から 2 次元座標への変換は `utils.three2two` に一元化する
 - `ax` を受け取る処理はすべて `check_ax` を通す。未指定なら `plt.gca()`
 - `z`（物性値）を伴う描画は `flag_cbar=True` のとき colorbar を自動で付け、共通実装の `_BasePlotter.colorbar` を使う
+- 内部で matplotlib に渡す引数とユーザーの kwargs が衝突しうるときは、`_merge_alias` で別名を統合するか、`self.kwargs.pop(...)` でユーザー指定を取り出して優先する。kwargs をそのまま `**self.kwargs` で重ねて渡さない
 
 ### Comments
 
@@ -97,3 +104,5 @@ def new(self, vector: ArrayLike, **kwargs):
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
+
+_updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_

@@ -6,9 +6,9 @@ matplotlib の薄いラッパーとして作られた純 Python ライブラリ�
 
 ## Core Technologies
 
-- **Language**: Python >= 3.8（CI で 3.8〜3.13 を検証）
+- **Language**: Python >= 3.9（CI で 3.9〜3.14 を検証）
 - **Runtime dependencies**: `numpy >= 1.20`、`matplotlib`（上限なし）
-- **Build**: setuptools + `pyproject.toml`（src レイアウト）。バージョンは `ternary_diagram.__version__` を動的に参照する単一ソース
+- **Build**: setuptools>=77 + setuptools-scm + `pyproject.toml`（src レイアウト、PEP 639 のライセンス表記）。バージョンは git タグから決まり、ビルド時に `_version.py`（git 管理外）が生成される。未インストールで import した場合の `__version__` は `"unknown"`
 
 ## Key Libraries
 
@@ -20,7 +20,7 @@ matplotlib の薄いラッパーとして作られた純 Python ライブラリ�
 
 ### Compatibility
 
-- Python 3.8 をサポートするため `typing.Tuple` / `typing.List` を使い、`tuple[...]` のような組み込みジェネリクスは使わない。該当 import は `# isort: skip` を付けてファイル先頭に固定する
+- 既存コードは Python 3.8 時代の名残で `typing.Tuple` / `typing.List` を `# isort: skip` 付きでファイル先頭に置いている。3.9+ になったので組み込みジェネリクスも使えるが、1 ファイルの中ではどちらかに揃える
 - matplotlib のバージョン差異はモジュール冒頭の分岐で吸収する
 
 ```python
@@ -38,30 +38,35 @@ else:
 
 ### Code Quality
 
-- Ruff で lint と format。`line-length = 79`
+- Ruff で lint と format。設定は `ruff.toml`（`line-length = 79`、pydocstyle は numpy 規約）。VS Code の ruff 拡張もこのファイルを参照する
 - `F401`（未使用 import）は自動修正の対象外。re-export を誤って消さないため
 - docstring は NumPy スタイル（Sphinx の napoleon で整形）で、英語で書く。公開メソッドには `Parameters` / `Returns` / `Examples` と、ラップしている matplotlib 関数のドキュメント URL を書く。URL で長くなる docstring には `# noqa: E501` を付ける
 
 ### Error Handling
 
 - 入力検証は `utils.check_*` に集約し、何が悪いかを示すメッセージ付きで `TypeError` / `ValueError` を送出する
+- 検証に `assert` は使わない（`python -O` で消えるため）
+- matplotlib の kwargs と内部で渡す引数が衝突する場合は、別名として受ける（`vmin` → `z_min`）か、ユーザー指定を優先する（`contour(levels=...)`）。どちらを使うか決められない組み合わせだけ `ValueError` にする
 
 ### Testing
 
-- pytest。`example/` 配下の CSV を GitHub raw URL から読み込み、主要な描画処理が例外なく通るかを確かめるスモークテストが中心（画像比較はしない）
+- pytest。ネットワークに依存させない。`example/` 配下の CSV はリポジトリ内のパスから読む
+- 画像比較はせず、生成された artist の状態（座標、色、zorder、colorbar の有無、levels など）を assert する。OS やフォントの差で壊れないようにするため
+- 共通 fixture は `tests/conftest.py`（Agg バックエンド、テストごとの `plt.close("all")`、`ax` / `td`、サンプル CSV）
+- デフォルト値を持つ引数は「デフォルト」と「上書き」の両方をテストする
 - `utils.py` の関数は docstring に doctest 形式の Examples を持つ
 
 ## Development Environment
 
 ### Required Tools
 
-- Python 3.8+
+- Python 3.9+
 - pip extras: `test`（pytest, pandas）、`dev`（build, jupyter, pandas）、`docs`（sphinx 一式）
 
 ### Common Commands
 
 ```bash
-# Test:  pytest -xs .
+# Test:  pytest -xs .            # 未インストールなら PYTHONPATH=src を付ける
 # Lint:  ruff check . && ruff format --check .
 # Type:  mypy src
 # Build: python -m build
@@ -71,10 +76,11 @@ else:
 
 ## CI / Release
 
-- **CI**: すべての push で Python 3.8〜3.13 のマトリクスを組み、`pip install .[test,optional]` のあと `pytest -xs .` を実行
+- **CI**: main への push と PR で、Python 3.9〜3.14 のマトリクスで `pip install ".[test]"` → `pytest -xs .`。paths-filter でコード・テスト・`example/` に変更がないときはジョブ単位でスキップする（required check を Pending にしないため）
 - **リリース**: `vX.Y.Z` または `vX.Y.Z-rc.N` タグの push を起点に、PyPI（Trusted Publishing）、TestPyPI、GitHub Release（Sigstore 署名付き）へ自動で公開する。タグに `-` を含むものはプレリリース扱い
-- **バージョン更新**: `src/ternary_diagram/__init__.py` の `__version__` だけを書き換え、コミットメッセージはバージョン番号のみ（例: `v3.2.1-rc.0` → `v3.2.1`）
-- **ドキュメント**: 正式版タグで sphinx-apidoc が API リファレンスを生成し、GitHub Pages にデプロイする。生成された `.rst` はコミットしない
+- **バージョン更新**: タグを打つだけ（setuptools-scm）。`__version__` を書き換えるコミットは作らない。手順は `HOW_TO_RELEASE.md`、利用者向けの変更点は `CHANGELOG.md`
+- **Trusted Publishing**: PyPI / TestPyPI の設定はワークフローのファイル名 `release-pypi.yml` に紐づくので、改名するときは PyPI 側の設定も変える
+- **ドキュメント**: Sphinx + MyST-NB + sphinx-book-theme。正式版タグで sphinx-apidoc が API リファレンスを生成し、GitHub Pages にデプロイする。生成された `.rst` はコミットしない。ノートブックは実行せず保存済みの出力を表示する（`nb_execution_mode = "off"`）
 - **リリースノート**: GitHub の自動生成。PR ラベル `enhancement` / `bug` で分類される
 
 ## Key Technical Decisions
@@ -87,3 +93,5 @@ else:
 
 ---
 _Document standards and patterns, not every dependency_
+
+_updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_

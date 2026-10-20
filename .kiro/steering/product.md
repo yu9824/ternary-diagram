@@ -19,7 +19,7 @@
 
 - **軽量**: ランタイム依存は `numpy>=1.20` と `matplotlib` のみ
 - **学習コストが低い**: matplotlib の知識がそのまま使える薄いラッパー
-- **広い互換性**: Python 3.8〜3.13、matplotlib 3.7 前後の API 差異も吸収
+- **広い互換性**: Python 3.9〜3.14、matplotlib 3.7 前後の API 差異も吸収
 - **入手しやすい**: PyPI と conda-forge の両方で配布
 
 ## Product Boundaries
@@ -30,3 +30,5 @@
 
 ---
 _Focus on patterns and purpose, not exhaustive feature lists_
+
+_updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
