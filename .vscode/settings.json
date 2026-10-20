@@ -1,0 +1,24 @@
+{
+    "ruff.configuration": "${workspaceFolder}/ruff.toml",
+
+    // 実行ファイルを直接指すとホスト / コンテナのどちらかで壊れるので PATH に任せる。
+    // コンテナ側は .devcontainer/devcontainer.json の remoteEnv で work を通している。
+    "emeraldwalk.runonsave": {
+        "commands": [
+            {
+                "match": ".*\\.ipynb$",
+                "cmd": "python3 -m jupytext --sync ${file}"
+            }
+        ]
+    },
+
+    // 以下はコンテナ固有の値を含まないので、ホストで直接開いたときにも効くよう
+    // devcontainer.json ではなくここに置く (workspace > machine で優先もされる)。
+    //
+    // ターミナルの環境切り替えは Python Environments 拡張が担当する。
+    // 旧 Python 拡張の自動 activate と二重にコマンドが打ち込まれるので false。
+    // activateEnvInCurrentTerminal は既に開いているターミナルにも打ち込むため使わない。
+    "python.terminal.activateEnvironment": false,
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda"
+}

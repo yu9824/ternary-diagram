@@ -1,0 +1,28 @@
+{
+    "recommendations": [
+        "ms-python.python",
+        // ms-python.python の extensionPack で暗黙に入るが、
+        // .devcontainer/devcontainer.json の python-envs.* 設定が
+        // この拡張のものなので明示しておく。
+        "ms-python.vscode-python-envs",
+        "ms-toolsai.jupyter",
+        "anthropic.claude-code",
+        "tamasfe.even-better-toml",
+        "njpwerner.autodocstring",
+        "janisdd.vscode-edit-csv",
+        "github.vscode-github-actions",
+        "ms-python.mypy-type-checker",
+        "ionutvmi.path-autocomplete",
+        "ryu1kn.partial-diff",
+        "yzhang.markdown-all-in-one",
+        "yzane.markdown-pdf",
+        "bierner.markdown-mermaid",
+        "TakumiI.markdowntable",
+        "charliermarsh.ruff",
+        "shardulm94.trailing-spaces",
+        "mosapride.zenkaku",
+        "FanaticPythoner.better-todo-tree",
+        "GrapeCity.gc-excelviewer",
+        "emeraldwalk.RunOnSave"
+    ]
+}

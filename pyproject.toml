@@ -41,7 +41,7 @@ classifiers = [
 
 [project.optional-dependencies]
 test = ["pytest", "pandas"]
-dev = ["build", "jupyter", "pandas"]
+dev = ["build", "jupyter", "jupytext", "pandas"]
 docs = [
     "sphinx",
     "sphinx_rtd_theme",
