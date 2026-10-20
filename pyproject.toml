@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 name = "ternary-diagram"
 dynamic = ["version"]
 dependencies = ["numpy >=1.20", "matplotlib"]
-requires-python = ">= 3.8"
+requires-python = ">= 3.9"
 authors = [{ name = "yu9824" }]
 maintainers = [{ name = "yu9824" }]
 description = ""
@@ -17,12 +17,12 @@ keywords = []
 # https://pypi.org/classifiers/
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Visualization",
