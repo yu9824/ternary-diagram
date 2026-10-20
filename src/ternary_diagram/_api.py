@@ -267,12 +267,15 @@ class TernaryDiagram:
             from the vertex of the triangle.
 
         z : ArrayLike, shape = (n,), optional
-            , by default None
+            Values used to color the points. It cannot be used together
+            with `c`. , by default None
 
         z_min : Optional[Number] , optional
+            Lower limit of the color scale. `vmin` is accepted as an alias.
             , by default None
 
         z_max : Optional[Number], optional
+            Upper limit of the color scale. `vmax` is accepted as an alias.
             , by default None
 
         annotations : Optional[List[str]], optional
@@ -341,13 +344,18 @@ class TernaryDiagram:
             , by default None
 
         z_min : Optional[Number], optional
+            Lower limit of the automatic levels. If None, the minimum of `z`.
             , by default None
 
         z_max : Optional[Number], optional
+            Upper limit of the automatic levels. If None, the maximum of `z`.
             , by default None
 
         kwargs : parameter of `matplotlib.pyplot.contour`, optional
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html.
+
+            If `levels` is given, it is used instead of the automatic
+            levels and cannot be combined with `z_min` or `z_max`.
 
         Returns
         -------
@@ -570,6 +578,28 @@ class _BasePlotter:
             if k not in self.kwargs:
                 self.kwargs[k] = v
 
+    def _merge_alias(self, value: Any, name: str, alias: str) -> Any:
+        """
+        merge the matplotlib name `alias` in kwargs into `name`
+
+        Examples
+        --------------
+        >>> z_min = self._merge_alias(self.z_min, "z_min", "vmin")
+
+        Raises
+        ------
+        ValueError
+            when both `name` and `alias` are specified.
+        """
+        alias_value = self.kwargs.pop(alias, None)
+        if alias_value is None:
+            return value
+        if value is not None:
+            raise ValueError(
+                f"`{name}` and `{alias}` cannot be specified at the same time."
+            )
+        return alias_value
+
     @property
     def x_(self) -> np.ndarray:
         # TODO: docstring
@@ -711,14 +741,19 @@ class _ScatterPlotter(_BasePlotter):
             # for i_data in range(len(self.x_)):
             #     self.ax.scatter(self.x_[i_data], self.y_[i_data], **self.kwargs)  # noqa: E501
         else:
+            if "c" in self.kwargs:
+                raise ValueError(
+                    "`c` cannot be used together with `z` "
+                    "because the colors are determined by `z`."
+                )
             if "cmap" not in self.kwargs:
                 self.kwargs["cmap"] = DEFAULT_CMAP
             self.collection_ = self.ax.scatter(
                 self.x_,
                 self.y_,
                 c=self.z,
-                vmin=self.z_min,
-                vmax=self.z_max,
+                vmin=self._merge_alias(self.z_min, "z_min", "vmin"),
+                vmax=self._merge_alias(self.z_max, "z_max", "vmax"),
                 **self.kwargs,
             )
             if flag_cbar:
@@ -753,24 +788,16 @@ class _ContourPlotter(_BasePlotter):
         )
 
         triangulation = Triangulation(self.x_, self.y_)
-        # 等高線の線を引く場所，すなわち，色の勾配を表す配列．
-        N_LEVELS = 101  # 勾配をどれだけ細かくするかの変数．
-        levels: np.ndarray = np.linspace(
-            start=self.z_min if self.z_min is not None else np.min(self.z),  # type: ignore[arg-type]
-            stop=self.z_max if self.z_max is not None else np.max(self.z),  # type: ignore[arg-type]
-            num=N_LEVELS,
-        )
-        # solve issue#7
-        # matplotlib requires strictly increasing levels. Checking the
-        # differences (not `levels.std() == 0`) also catches constant `z`,
-        # whose std can be a rounding error like 8.9e-16 instead of 0.
-        if not np.all(np.diff(levels) > 0):
-            OFFSET = 0.001
-            levels = np.linspace(
-                levels[0] - OFFSET * (N_LEVELS // 2),
-                levels[-1] + OFFSET * (N_LEVELS // 2),
-                N_LEVELS,
-            )
+        if "levels" in self.kwargs:
+            # user-specified levels take precedence over the automatic ones.
+            if self.z_min is not None or self.z_max is not None:
+                raise ValueError(
+                    "`levels` cannot be specified together with "
+                    "`z_min` or `z_max`."
+                )
+            levels = self.kwargs.pop("levels")
+        else:
+            levels = self._auto_levels()
         if fill:
             self.collection_ = self.ax.tricontourf(
                 triangulation,
@@ -789,6 +816,28 @@ class _ContourPlotter(_BasePlotter):
         if flag_cbar:
             self.colorbar(mappable=self.collection_, ax=self.ax)
         self.fig.tight_layout()
+
+    def _auto_levels(self) -> np.ndarray:
+        """levels spanning from `z_min` (or min of z) to `z_max` (or max of z)"""
+        # 等高線の線を引く場所，すなわち，色の勾配を表す配列．
+        N_LEVELS = 101  # 勾配をどれだけ細かくするかの変数．
+        levels: np.ndarray = np.linspace(
+            start=self.z_min if self.z_min is not None else np.min(self.z),  # type: ignore[arg-type]
+            stop=self.z_max if self.z_max is not None else np.max(self.z),  # type: ignore[arg-type]
+            num=N_LEVELS,
+        )
+        # solve issue#7
+        # matplotlib requires strictly increasing levels. Checking the
+        # differences (not `levels.std() == 0`) also catches constant `z`,
+        # whose std can be a rounding error like 8.9e-16 instead of 0.
+        if not np.all(np.diff(levels) > 0):
+            OFFSET = 0.001
+            levels = np.linspace(
+                levels[0] - OFFSET * (N_LEVELS // 2),
+                levels[-1] + OFFSET * (N_LEVELS // 2),
+                N_LEVELS,
+            )
+        return levels
 
     @property
     def name(self):
