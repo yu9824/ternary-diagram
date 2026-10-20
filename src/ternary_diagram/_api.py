@@ -720,9 +720,11 @@ class _ScatterPlotter(_BasePlotter):
 
         # easy annotation 右上に簡易annotation
         if annotations is not None:
-            assert len(annotations) == len(self.x_), (
-                "len(annotations) != len(x)"
-            )
+            if len(annotations) != len(self.x_):
+                raise ValueError(
+                    f"The length of `annotations` ({len(annotations)}) "
+                    f"must be equal to the number of points ({len(self.x_)})."
+                )
             for x, y, txt in zip(self.x_, self.y_, annotations):
                 txt = get_label(txt)
                 self.ax.annotate(
@@ -780,6 +782,8 @@ class _ContourPlotter(_BasePlotter):
         super().__init__(
             vector, ax=ax, z=z, z_min=z_min, z_max=z_max, **kwargs
         )
+        if self.z is None:
+            raise ValueError("`z` is required to draw a contour map.")
 
         # default options
         self._set_default_params(

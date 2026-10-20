@@ -60,8 +60,12 @@ def check_2d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
         when shape is not (n, 3)
     """
     arr_vector = np.asarray(vector)
-    if arr_vector.shape[1] != 3:
-        raise ValueError("`vector`'s shape must be (n, 3)")
+    if arr_vector.ndim != 2 or arr_vector.shape[1] != 3:
+        raise ValueError(
+            "`vector`'s shape must be (n, 3), but got {}.".format(
+                arr_vector.shape
+            )
+        )
     if scale:
         arr_vector = arr_vector / np.sum(
             arr_vector, axis=1, keepdims=True
