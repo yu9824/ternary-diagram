@@ -44,10 +44,10 @@ test = ["pytest", "pandas"]
 dev = ["build", "jupyter", "jupytext", "pandas"]
 docs = [
     "sphinx",
-    "sphinx_rtd_theme",
-    "sphinx-markdown-tables",
-    "recommonmark",
-    "sphinx-multiversion",
+    "myst-parser",
+    "myst-nb",
+    "sphinx-book-theme",
+    "jupyter-sphinx",
 ]
 
 [project.urls]
