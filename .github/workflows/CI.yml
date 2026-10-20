@@ -31,7 +31,7 @@ jobs:
     #     echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        pip install .[test,optional]
+        pip install ".[test]"
     - name: Test with pytest
       run: |
         pytest -xs .

@@ -10,10 +10,22 @@ dependencies = ["numpy >=1.20", "matplotlib"]
 requires-python = ">= 3.9"
 authors = [{ name = "yu9824" }]
 maintainers = [{ name = "yu9824" }]
-description = ""
+description = "Draw beautiful ternary diagrams with matplotlib, without pymatgen."
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { file = "LICENSE" }
-keywords = []
+# https://spdx.org/licenses/
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+keywords = [
+    "ternary diagram",
+    "ternary plot",
+    "phase diagram",
+    "composition",
+    "contour",
+    "matplotlib",
+    "materials science",
+    "chemistry",
+    "visualization",
+]
 # https://pypi.org/classifiers/
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -23,7 +35,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
-    "License :: OSI Approved :: MIT License",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Visualization",
 ] # https://pypi.org/classifiers/
@@ -31,7 +42,6 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest", "pandas"]
 dev = ["build", "jupyter", "pandas"]
-optional = ["colorlog", "tqdm"]
 docs = [
     "sphinx",
     "sphinx_rtd_theme",
@@ -39,7 +49,6 @@ docs = [
     "recommonmark",
     "sphinx-multiversion",
 ]
-gui = ["TkEasyGUI"]
 
 [project.urls]
 Homepage = "https://github.com/yu9824/ternary-diagram"
@@ -47,6 +56,7 @@ Documentation = "https://yu9824.github.io/ternary-diagram/"
 PyPI = "https://pypi.org/project/ternary-diagram/"
 Source = "https://github.com/yu9824/ternary-diagram"
 Tracker = "https://github.com/yu9824/ternary-diagram/issues"
+"Release Notes" = "https://github.com/yu9824/ternary-diagram/releases"
 
 [project.scripts]
 ternary-diagram = "ternary_diagram.__main__:entrypoint"
