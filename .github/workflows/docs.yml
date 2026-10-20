@@ -15,15 +15,15 @@ jobs:
     runs-on: ubuntu-latest
     # runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0  # fetch all commits
           fetch-tags: true
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
       - name: Install dependencies
         run: |
-          pip install .[docs]
+          pip install ".[docs]"
       - name: sphinx-apidoc
         run: |
           sphinx-apidoc -f -o ./docs_src ./src/ternary_diagram --module-first
