@@ -48,7 +48,7 @@
 
 ## Upstream / Downstream
 
-- **Upstream**: `plot-side-effects`、`diagram-customization`、`region-plots`、`heatmaps`
+- **Upstream**: `plot-side-effects`、`diagram-customization`、`region-plots`、`heatmaps`、直接実装の `annotate-plain-text`（化学式の整形の規則）
 - **Downstream**: v4.0.0 のリリース（移行方法のページを参照する）
 
 ## Existing Spec Touchpoints

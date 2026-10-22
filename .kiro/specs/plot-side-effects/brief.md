@@ -4,7 +4,7 @@
 
 `scatter` などを呼ぶたびに、ライブラリが図全体へ副作用を起こす。
 
-- 描画のたびに `fig.tight_layout()` を呼ぶ。`plt.figure(layout="constrained")` で作った図では、レイアウトが黙って tight に切り替わる（matplotlib 3.10 で確認。"The figure layout has changed to tight" という警告が出るだけ）。subfigure や手動で調整したレイアウトも崩れ、描画のたびに余計な計算が走る
+- 描画のたびに `fig.tight_layout()` を呼ぶ。`plt.figure(layout="constrained")` で作った図では、カラーバーがなければレイアウトが tight に切り替わり（"The figure layout has changed to tight" という警告だけが出る）、カラーバーがあると `RuntimeError` で描画自体が失敗する（どちらも matplotlib 3.10.8 で確認）。subfigure や手動で調整したレイアウトも崩れ、描画のたびに余計な計算が走る
 - `z` を渡すと、既定（`flag_cbar=True`）で毎回カラーバーを追加する。contour の上に scatter を重ねるだけでカラーバーが 2 本になり、そのたびに本体の Axes が縮む
 
 論文用の図を既存の matplotlib ワークフローに組み込みたい利用者ほど、この副作用に困る。

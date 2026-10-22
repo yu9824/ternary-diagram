@@ -21,6 +21,7 @@ matplotlib の薄いラッパーとして作られた純 Python ライブラリ�
 ### Compatibility
 
 - 既存コードは Python 3.8 時代の名残で `typing.Tuple` / `typing.List` を `# isort: skip` 付きでファイル先頭に置いている。3.9+ になったので組み込みジェネリクスも使えるが、1 ファイルの中ではどちらかに揃える
+- 新しく作るモジュールは `from __future__ import annotations` を付け、注釈には組み込みジェネリクス（`list[int]`）と `X | None` を使う
 - matplotlib のバージョン差異はモジュール冒頭の分岐で吸収する
 
 ```python
@@ -42,6 +43,15 @@ else:
 - `F401`（未使用 import）は自動修正の対象外。re-export を誤って消さないため
 - docstring は NumPy スタイル（Sphinx の napoleon で整形）で、英語で書く。公開メソッドには `Parameters` / `Returns` / `Examples` と、ラップしている matplotlib 関数のドキュメント URL を書く。URL で長くなる docstring には `# noqa: E501` を付ける
 
+### Docstring Examples
+
+- 公開 API の `Examples` は doctest 形式（`>>>`）で書く。描画する例は `fig, ax = plt.subplots(layout="constrained")` で図を作って `ax=ax` を渡すところから始める。v3.x でも v4.0.0 でも FutureWarning を出さない書き方にするため。図を扱わない純粋関数（`utils` の計算関数など）の例は図を作らない
+- 例は docstring ごとに、必要な import の行（`>>> import matplotlib.pyplot as plt`、`>>> from ternary_diagram import TernaryDiagram` など）から始め、その docstring だけで実行できるようにする。ランナーの名前空間は docstring が定義されたモジュールの globals なので、`_api.py` が import していない `plt` などは使えない
+- 例はファイルを書き出さない（`savefig` は書かない）
+- `Parameters` の各項目には意味を書く文を必ず置き、既定値は文の後に `, by default X` と添える。`, by default None` だけの項目は書かない
+- 共通の doctest ランナー（`tests/test_doctests.py`）が、公開 API（`TernaryDiagram` とその公開メソッド、`utils` の公開関数）の例を一時ディレクトリで、FutureWarning をエラーにして実行する。各 spec は自分のランナーを作らず、このランナーで自分の例が通ることを確かめる
+- private なメソッドの docstring には `>>>` の例を書かない（ランナーの対象外で、そのままでは実行できないため）
+
 ### Error Handling
 
 - 入力検証は `utils.check_*` に集約し、何が悪いかを示すメッセージ付きで `TypeError` / `ValueError` を送出する
@@ -54,7 +64,7 @@ else:
 - 画像比較はせず、生成された artist の状態（座標、色、zorder、colorbar の有無、levels など）を assert する。OS やフォントの差で壊れないようにするため
 - 共通 fixture は `tests/conftest.py`（Agg バックエンド、テストごとの `plt.close("all")`、`ax` / `td`、サンプル CSV）
 - デフォルト値を持つ引数は「デフォルト」と「上書き」の両方をテストする
-- `utils.py` の関数は docstring に doctest 形式の Examples を持つ
+- `utils.py` の関数は docstring に doctest 形式の Examples を持つ（実行は上の共通ランナー）
 
 ## Development Environment
 
