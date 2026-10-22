@@ -1,7 +1,8 @@
 """Policy of the processing after drawing on a ternary diagram.
 
-The functions here read the figure and decide what to do after drawing.
-None of them changes the figure.
+The functions here read the figure, decide what to do after drawing and
+build the messages of the warnings about it. None of them changes the
+figure.
 """
 
 from __future__ import annotations
@@ -11,9 +12,19 @@ from enum import Enum
 import matplotlib
 import matplotlib.figure
 
+from ternary_diagram._deprecation import format_default_change
+
 __all__ = (
+    "COLORBAR_WARNING_KEY",
+    "ColorbarAction",
+    "LAYOUT_WARNING_KEY",
+    "LayoutAction",
     "LayoutState",
+    "colorbar_warning_message",
+    "decide_colorbar",
+    "decide_layout",
     "get_layout_state",
+    "layout_warning_message",
 )
 
 # Figure.get_layout_engine and PlaceHolderLayoutEngine exist since
@@ -73,3 +84,175 @@ def get_layout_state(fig: matplotlib.figure.FigureBase) -> LayoutState:
     if fig.get_constrained_layout() or fig.get_tight_layout():
         return LayoutState.HAS_ENGINE
     return LayoutState.NO_ENGINE
+
+
+class LayoutAction(Enum):
+    """What to do with the figure layout after drawing.
+
+    Attributes
+    ----------
+    SKIP
+        Leave the figure layout as it is.
+    APPLY
+        Call ``Figure.tight_layout()``.
+    APPLY_AND_WARN
+        Call ``Figure.tight_layout()`` and warn that the default changes in
+        ternary-diagram 4.0.0.
+    """
+
+    SKIP = "skip"
+    APPLY = "apply"
+    APPLY_AND_WARN = "apply_and_warn"
+
+
+class ColorbarAction(Enum):
+    """Whether to add a colorbar automatically after drawing.
+
+    Attributes
+    ----------
+    SKIP
+        Add no colorbar.
+    ADD
+        Add a colorbar.
+    ADD_AND_WARN
+        Add a colorbar and warn that the default changes in ternary-diagram
+        4.0.0.
+    """
+
+    SKIP = "skip"
+    ADD = "add"
+    ADD_AND_WARN = "add_and_warn"
+
+
+LAYOUT_WARNING_KEY: str = "layout.tight_layout"
+"""Key of the warning issued for ``LayoutAction.APPLY_AND_WARN``."""
+
+COLORBAR_WARNING_KEY: str = "colorbar.duplicate"
+"""Key of the warning issued for ``ColorbarAction.ADD_AND_WARN``."""
+
+
+def decide_layout(setting: bool | None, state: LayoutState) -> LayoutAction:
+    """Decide what to do with the figure layout after drawing.
+
+    Only the figure without a layout engine is adjusted. The warning is
+    needed only when the default leads to an adjustment, which the default
+    of ternary-diagram 4.0.0 will not do.
+
+    Parameters
+    ----------
+    setting : bool | None
+        ``tight_layout`` of the ternary diagram. None means that it was not
+        specified.
+    state : LayoutState
+        Layout state of the figure, from ``get_layout_state``.
+
+    Returns
+    -------
+    LayoutAction
+        ``APPLY_AND_WARN`` when `setting` is None and `state` is
+        ``NO_ENGINE``, ``APPLY`` when `setting` is True and `state` is
+        ``NO_ENGINE``, ``SKIP`` otherwise.
+    """
+    adjustable = state is LayoutState.NO_ENGINE
+    if setting is None:
+        # The only row that ternary-diagram 4.0.0 changes, to SKIP.
+        return LayoutAction.APPLY_AND_WARN if adjustable else LayoutAction.SKIP
+    return LayoutAction.APPLY if setting and adjustable else LayoutAction.SKIP
+
+
+def decide_colorbar(
+    requested: bool | None, *, has_mappable: bool, has_existing: bool
+) -> ColorbarAction:
+    """Decide whether to add a colorbar automatically after drawing.
+
+    A colorbar is added only for a plot colored by values. The warning is
+    needed only when the default adds another colorbar to a diagram that
+    already has one, which the default of ternary-diagram 4.0.0 will not do.
+
+    Parameters
+    ----------
+    requested : bool | None
+        ``colorbar`` of the plot. None means that it was not specified.
+    has_mappable : bool
+        Whether the plot is colored by values.
+    has_existing : bool
+        Whether the diagram already has a colorbar that it added and that
+        is not removed.
+
+    Returns
+    -------
+    ColorbarAction
+        ``SKIP`` when `has_mappable` is False or `requested` is False.
+        Otherwise ``ADD_AND_WARN`` when `requested` is None and
+        `has_existing` is True, ``ADD`` in the other cases.
+    """
+    if not has_mappable:
+        return ColorbarAction.SKIP
+    if requested is None:
+        # The only row that ternary-diagram 4.0.0 changes: ADD_AND_WARN to
+        # SKIP.
+        return (
+            ColorbarAction.ADD_AND_WARN if has_existing else ColorbarAction.ADD
+        )
+    return ColorbarAction.ADD if requested else ColorbarAction.SKIP
+
+
+def layout_warning_message() -> str:
+    """Build the message of the warning for ``LayoutAction.APPLY_AND_WARN``.
+
+    Returns
+    -------
+    str
+        The message announcing that the figure layout will no longer be
+        adjusted by default, with how to keep the current behavior and how
+        to adopt the new one.
+    """
+    return format_default_change(
+        current=(
+            "TernaryDiagram called `Figure.tight_layout()` after plotting "
+            "because the figure has no layout engine and `tight_layout` was "
+            "not specified."
+        ),
+        future=(
+            "TernaryDiagram will no longer adjust the figure layout by "
+            "default (tight_layout=False)."
+        ),
+        keep="pass `tight_layout=True` to `TernaryDiagram`",
+        adopt=(
+            "pass `tight_layout=False` and call `fig.tight_layout()` "
+            'yourself, or create the figure with `layout="constrained"`'
+        ),
+    )
+
+
+def colorbar_warning_message(func: str) -> str:
+    """Build the message of the warning for ``ColorbarAction.ADD_AND_WARN``.
+
+    The message does not mention ``z``, so that plots colored by values
+    without ``z`` can issue it too.
+
+    Parameters
+    ----------
+    func : str
+        Name of the plotting method that the user called, such as
+        ``"scatter"`` or ``"heatmapf"``.
+
+    Returns
+    -------
+    str
+        The message announcing that a colorbar will be added automatically
+        only to a diagram without one, with how to keep the current behavior
+        and how to adopt the new one.
+    """
+    return format_default_change(
+        current=(
+            f"`{func}` added another colorbar to this diagram, which already "
+            "has one, because `colorbar` was not specified."
+        ),
+        future=(
+            "a colorbar will be added automatically only when the diagram "
+            "has none."
+        ),
+        keep="pass `colorbar=True`",
+        adopt="pass `colorbar=False`",
+    )
