@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共通の警告の入口、入力検証、doctest ランナー
+- [x] 1. 基盤: 共通の警告の入口、入力検証、doctest ランナー
 - [x] 1.1 (P) 利用者向けの警告の共通の入口と、非推奨・既定値変更の文面ヘルパーを作る
   - `warn_external(message, category=FutureWarning)` を、パッケージ全体で利用者向けの警告を出す唯一の入口にする。種類は `category` で選べる（既定は FutureWarning、UserWarning なども可）
   - 警告の発生位置を、呼び出し経路の深さにかかわらず、パッケージ外で最初に見つかる呼び出し元（利用者のコードの行）にする
@@ -22,7 +22,7 @@
   - _Boundary: `src/ternary_diagram/utils.py: check_optional_bool, check_bool`（追加のみ。既存の関数は変えない）、`tests/test_utils.py: check_optional_bool / check_bool のテスト`（追加のみ）_
   - _Requirements: 1.6, 3.7, 9.1, 9.2_
 
-- [ ] 1.3 公開 API の使用例を実行する共通 doctest ランナーを作る
+- [x] 1.3 公開 API の使用例を実行する共通 doctest ランナーを作る
   - 対象を公開 API に限って収集する: `ternary_diagram.__all__` の `TernaryDiagram`（クラスの docstring、`__init__`、名前が `_` で始まらないメソッドとプロパティ）と、公開モジュール（名前が `_` で始まらないサブモジュール。現時点では `utils`、後続の spec が足すものも自動で対象）で定義された公開の関数とクラス。private なモジュールと、`_` で始まるメソッド（`__init__` を除く）は収集しない
   - `>>>` の例を持つ docstring ごとに 1 つのテストにパラメータ化し、作業ディレクトリを一時ディレクトリに移し、FutureWarning をエラーとして扱い、option flags `ELLIPSIS | NORMALIZE_WHITESPACE` で実行する。名前空間はその docstring のモジュールの globals で、名前を足さない。失敗時は失敗した例と差分をメッセージに含める
   - 既存の `TernaryDiagram.__init__` の Examples 節（`user-guide-docs` が書き直す）の 1 件だけを `xfail(strict=True)` にし、理由に「`user-guide-docs` が書き直したら一覧から外す」と書く。Examples 節そのものには手を加えない
@@ -128,3 +128,8 @@
   - 完了時: CHANGELOG の Unreleased に 5 つの見出しがこの順で並び、本 spec の項目が上記の見出しにあり、既存の項目の書式（英語、箇条書き）に揃っている
   - _Boundary: `CHANGELOG.md: Unreleased の見出しの組と本 spec の項目`（既存の項目と過去のバージョンの節は変えない）_
   - _Requirements: 6.1, 6.2, 7.3, 8.1_
+
+## Implementation Notes
+
+- 検証コマンドは `PYTHONPATH=src` 付きで実行する（パッケージは未インストール）。lint は `ruff check src tests`（`ruff check .` は example ノートブックの既存の F401 で落ちる。範囲外）
+- 共通 doctest ランナー（`tests/test_doctests.py`）は公開 API を規則で自動収集する。`TernaryDiagram` に公開メソッドを足すとその Examples も実行されるので、例は import の行から始め、FutureWarning を出さない書き方にする。private なメソッドに `>>>` を書いても収集はされないが、tech.md に従って書かない
