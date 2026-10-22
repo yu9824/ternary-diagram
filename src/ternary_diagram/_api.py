@@ -29,10 +29,12 @@ else:
     from matplotlib.tri.tricontour import TriContourSet
 from numpy.typing import ArrayLike
 
+from ternary_diagram._post_draw import PostDrawContext
 from ternary_diagram.utils import (
     check_1d_vector,
     check_2d_vector,
     check_ax,
+    check_optional_bool,
     get_label,
     three2two,
 )
@@ -51,6 +53,8 @@ class TernaryDiagram:
         materials: Tuple[str, str, str],
         ax: Optional[matplotlib.axes.Axes] = None,
         auto_latex_notation: bool = True,
+        *,
+        tight_layout: Optional[bool] = None,
     ) -> None:
         """
         Make instance.
@@ -74,6 +78,17 @@ class TernaryDiagram:
             If True, the LaTeX notation of the material is automatically
             generated. If False, the material is displayed as it is.
             , by default True
+
+        tight_layout : bool or None, optional
+            Whether to adjust the figure margins with
+            ``Figure.tight_layout()`` after each plotting call. ``True``
+            adjusts them, and ``False`` leaves the layout untouched.
+            ``None`` keeps the v3.x behavior: the margins are adjusted and
+            a FutureWarning is emitted once per diagram. The default will
+            change to ``tight_layout=False`` in ternary-diagram 4.0.0.
+            Figures with a layout engine (e.g. ``layout="constrained"``)
+            and subfigures are never adjusted, whatever the value,
+            by default None
 
 
         Examples
@@ -101,6 +116,10 @@ class TernaryDiagram:
 
         # check `ax`
         self.__ax = check_ax(ax)
+        # check `tight_layout` before drawing anything on `ax`
+        self.__post_draw_context = PostDrawContext(
+            tight_layout=check_optional_bool(tight_layout, "tight_layout")
+        )
         self.__fig = self.ax.figure
 
         # Generate material_labels (LaTeX notation)
@@ -487,7 +506,7 @@ class TernaryDiagram:
         """  # noqa: E501
 
         # draw colorbar
-        return _BasePlotter.colorbar(
+        cbar = _BasePlotter.colorbar(
             mappable,
             shrink=shrink,
             format=format,
@@ -497,6 +516,8 @@ class TernaryDiagram:
             ax=self.ax,
             **kwargs,
         )
+        self.__post_draw_context.register_colorbar(cbar)
+        return cbar
 
     def _append_x_y(self, plotter) -> None:
         """append x, y data

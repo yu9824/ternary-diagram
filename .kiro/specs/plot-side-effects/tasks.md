@@ -59,7 +59,7 @@
   - _Requirements: 1.1, 4.1, 4.3, 6.8_
 
 - [ ] 3. 統合: TernaryDiagram と Plotter への組み込み
-- [ ] 3.1 TernaryDiagram の作成時にレイアウト設定を受け付け、三角図ごとの状態を用意する
+- [x] 3.1 TernaryDiagram の作成時にレイアウト設定を受け付け、三角図ごとの状態を用意する
   - キーワード専用の `tight_layout`（未指定・真・偽）を `*` の直後に追加する。最終シグネチャは roadmap「横断の取り決め」の `(materials, ax=None, auto_latex_notation=True, *, tight_layout=None, border_kw=None, grid_kw=None, tick_kw=None, axis_label_kw=None, vertex_label_kw=None)` で、本 spec は `tight_layout` だけを足す（`*_kw` は後からマージする `diagram-customization` が `tight_layout` の後ろに足す）
   - 検証の順 `ax` → `materials` → `tight_layout` → `*_kw` に合わせ、`check_ax(ax)` の直後、Axes に触れる前に 1.2 の `check_optional_bool` で `tight_layout` を検証して三角図ごとの状態を作る（`materials` の検証は `diagram-customization` が `check_ax` との間に入れる）。土台の描画コードには手を加えない
   - 手動の `colorbar()` で作ったカラーバーを三角図ごとの状態に登録する。`colorbar()` の引数・既定値・戻り値・docstring は変えない（メソッドの docstring は `user-guide-docs` の担当）
@@ -94,7 +94,8 @@
   - 既存テストの `flag_cbar=False` を `colorbar=False` に置き換え、example の CSV を読むテストもレイアウト設定を明示する
   - 置き換え以外の assert は変えない
   - 完了時: 既存のテスト一式を FutureWarning をエラーとして扱う設定（`-W error::FutureWarning`）で実行しても通る（共通 doctest ランナーの `__init__` の 1 件は xfail のまま）
-  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py`（`flag_cbar=False` の置き換えと、example を読むテストのレイアウト設定の明示のみ）_
+  - fixture を使わずに三角図を作って描画する既存テスト（`test_multiple_diagrams_in_one_figure`、`test_uses_current_axes_by_default` など）にも、同じくレイアウト設定（`tight_layout=True`）を明示する（3.1 のレビューで判明した境界の不足を補う）
+  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py / tests/test_plot.py / tests/test_annotate.py`（`flag_cbar=False` の置き換えと、fixture を使わずに三角図を作るテストへのレイアウト設定の明示のみ）_
   - _Requirements: 7.2, 7.4_
 
 - [ ] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
@@ -134,3 +135,4 @@
 - 検証コマンドは `PYTHONPATH=src` 付きで実行する（パッケージは未インストール）。lint は `ruff check src tests`（`ruff check .` は example ノートブックの既存の F401 で落ちる。範囲外）
 - 共通 doctest ランナー（`tests/test_doctests.py`）は公開 API を規則で自動収集する。`TernaryDiagram` に公開メソッドを足すとその Examples も実行されるので、例は import の行から始め、FutureWarning を出さない書き方にする。private なメソッドに `>>>` を書いても収集はされないが、tech.md に従って書かない
 - `PostDrawContext` は design のコード例（`@dataclass(frozen=True)`）と違い `eq=False` にした。三角図ごとの状態なので同一性で比べ、`hash()` もできるようにするため（2.3 のレビューでの判断）
+- 描画を伴うテストは、共通 fixture `td` を使うか `tight_layout` を明示する。既定値そのものを確かめるテストは fixture に頼らず、その場で `tight_layout` を省略して作る（4.1 で fixture が `tight_layout=True` になるため。3.1 のレビューでの指摘）

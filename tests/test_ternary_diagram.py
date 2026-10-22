@@ -1,3 +1,4 @@
+import inspect
 from math import sqrt
 
 import matplotlib.pyplot as plt
@@ -127,3 +128,81 @@ def test_colorbar_horizontal(td):
     cbar = td.colorbar(collection, orientation="horizontal", location="bottom")
 
     assert cbar.orientation == "horizontal"
+
+
+def _post_draw_context(td: TernaryDiagram):
+    # The design keeps the per-diagram state in a name-mangled private
+    # attribute without a public accessor.
+    return td._TernaryDiagram__post_draw_context
+
+
+def test_tight_layout_is_the_first_keyword_only_parameter():
+    parameters = inspect.signature(TernaryDiagram.__init__).parameters
+    keyword_only = [
+        name
+        for name, parameter in parameters.items()
+        if parameter.kind is inspect.Parameter.KEYWORD_ONLY
+    ]
+
+    assert keyword_only[0] == "tight_layout"
+    assert parameters["tight_layout"].default is None
+
+
+@pytest.mark.parametrize(
+    "tight_layout, expected",
+    [(None, None), (True, True), (False, False), (np.bool_(True), True)],
+)
+def test_tight_layout_is_kept_per_diagram(ax, tight_layout, expected):
+    td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=tight_layout)
+
+    kept = _post_draw_context(td).tight_layout
+    assert kept is expected
+
+
+def test_tight_layout_defaults_to_none(ax):
+    td = TernaryDiagram(MATERIALS, ax=ax)
+
+    assert _post_draw_context(td).tight_layout is None
+
+
+@pytest.mark.parametrize("tight_layout", ["yes", 1, 0])
+def test_invalid_tight_layout_leaves_axes_untouched(ax, tight_layout):
+    with pytest.raises(
+        TypeError, match="`tight_layout` must be None, True or False"
+    ):
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=tight_layout)
+
+    assert len(ax.lines) == 0
+    assert len(ax.texts) == 0
+    assert all(spine.get_visible() for spine in ax.spines.values())
+
+
+def test_ax_is_checked_before_tight_layout():
+    with pytest.raises(TypeError, match="`ax`"):
+        TernaryDiagram(MATERIALS, ax="ax", tight_layout="yes")
+
+
+def test_colorbar_is_registered_to_the_diagram(ax):
+    td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
+    collection = td.scatter(VECTOR, z=Z, flag_cbar=False)
+    context = _post_draw_context(td)
+    assert not context.has_colorbar()
+
+    cbar = td.colorbar(collection)
+
+    assert context.has_colorbar()
+    cbar.remove()
+    assert not context.has_colorbar()
+
+
+def test_each_diagram_has_its_own_post_draw_context():
+    _, axes = plt.subplots(1, 2)
+    left, right = (
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=True) for ax in axes
+    )
+
+    left.colorbar(left.scatter(VECTOR, z=Z, flag_cbar=False))
+
+    assert _post_draw_context(left) is not _post_draw_context(right)
+    assert _post_draw_context(left).has_colorbar()
+    assert not _post_draw_context(right).has_colorbar()
