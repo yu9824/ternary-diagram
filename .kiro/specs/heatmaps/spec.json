@@ -1,0 +1,22 @@
+{
+  "feature_name": "heatmaps",
+  "created_at": "2026-10-21T10:49:55Z",
+  "updated_at": "2026-10-22T02:53:23Z",
+  "language": "ja",
+  "phase": "tasks-generated",
+  "approvals": {
+    "requirements": {
+      "generated": true,
+      "approved": true
+    },
+    "design": {
+      "generated": true,
+      "approved": true
+    },
+    "tasks": {
+      "generated": true,
+      "approved": true
+    }
+  },
+  "ready_for_implementation": false
+}

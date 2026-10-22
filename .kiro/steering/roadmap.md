@@ -81,8 +81,8 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 
 ## Specs (dependency order)
 
-- [ ] plot-side-effects -- 毎回の tight_layout とカラーバーの自動追加を切り替え可能にし、既存のレイアウトエンジンを上書きしないようにする。将来の既定値変更に向けて FutureWarning を出す共通の仕組みを作る。Dependencies: none
-- [ ] diagram-customization -- グリッド・目盛り・軸タイトル・頂点ラベル・外枠を、作成時の `*_kw` 引数と作成後の `set_*` メソッドで変えられるようにする。既定の見た目は今と同じ。Dependencies: plot-side-effects
-- [ ] region-plots -- 組成で指定した多角形を塗る `fill` と、組成点にテキストを置く `text` を追加し、相図を描けるようにする。Dependencies: plot-side-effects
-- [ ] heatmaps -- 散布データを補間せず三角形で塗る `tripcolor` と、関数 f(a, b, c) を格子で評価して塗るヒートマップを追加する。Dependencies: plot-side-effects
-- [ ] user-guide-docs -- 既存メソッドの docstring の充実、機能ごとの使い方ページ、README の刷新を行う。Dependencies: plot-side-effects, diagram-customization, region-plots, heatmaps
+- [x] plot-side-effects -- 毎回の tight_layout とカラーバーの自動追加を切り替え可能にし、既存のレイアウトエンジンを上書きしないようにする。将来の既定値変更に向けて FutureWarning を出す共通の仕組みを作る。Dependencies: none
+- [x] diagram-customization -- グリッド・目盛り・軸タイトル・頂点ラベル・外枠を、作成時の `*_kw` 引数と作成後の `set_*` メソッドで変えられるようにする。既定の見た目は今と同じ。Dependencies: plot-side-effects
+- [x] region-plots -- 組成で指定した多角形を塗る `fill` と、組成点にテキストを置く `text` を追加し、相図を描けるようにする。Dependencies: plot-side-effects
+- [x] heatmaps -- 散布データを補間せず三角形で塗る `tripcolor` と、関数 f(a, b, c) を格子で評価して塗るヒートマップを追加する。Dependencies: plot-side-effects
+- [x] user-guide-docs -- 既存メソッドの docstring の充実、機能ごとの使い方ページ、README の刷新を行う。Dependencies: plot-side-effects, diagram-customization, region-plots, heatmaps
