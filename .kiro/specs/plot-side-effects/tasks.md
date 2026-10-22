@@ -31,7 +31,7 @@
   - _Boundary: `tests/test_doctests.py`（新規、全体）_
   - _Requirements: 9.2, 9.3, 9.4_
 
-- [ ] 2. コア: 描画後処理の方針（判定と状態）
+- [x] 2. コア: 描画後処理の方針（判定と状態）
 - [x] 2.1 図のレイアウト状態を判定する
   - top-level の図でないもの（subfigure）を「対象外」と判定する
   - matplotlib 3.6 以上では、レイアウトエンジンなし、またはライブラリ自身の tight 調整の後に残るプレースホルダーのエンジンを「エンジンなし」、それ以外（constrained・compressed・tight・rcParams 由来）を「エンジンあり」と判定する
@@ -50,7 +50,7 @@
   - _Boundary: `src/ternary_diagram/_post_draw.py: LayoutAction, ColorbarAction, decide_layout, decide_colorbar, layout_warning_message, colorbar_warning_message, LAYOUT_WARNING_KEY, COLORBAR_WARNING_KEY`、`tests/test_post_draw.py: 決定表と警告文のテスト`_
   - _Requirements: 1.2, 1.3, 1.4, 3.2, 3.3, 3.4, 4.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 2.3 三角図ごとの描画後処理の状態を実装する
+- [x] 2.3 三角図ごとの描画後処理の状態を実装する
   - 作成時に受け取ったレイアウト設定を保持し、作成後は変えられないようにする
   - この三角図を通じて作成したカラーバーを登録し、「削除されていないものが 1 本以上あるか」を答えられるようにする（削除済みは、カラーバーの元のオブジェクトがそのカラーバーを指していないことで判定する）
   - 理由ごとのキーを初めて受け取ったときだけ真を返し、2 回目以降は偽を返す
@@ -133,3 +133,4 @@
 
 - 検証コマンドは `PYTHONPATH=src` 付きで実行する（パッケージは未インストール）。lint は `ruff check src tests`（`ruff check .` は example ノートブックの既存の F401 で落ちる。範囲外）
 - 共通 doctest ランナー（`tests/test_doctests.py`）は公開 API を規則で自動収集する。`TernaryDiagram` に公開メソッドを足すとその Examples も実行されるので、例は import の行から始め、FutureWarning を出さない書き方にする。private なメソッドに `>>>` を書いても収集はされないが、tech.md に従って書かない
+- `PostDrawContext` は design のコード例（`@dataclass(frozen=True)`）と違い `eq=False` にした。三角図ごとの状態なので同一性で比べ、`hash()` もできるようにするため（2.3 のレビューでの判断）

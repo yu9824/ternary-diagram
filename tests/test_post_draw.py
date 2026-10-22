@@ -10,6 +10,7 @@ from ternary_diagram._post_draw import (
     ColorbarAction,
     LayoutAction,
     LayoutState,
+    PostDrawContext,
     colorbar_warning_message,
     decide_colorbar,
     decide_layout,
@@ -337,3 +338,154 @@ def test_colorbar_warning_message_does_not_mention_z(func):
     # Plots colored by values without ``z``, such as heatmapf, issue the
     # same message.
     assert "`z`" not in colorbar_warning_message(func)
+
+
+# PostDrawContext: the state of the processing after drawing, one per
+# ternary diagram.
+
+TRIANGLE_X = [0.0, 1.0, 0.5]
+TRIANGLE_Y = [0.0, 0.0, 1.0]
+TRIANGLE_Z = [0.0, 1.0, 2.0]
+
+
+def _add_colorbar(ax, plot="scatter"):
+    """Add a colorbar of a plot colored by values, as the plotters do."""
+    if plot == "scatter":
+        mappable = ax.scatter(TRIANGLE_X, TRIANGLE_Y, c=TRIANGLE_Z)
+    else:
+        mappable = ax.tricontourf(TRIANGLE_X, TRIANGLE_Y, TRIANGLE_Z)
+    return ax.figure.colorbar(mappable, ax=ax)
+
+
+def test_post_draw_context_tight_layout_defaults_to_none():
+    assert PostDrawContext().tight_layout is None
+
+
+@pytest.mark.parametrize("tight_layout", [None, True, False])
+def test_post_draw_context_holds_tight_layout(tight_layout):
+    context = PostDrawContext(tight_layout=tight_layout)
+    assert context.tight_layout is tight_layout
+
+
+@pytest.mark.parametrize("new_value", [None, True, False])
+def test_post_draw_context_tight_layout_is_read_only(new_value):
+    context = PostDrawContext(tight_layout=True)
+    with pytest.raises(AttributeError):
+        context.tight_layout = new_value
+    with pytest.raises(AttributeError):
+        del context.tight_layout
+    assert context.tight_layout is True
+
+
+@pytest.mark.parametrize("name", ["_colorbars", "_warned"])
+def test_post_draw_context_state_is_not_a_constructor_argument(name):
+    with pytest.raises(TypeError):
+        PostDrawContext(**{name: []})
+
+
+def test_post_draw_context_repr_shows_only_tight_layout():
+    _, ax = plt.subplots()
+    context = PostDrawContext(tight_layout=False)
+    context.register_colorbar(_add_colorbar(ax))
+    context.first_time(LAYOUT_WARNING_KEY)
+    assert repr(context) == "PostDrawContext(tight_layout=False)"
+
+
+def test_post_draw_context_has_no_colorbar_at_first():
+    assert PostDrawContext().has_colorbar() is False
+
+
+@pytest.mark.parametrize("plot", ["scatter", "tricontourf"])
+def test_post_draw_context_has_registered_colorbar(plot):
+    _, ax = plt.subplots()
+    context = PostDrawContext()
+    context.register_colorbar(_add_colorbar(ax, plot))
+    assert context.has_colorbar() is True
+
+
+@pytest.mark.parametrize("plot", ["scatter", "tricontourf"])
+def test_post_draw_context_does_not_count_removed_colorbar(plot):
+    _, ax = plt.subplots()
+    context = PostDrawContext()
+    colorbar = _add_colorbar(ax, plot)
+    context.register_colorbar(colorbar)
+    colorbar.remove()
+    # Colorbar.remove() makes the mappable stop pointing to the colorbar.
+    assert colorbar.mappable.colorbar is None
+    assert context.has_colorbar() is False
+
+
+@pytest.mark.parametrize("remove_first", [0, 1], ids=["first", "last"])
+def test_post_draw_context_counts_colorbars_until_all_are_removed(
+    remove_first,
+):
+    _, ax = plt.subplots()
+    context = PostDrawContext()
+    colorbars = [
+        _add_colorbar(ax, "tricontourf"),
+        _add_colorbar(ax, "scatter"),
+    ]
+    for colorbar in colorbars:
+        context.register_colorbar(colorbar)
+    colorbars.pop(remove_first).remove()
+    assert context.has_colorbar() is True
+    colorbars.pop().remove()
+    assert context.has_colorbar() is False
+
+
+def test_post_draw_contexts_compare_by_identity():
+    first, second = PostDrawContext(), PostDrawContext()
+    assert first != second
+    assert first == first
+    assert len({first, second}) == 2
+
+
+def test_post_draw_context_does_not_count_unregistered_colorbar():
+    # A colorbar added with matplotlib directly is not counted.
+    fig, ax = plt.subplots()
+    context = PostDrawContext()
+    colorbar = _add_colorbar(ax)
+    assert colorbar.mappable.colorbar is colorbar
+    assert len(fig.axes) == 2
+    assert context.has_colorbar() is False
+
+
+def test_post_draw_context_first_time_only_once_per_key():
+    context = PostDrawContext()
+    assert context.first_time(LAYOUT_WARNING_KEY) is True
+    assert context.first_time(LAYOUT_WARNING_KEY) is False
+    assert context.first_time(LAYOUT_WARNING_KEY) is False
+    # Each reason is counted on its own, including keys of later specs.
+    assert context.first_time(COLORBAR_WARNING_KEY) is True
+    assert context.first_time(COLORBAR_WARNING_KEY) is False
+    assert context.first_time("feature.topic") is True
+    assert context.first_time(LAYOUT_WARNING_KEY) is False
+
+
+def test_post_draw_contexts_are_independent():
+    # Two ternary diagrams on one figure keep their own state.
+    _, (ax1, _) = plt.subplots(1, 2)
+    context1 = PostDrawContext()
+    context2 = PostDrawContext()
+    context1.register_colorbar(_add_colorbar(ax1))
+    assert context1.first_time(COLORBAR_WARNING_KEY) is True
+    assert context1.has_colorbar() is True
+    assert context2.has_colorbar() is False
+    assert context2.first_time(COLORBAR_WARNING_KEY) is True
+
+
+@pytest.mark.parametrize(
+    "obj",
+    [
+        PostDrawContext,
+        PostDrawContext.register_colorbar,
+        PostDrawContext.has_colorbar,
+        PostDrawContext.first_time,
+    ],
+    ids=lambda obj: obj.__qualname__,
+)
+def test_post_draw_context_annotations_are_not_evaluated(obj):
+    # ``bool | None`` would fail on Python 3.9 if it were evaluated.
+    annotations = obj.__annotations__
+    assert annotations
+    assert all(isinstance(value, str) for value in annotations.values())

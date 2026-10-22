@@ -2,14 +2,17 @@
 
 The functions here read the figure, decide what to do after drawing and
 build the messages of the warnings about it. None of them changes the
-figure.
+figure. ``PostDrawContext`` holds the state of this processing for one
+ternary diagram.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from enum import Enum
 
 import matplotlib
+import matplotlib.colorbar
 import matplotlib.figure
 
 from ternary_diagram._deprecation import format_default_change
@@ -20,6 +23,7 @@ __all__ = (
     "LAYOUT_WARNING_KEY",
     "LayoutAction",
     "LayoutState",
+    "PostDrawContext",
     "colorbar_warning_message",
     "decide_colorbar",
     "decide_layout",
@@ -256,3 +260,71 @@ def colorbar_warning_message(func: str) -> str:
         keep="pass `colorbar=True`",
         adopt="pass `colorbar=False`",
     )
+
+
+# eq=False: each diagram owns its context, so compare by identity.
+@dataclass(frozen=True, eq=False)
+class PostDrawContext:
+    """State of the processing after drawing for one ternary diagram.
+
+    A ``TernaryDiagram`` creates one instance, and all of its plots share
+    it. The state is only added to through the methods.
+
+    Parameters
+    ----------
+    tight_layout : bool | None, optional
+        ``tight_layout`` of the ternary diagram, which cannot be changed
+        afterwards. None means that it was not specified, by default None
+    """
+
+    tight_layout: bool | None = None
+    _colorbars: list[matplotlib.colorbar.Colorbar] = field(
+        default_factory=list, init=False, repr=False
+    )
+    _warned: set[str] = field(default_factory=set, init=False, repr=False)
+
+    def register_colorbar(
+        self, colorbar: matplotlib.colorbar.Colorbar
+    ) -> None:
+        """Register a colorbar created through the ternary diagram.
+
+        Parameters
+        ----------
+        colorbar : matplotlib.colorbar.Colorbar
+            Colorbar that the ternary diagram added automatically or through
+            ``TernaryDiagram.colorbar``.
+        """
+        self._colorbars.append(colorbar)
+
+    def has_colorbar(self) -> bool:
+        """Tell whether a registered colorbar is not removed yet.
+
+        A colorbar counts as removed when its mappable no longer points to
+        it, which ``Colorbar.remove()`` causes. Colorbars added with
+        matplotlib directly are not registered, so they do not count.
+
+        Returns
+        -------
+        bool
+            True when at least one registered colorbar is not removed.
+        """
+        return any(cb.mappable.colorbar is cb for cb in self._colorbars)
+
+    def first_time(self, key: str) -> bool:
+        """Tell whether `key` is received for the first time, and record it.
+
+        Parameters
+        ----------
+        key : str
+            Reason of a warning, namespaced by the feature, such as
+            ``"layout.tight_layout"``.
+
+        Returns
+        -------
+        bool
+            True only the first time `key` is received by this instance.
+        """
+        if key in self._warned:
+            return False
+        self._warned.add(key)
+        return True
