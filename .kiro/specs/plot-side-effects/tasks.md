@@ -32,7 +32,7 @@
   - _Requirements: 9.2, 9.3, 9.4_
 
 - [ ] 2. コア: 描画後処理の方針（判定と状態）
-- [ ] 2.1 図のレイアウト状態を判定する
+- [x] 2.1 図のレイアウト状態を判定する
   - top-level の図でないもの（subfigure）を「対象外」と判定する
   - matplotlib 3.6 以上では、レイアウトエンジンなし、またはライブラリ自身の tight 調整の後に残るプレースホルダーのエンジンを「エンジンなし」、それ以外（constrained・compressed・tight・rcParams 由来）を「エンジンあり」と判定する
   - 3.6 未満では constrained layout と tight layout の有効状態から判定する。バージョンの判定はモジュール冒頭の定数で行う
