@@ -13,7 +13,7 @@
   - _Boundary: `src/ternary_diagram/_deprecation.py`（新規、全体）、`tests/test_deprecation.py`（新規、全体）_
   - _Requirements: 5.3, 5.4, 6.6, 6.7, 6.9_
 
-- [ ] 1.2 (P) 真偽値の入力検証関数を 2 つ追加する
+- [x] 1.2 (P) 真偽値の入力検証関数を 2 つ追加する
   - `check_optional_bool(value, name)`: `None` はそのまま、`bool` と `numpy.bool_` は `bool` に揃えて返す。それ以外（`1`、`"yes"` など）は、引数名と受け取った値を示すメッセージ付きの `TypeError` にする
   - `check_bool(value, name)`: `check_optional_bool` の隣に置き、`bool` と `numpy.bool_` だけを受けて `bool` を返す。`None`・`0`／`1`・文字列などは `` `{name}` must be True or False, but got ... `` の `TypeError` にする。本 spec では使わず、`diagram-customization` が `visible`・`endpoints` の検証に使う（`region-plots` の `text(auto_latex_notation=None)` と `heatmaps` の `colorbar` は `None` を受け付けるので `check_optional_bool` を使う）
   - どちらも docstring に doctest 形式の Examples（受け付ける値と `TypeError` になる値）を持たせる。各例は `>>> from ternary_diagram.utils import check_optional_bool`（`check_bool`）の import の行から始め、`numpy.bool_` を渡す例では `>>> import numpy as np` も置いて、その docstring だけで実行できるようにする。図を作らず、ファイルも書き出さない。Parameters の `value`・`name` にはそれぞれ意味を書く文を置く（tech.md「Docstring Examples」）

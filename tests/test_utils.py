@@ -1,3 +1,4 @@
+import re
 from math import sqrt
 
 import matplotlib.pyplot as plt
@@ -9,6 +10,8 @@ from ternary_diagram.utils import (
     check_1d_vector,
     check_2d_vector,
     check_ax,
+    check_bool,
+    check_optional_bool,
     get_label,
     three2two,
 )
@@ -124,3 +127,61 @@ def test_check_ax_returns_given_axes(ax):
 def test_check_ax_invalid(invalid):
     with pytest.raises(TypeError, match="`ax`"):
         check_ax(invalid)
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (None, None),
+        (True, True),
+        (False, False),
+        (np.bool_(True), True),
+        (np.bool_(False), False),
+    ],
+)
+def test_check_optional_bool_accepts(value, expected):
+    result = check_optional_bool(value, "flag")
+
+    assert result is expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [True, False, np.bool_(True), np.bool_(False)],
+)
+def test_check_optional_bool_returns_builtin_bool(value):
+    assert type(check_optional_bool(value, "flag")) is bool
+
+
+@pytest.mark.parametrize("value", [1, 0, "yes", 1.0])
+def test_check_optional_bool_invalid(value):
+    expected = (
+        f"`tight_layout` must be None, True or False, but got {value!r}."
+    )
+
+    with pytest.raises(TypeError, match=re.escape(expected)):
+        check_optional_bool(value, "tight_layout")
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (True, True),
+        (False, False),
+        (np.bool_(True), True),
+        (np.bool_(False), False),
+    ],
+)
+def test_check_bool_accepts(value, expected):
+    result = check_bool(value, "visible")
+
+    assert type(result) is bool
+    assert result is expected
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "yes"])
+def test_check_bool_invalid(value):
+    expected = f"`visible` must be True or False, but got {value!r}."
+
+    with pytest.raises(TypeError, match=re.escape(expected)):
+        check_bool(value, "visible")
