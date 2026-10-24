@@ -88,7 +88,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram.scatter / contour`（`colorbar` 引数、`flag_cbar` の解決、docstring の `colorbar`・`flag_cbar` の Parameters の項目のみ）、`_resolve_colorbar_arg`（新規）_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.7, 4.2, 4.4, 5.1, 5.2, 5.3, 5.4, 6.2, 6.5, 7.3, 8.2_
 
-- [ ] 4. 検証と変更履歴
+- [x] 4. 検証と変更履歴
 - [x] 4.1 既存のテストを新しい引数へ移行し、FutureWarning が出ない状態にする
   - 共通 fixture の三角図はレイアウト設定（従来と同じ `tight_layout=True`）を明示し、既存テストが同じ処理経路を通りつつ警告を出さないようにする
   - 既存テストの `flag_cbar=False` を `colorbar=False` に置き換え、example の CSV を読むテストもレイアウト設定を明示する
@@ -120,7 +120,7 @@
   - _Boundary: `tests/test_side_effects.py: カラーバーと flag_cbar の結合テスト`（新規ファイルの該当部分）_
   - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 6.5, 6.7, 6.8, 7.1, 7.3_
 
-- [ ] 4.4 (P) CHANGELOG の Unreleased の見出しをそろえ、変更点を追記する
+- [x] 4.4 (P) CHANGELOG の Unreleased の見出しをそろえ、変更点を追記する
   - Unreleased の見出しを Breaking changes / New features / Deprecations / Bug fixes / Other changes（英語、この順）の組にそろえる。今ある Breaking changes / Bug fixes / Other changes とその項目はそのまま残し、New features と Deprecations を足す。後続の spec は該当する見出しに追記する
   - Breaking changes（既存の項目の後に追記）: `scatter`／`contour` の 6 番目の位置引数（旧 `flag_cbar`、新 `colorbar`）に `0`／`1` など真偽値以外を渡すと `TypeError` になったこと。`None`／`True`／`False` を渡すか、キーワードの `flag_cbar`（従来どおり真偽で解釈、非推奨）を使うよう案内する
   - New features: `TernaryDiagram(tight_layout=...)` と `scatter`／`contour` の `colorbar=...`
@@ -141,3 +141,4 @@
 - 4.3 で足すこと: `flag_cbar=None` でカラーバーを追加しないこと（従来の意味。`_resolve_colorbar_arg` の `bool()` を外すと壊れる）、`colorbar=None` を明示して `flag_cbar` を渡しても ValueError にならないこと（design どおり、`None` は未指定）を固定するテスト（3.3 のレビューでの提案）
 - 4.1 では design「Testing Strategy > 後方互換」に挙げた置き換え（`flag_cbar` → `colorbar`、レイアウト設定の明示）に加え、同じ三角図に `z` 付きで 2 回描く `test_defaults_can_be_overridden` の 2 回目に `colorbar=True` を明示した（従来どおり毎回追加する経路を保つため。assert は不変）
 - 4.3 で足すこと: 要件 7.1「余白が導入前と同じ」を固定する比較。既定のまま `contour(z)` を描いた後の subplotpars が、matplotlib で直接「カラーバー追加 → `tight_layout()`」の順に処理した図と一致すること（`_post_draw` の処理順を入れ替えると余白が変わるが、4.2 のテストでは検出できない。4.2 のレビューでの提案）
+- 要件 7.3 と design「Migration Strategy」は「6 番目の位置引数の厳密化が唯一の非互換」としているが、実際には位置引数の `None` の意味も変わった（旧: `if flag_cbar:` でカラーバーなし → 新: 未指定として扱い、値で色付けした描画なら追加）。実装は要件 3.1・3.7（`None` は未指定）どおり。CHANGELOG の Breaking changes には記載した。spec の文言を直すかはユーザーの判断待ち（4.4 のレビューでの指摘）
