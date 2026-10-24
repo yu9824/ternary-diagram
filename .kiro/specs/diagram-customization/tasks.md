@@ -11,7 +11,7 @@
   - _Boundary: `tests/_skeleton_expected.py`（新規: v3 の既定の土台の期待値）, `tests/test_ternary_diagram.py`（既定の土台の特性テストの追加だけ）_
   - _Requirements: 1.1, 1.2_
 
-- [ ] 2. 配置の計算と部品の共通手順を用意する
+- [x] 2. 配置の計算と部品の共通手順を用意する
 - [x] 2.1 目盛り・グリッドの値の列と目盛りの書式を作る純粋関数を追加する
   - 間隔の倍数を 0 と 1 を除いて昇順に並べ、小数 12 桁に丸めた値の列を返し、両端（0 と 1）を加える指定も受け付ける
   - 間隔が実数でない（真偽値を含む）ときは種類のエラー、有限でない・0 以下・1 より大きいときは許される範囲を示すエラーにする
@@ -30,7 +30,7 @@
   - _Boundary: `src/ternary_diagram/utils.py: get_edge_points, get_grid_segments, get_axis_label_position`, `tests/test_utils.py`（上記 3 関数のテストの追加だけ）_
   - _Requirements: 6.1, 7.1, 7.4, 10.3, 11.1, 11.3, 12.4_
 
-- [ ] 2.3 (P) 部品の共通の更新手順を作る
+- [x] 2.3 (P) 部品の共通の更新手順を作る
   - 新規モジュールなので `from __future__ import annotations` を付け、注釈は組み込みジェネリクスと `X | None` で書く。実行時に評価される型別名（`Spec`）だけは `typing.Union` で書く
   - 線と文字の図形の仕様を値として表し、部品の設定を名前付きの項目と matplotlib のプロパティに分けて保持する
   - 名前付きの項目は未指定（None）なら直前の値を引き継ぎ、プロパティは別名を正式名にそろえてから既定値・直前の値・今回の指定の順に統合する。Artist クラスを渡す別名統合が使えない matplotlib では別名の辞書で代替する
@@ -138,3 +138,6 @@
 - 既定の土台の期待値は `tests/_skeleton_expected.py`（v3 の描画式から独立に計算。`LineKey` / `TextKey`、`line_key` / `text_key`、`expected_*`、`expected_view_limits`）。部品と集約の単体テスト（3.x）はこれを使い回す。`TextKey` には文字の色も含めた（1 のレビューでの提案）
 - `_skeleton_expected` は pytest 既定の prepend import モードで `from _skeleton_expected import ...` として読み込む（`tests/__init__.py` はない）
 - グリッド内・目盛りラベル内の描画順は固定していない（design の `_Grid` は成分ごとの順で描き、v3 の順と違うため）。部品間の順（グリッド → 外枠、頂点ラベル → 目盛りラベル）は固定している
+- 型検査: `mypy src` で新しいエラーを出さない（tech.md「Type Safety」、5.3）。py312 環境に mypy はないので、既存環境のものを読み取り専用で使う: `/Users/yu9824/opt/miniforge3/envs/yikit-dev/bin/mypy --no-incremental --cache-dir=/dev/null src`（mpl 3.11.2、基準 19 件はすべて既存の `_api.py`）と `/Users/yu9824/opt/miniforge3/envs/qchemdb311/bin/mypy --no-incremental --cache-dir=/dev/null src`（mpl 3.10.9、基準 13 件）。新しいモジュールは 0 件にする（2.3 のレビューでの指摘）
+- 3.5 で必ず扱うこと: `_SkeletonPart.__init__(ax, *, zorder=None, **initial)` なので、`_Grid(ax, zorder=Z, **grid_kw)` のように渡すと、利用者が `grid_kw` に `zorder`（や `ax`）を入れたときに「同じキーワード引数が 2 つ」の TypeError になる。要件 2.2・9.3 では作成時の指定でも利用者の zorder が優先されるので、`kw = dict(grid_kw); _Grid(ax, zorder=kw.pop("zorder", Z), **kw)` のように取り出して渡し、テストを足す（2.3 のレビューでの指摘）
+- 未決（ユーザー確認待ち）: 利用者が部品の artist を自分で `remove()` した後に `update` / `restack` すると、古い artist を消す段で matplotlib の `ValueError` になり、新しい artist が Axes に残る（呼ぶたびに孤立した artist が増える）。design の不変条件の前提外。4.2 で `grid_lines_` などを公開すると起こりうるので、「`artist.axes is None` のものは飛ばす」か「design に制約として書く」かを決める（2.3 のレビューでの指摘）
