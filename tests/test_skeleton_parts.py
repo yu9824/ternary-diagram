@@ -6,6 +6,7 @@ import typing
 from collections import Counter
 from collections.abc import Sequence
 from fractions import Fraction
+from types import MappingProxyType
 from typing import Any
 
 import matplotlib
@@ -26,10 +27,12 @@ from _skeleton_expected import (
     TEXT_ZORDER,
     TICK_LABEL_FONTSIZE,
     VERTEX_LABEL_FONTSIZE,
+    box_aspect,
     expected_border_lines,
     expected_grid_lines,
     expected_tick_label_texts,
     expected_vertex_label_texts,
+    expected_view_limits,
     line_key,
     point_key,
     text_key,
@@ -39,11 +42,13 @@ from matplotlib.colors import to_rgba
 
 from ternary_diagram import _skeleton
 from ternary_diagram._skeleton import (
+    PartName,
     Spec,
     _AxisLabels,
     _Border,
     _Grid,
     _LineSpec,
+    _Skeleton,
     _SkeletonPart,
     _TextSpec,
     _TickLabels,
@@ -3082,5 +3087,646 @@ def test_parts_reject_property_set_by_the_part_visible_or_not(ax, name, prop):
 
     with pytest.raises(TypeError, match=f"'{prop}'"):
         PART_FACTORIES[name](ax, visible=False, **{prop: 0})
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+# ---------------------------------------------------------------------------
+# _Skeleton
+# ---------------------------------------------------------------------------
+
+# The parts by their names (``PartName``) and the arguments of ``_Skeleton``
+# that give their initial settings, as in the table of ``*_kw`` and
+# ``set_*`` of the design.
+SKELETON_PART_KW: dict[str, str] = {
+    "border": "border_kw",
+    "grid": "grid_kw",
+    "ticks": "tick_kw",
+    "axis_labels": "axis_label_kw",
+    "vertex_labels": "vertex_label_kw",
+}
+SKELETON_PART_NAMES = list(SKELETON_PART_KW)
+# Settings with which every part draws something: the axis titles draw
+# nothing by default.
+SKELETON_DRAWING_SETTINGS: dict[str, dict[str, Any]] = {
+    "border": {},
+    "grid": {},
+    "ticks": {},
+    "axis_labels": {"labels": ("A", "B", "C")},
+    "vertex_labels": {},
+}
+# A change of each part and the number of artists drawn after it.
+SKELETON_UPDATES: dict[str, tuple[dict[str, Any], int]] = {
+    "border": ({"color": "red", "linestyle": "--"}, 3),
+    "grid": ({"step": 0.05}, 57),
+    "ticks": ({"endpoints": True}, 33),
+    "axis_labels": ({"labels": ("A", "B", "C")}, 3),
+    "vertex_labels": ({"labels": ("A", "B", "C")}, 3),
+}
+# Settings of each part, other than the defaults, with options and
+# properties.
+SKELETON_SETTINGS: dict[str, dict[str, Any]] = {
+    "border": {"linestyle": "--", "linewidth": 1},
+    "grid": {"step": 0.05, "color": "red"},
+    "ticks": {
+        "step": 0.2,
+        "fmt": "fraction",
+        "endpoints": True,
+        "fontsize": 8,
+    },
+    "axis_labels": {"labels": ("A", None, "C"), "pad": 0.2, "fontsize": 14},
+    "vertex_labels": {
+        "offsets": ((0.0, 0.05), (0.0, -0.1), (0.0, -0.1)),
+        "fontsize": 20,
+    },
+}
+
+
+def _build_skeleton(
+    ax,
+    materials: Any = MATERIALS,
+    auto_latex_notation: Any = True,
+    *,
+    zorder: Any = LINE_ZORDER,
+    **settings: Any,
+) -> _Skeleton:
+    """Build a skeleton on `ax`; the ``*_kw`` that are not given are empty."""
+    kws: dict[str, Any] = {kw: {} for kw in SKELETON_PART_KW.values()}
+    kws.update(settings)
+    return _Skeleton(ax, materials, auto_latex_notation, zorder=zorder, **kws)
+
+
+def _ternary_axes():
+    """A new Axes with the settings that TernaryDiagram makes first."""
+    _, ax = plt.subplots()
+    ax.set_aspect("equal", adjustable="datalim")
+    return ax
+
+
+def _artist_key(artist):
+    if isinstance(artist, matplotlib.lines.Line2D):
+        return line_key(artist)
+    return text_key(artist)
+
+
+def _skeleton_artists(skeleton: _Skeleton) -> list:
+    """The artists of all parts, in the order of `SKELETON_PART_NAMES`."""
+    return [
+        artist
+        for name in SKELETON_PART_NAMES
+        for artist in skeleton.artists(name)
+    ]
+
+
+def _raise_runtime_error(value):
+    raise RuntimeError("formatter failed")
+
+
+def test_part_name_lists_the_parts_of_the_design():
+    assert typing.get_args(PartName) == tuple(SKELETON_PART_NAMES)
+
+
+def test_skeleton_annotations_are_not_evaluated():
+    for func in (_Skeleton.__init__, _Skeleton.update, _Skeleton.artists):
+        annotations = func.__annotations__
+        assert annotations
+        assert all(isinstance(value, str) for value in annotations.values())
+
+
+def test_skeleton_default_lines_match_v3(ax):
+    skeleton = _build_skeleton(ax)
+    grid = skeleton.artists("grid")
+    border = skeleton.artists("border")
+
+    assert len(ax.lines) == 30
+    # All the grid lines come before the border lines.
+    assert _same_objects(ax.lines, grid + border)
+    assert Counter(map(line_key, grid)) == Counter(expected_grid_lines())
+    # Bottom, left and right edges.
+    assert [line_key(line) for line in border] == expected_border_lines()
+
+
+def test_skeleton_default_texts_match_v3(ax):
+    skeleton = _build_skeleton(ax)
+    vertex_labels = skeleton.artists("vertex_labels")
+    ticks = skeleton.artists("ticks")
+
+    assert len(ax.texts) == 30
+    # All the vertex labels come before the tick labels, and no axis title
+    # is drawn.
+    assert skeleton.artists("axis_labels") == []
+    assert _same_objects(ax.texts, vertex_labels + ticks)
+    assert [
+        text_key(text) for text in vertex_labels
+    ] == expected_vertex_label_texts(MATERIAL_LABELS)
+    assert [text_key(text) for text in ticks] == expected_tick_label_texts()
+
+
+def test_skeleton_without_auto_latex_notation_shows_materials_as_given(ax):
+    skeleton = _build_skeleton(ax, auto_latex_notation=False)
+    assert [
+        text_key(text) for text in skeleton.artists("vertex_labels")
+    ] == expected_vertex_label_texts(MATERIALS)
+
+
+@pytest.mark.parametrize(
+    ("materials", "texts"),
+    [
+        ([*MATERIALS, "SiO2"], MATERIALS),
+        (pd.Index([*MATERIALS, "SiO2"]), MATERIALS),
+        # ternary-diagram v3 takes a str as a sequence of 1-letter labels.
+        ("ABC", ("A", "B", "C")),
+    ],
+    ids=["list-of-4", "index-of-4", "str"],
+)
+def test_skeleton_labels_the_vertices_with_the_first_3_materials(
+    ax, materials, texts
+):
+    skeleton = _build_skeleton(ax, materials, auto_latex_notation=False)
+    assert [
+        text_key(text) for text in skeleton.artists("vertex_labels")
+    ] == expected_vertex_label_texts(texts)
+
+
+def test_skeleton_draws_the_parts_in_order(ax):
+    skeleton = _build_skeleton(ax, axis_label_kw={"labels": ("A", "B", "C")})
+    expected = [
+        artist
+        for name in ("grid", "border", "vertex_labels", "ticks", "axis_labels")
+        for artist in skeleton.artists(name)
+    ]
+    ids = {id(artist) for artist in expected}
+
+    drawn = [artist for artist in ax.get_children() if id(artist) in ids]
+
+    assert len(expected) == 27 + 3 + 3 + 27 + 3
+    assert _same_objects(drawn, expected)
+
+
+def test_skeleton_registers_the_triangle_then_draws_each_part_once(
+    ax, monkeypatch
+):
+    events: list[Any] = []
+
+    def record(name, method):
+        def wrapper(*args, **kwargs):
+            events.append(name)
+            return method(*args, **kwargs)
+
+        return wrapper
+
+    monkeypatch.setattr(
+        ax, "update_datalim", record("update_datalim", ax.update_datalim)
+    )
+    monkeypatch.setattr(
+        ax, "autoscale_view", record("autoscale_view", ax.autoscale_view)
+    )
+    update = _SkeletonPart.update
+
+    def counting_update(self, **kwargs):
+        events.append(type(self))
+        return update(self, **kwargs)
+
+    monkeypatch.setattr(_SkeletonPart, "update", counting_update)
+
+    _build_skeleton(ax, grid_kw={"step": 0.05})
+
+    assert events == [
+        "update_datalim",
+        "autoscale_view",
+        _Grid,
+        _Border,
+        _VertexLabels,
+        _TickLabels,
+        _AxisLabels,
+    ]
+
+
+def test_skeleton_does_not_advance_color_cycle(ax):
+    _build_skeleton(ax)
+    (line,) = ax.plot([0.0, 1.0], [0.0, 1.0])
+    assert to_rgba(line.get_color()) == to_rgba("C0")
+
+
+def test_skeleton_registers_the_triangle_in_the_data_limits(ax):
+    _build_skeleton(
+        ax, border_kw={"visible": False}, grid_kw={"visible": False}
+    )
+    assert list(ax.lines) == []
+    assert tuple(ax.dataLim.extents) == pytest.approx(
+        (0.0, 0.0, 1.0, ROOT3_OVER_2)
+    )
+
+
+def test_skeleton_keeps_the_data_limits_of_existing_artists(ax):
+    ax.plot([2.0], [3.0])
+    _build_skeleton(
+        ax, border_kw={"visible": False}, grid_kw={"visible": False}
+    )
+    assert tuple(ax.dataLim.extents) == pytest.approx((0.0, 0.0, 2.0, 3.0))
+
+
+@pytest.mark.parametrize(
+    "hidden",
+    [
+        {"border_kw": {"visible": False}},
+        {"grid_kw": {"visible": False}},
+        {"border_kw": {"visible": False}, "grid_kw": {"visible": False}},
+    ],
+    ids=["border", "grid", "border-and-grid"],
+)
+def test_skeleton_hidden_border_and_grid_keep_the_view_limits(hidden):
+    default_ax = _ternary_axes()
+    _build_skeleton(default_ax)
+    hidden_ax = _ternary_axes()
+    _build_skeleton(hidden_ax, **hidden)
+    expected_xlim, expected_ylim = expected_view_limits(box_aspect(hidden_ax))
+
+    default_ax.figure.canvas.draw()
+    hidden_ax.figure.canvas.draw()
+
+    assert hidden_ax.get_xlim() == pytest.approx(
+        default_ax.get_xlim(), abs=1e-9
+    )
+    assert hidden_ax.get_ylim() == pytest.approx(
+        default_ax.get_ylim(), abs=1e-9
+    )
+    assert hidden_ax.get_xlim() == pytest.approx(expected_xlim, abs=1e-9)
+    assert hidden_ax.get_ylim() == pytest.approx(expected_ylim, abs=1e-9)
+
+
+def test_skeleton_does_not_change_the_layout():
+    ax = _ternary_axes()
+    fig = ax.figure
+
+    def layout():
+        params = fig.subplotpars
+        return (
+            ax.get_position().bounds,
+            ax.get_position(original=True).bounds,
+            (params.left, params.right, params.bottom, params.top),
+            fig.get_layout_engine(),
+        )
+
+    before = layout()
+    skeleton = _build_skeleton(ax)
+    assert layout() == before
+    for name, (kwargs, _) in SKELETON_UPDATES.items():
+        skeleton.update(name, **kwargs)
+        assert layout() == before
+
+
+@pytest.mark.parametrize("name", SKELETON_PART_NAMES)
+def test_skeleton_update_redraws_only_the_named_part(ax, name):
+    skeleton = _build_skeleton(ax)
+    others = {
+        other: skeleton.artists(other)
+        for other in SKELETON_PART_NAMES
+        if other != name
+    }
+    previous = skeleton.artists(name)
+    kwargs, count = SKELETON_UPDATES[name]
+
+    drawn = skeleton.update(name, **kwargs)
+
+    assert len(drawn) == count
+    assert _same_objects(skeleton.artists(name), drawn)
+    assert all(artist.axes is ax for artist in drawn)
+    # The previous artists of the part are removed from the Axes.
+    assert all(artist.axes is None for artist in previous)
+    children = [*ax.lines, *ax.texts]
+    assert not any(c is p for c in children for p in previous)
+    # The other parts keep their artists on the Axes.
+    for other, artists in others.items():
+        assert _same_objects(skeleton.artists(other), artists)
+        assert all(artist.axes is ax for artist in artists)
+
+
+@pytest.mark.parametrize("name", SKELETON_PART_NAMES)
+def test_skeleton_settings_at_construction_are_the_same_as_update(name):
+    settings = SKELETON_SETTINGS[name]
+    _, default_ax = plt.subplots()
+    default = _build_skeleton(default_ax)
+    _, built_ax = plt.subplots()
+    built = _build_skeleton(built_ax, **{SKELETON_PART_KW[name]: settings})
+    _, updated_ax = plt.subplots()
+    updated = _build_skeleton(updated_ax)
+    updated.update(name, **settings)
+
+    def keys(skeleton, part):
+        return [_artist_key(artist) for artist in skeleton.artists(part)]
+
+    # The settings are given to the named part only.
+    assert keys(built, name) != keys(default, name)
+    for part in SKELETON_PART_NAMES:
+        assert keys(built, part) == keys(updated, part)
+    # The grid lines come before the border lines in both cases.
+    assert list(map(line_key, built_ax.lines)) == list(
+        map(line_key, updated_ax.lines)
+    )
+    assert Counter(map(text_key, built_ax.texts)) == Counter(
+        map(text_key, updated_ax.texts)
+    )
+
+
+def test_skeleton_update_and_artists_return_new_lists(ax):
+    skeleton = _build_skeleton(ax)
+    drawn = skeleton.update("border", color="red")
+    first = skeleton.artists("border")
+    second = skeleton.artists("border")
+
+    assert first is not second
+    assert first is not drawn
+    first.clear()
+    drawn.clear()
+    assert len(skeleton.artists("border")) == 3
+
+
+def test_skeleton_grid_update_restacks_the_border(ax):
+    skeleton = _build_skeleton(ax)
+    border = skeleton.artists("border")
+    # A change made to a border line by the user is kept.
+    border[0].set_color("blue")
+
+    grid = skeleton.update("grid", step=0.05)
+
+    assert len(grid) == 57
+    assert _same_objects(ax.lines, grid + border)
+    assert _same_objects(skeleton.artists("border"), border)
+    assert to_rgba(border[0].get_color()) == to_rgba("blue")
+
+
+def test_skeleton_grid_update_puts_the_border_after_other_lines(ax):
+    skeleton = _build_skeleton(ax)
+    (user_line,) = ax.plot([0.0, 1.0], [0.0, 0.5], zorder=LINE_ZORDER)
+
+    grid = skeleton.update("grid", color="red")
+
+    assert _same_objects(
+        ax.lines, [user_line, *grid, *skeleton.artists("border")]
+    )
+
+
+@pytest.mark.parametrize(
+    "name", [name for name in SKELETON_PART_NAMES if name != "grid"]
+)
+def test_skeleton_restacks_the_border_only_after_a_grid_update(
+    ax, monkeypatch, name
+):
+    calls = []
+    restack = _Border.restack
+
+    def counting_restack(self):
+        calls.append(self)
+        restack(self)
+
+    monkeypatch.setattr(_Border, "restack", counting_restack)
+    skeleton = _build_skeleton(ax)
+    assert calls == []
+
+    skeleton.update(name, **SKELETON_UPDATES[name][0])
+    assert calls == []
+
+    skeleton.update("grid", step=0.05)
+    assert len(calls) == 1
+
+
+def test_skeleton_grid_update_with_the_border_hidden(ax):
+    skeleton = _build_skeleton(ax, border_kw={"visible": False})
+
+    grid = skeleton.update("grid", step=0.05)
+
+    assert skeleton.artists("border") == []
+    assert _same_objects(ax.lines, grid)
+    # Shown again, the border is drawn after the grid.
+    border = skeleton.update("border", visible=True)
+    assert _same_objects(ax.lines, grid + border)
+
+
+def test_skeleton_failed_grid_update_keeps_the_lines(ax):
+    skeleton = _build_skeleton(ax)
+    lines = list(ax.lines)
+    grid = skeleton.artists("grid")
+
+    with pytest.raises(ValueError, match="step"):
+        skeleton.update("grid", step=0)
+
+    assert _same_objects(ax.lines, lines)
+    assert _same_objects(skeleton.artists("grid"), grid)
+
+
+def test_skeleton_update_passes_a_property_called_name(ax):
+    # ``name`` is an alias of the ``fontname`` property of ``Text``.
+    skeleton = _build_skeleton(ax)
+
+    texts = skeleton.update("ticks", name="serif")
+
+    assert len(texts) == 27
+    assert all(text.get_fontfamily() == ["serif"] for text in texts)
+
+
+@pytest.mark.parametrize("name", ["tick", "labels", "", None], ids=repr)
+def test_skeleton_rejects_unknown_part_names(ax, name):
+    skeleton = _build_skeleton(ax)
+    before = _skeleton_artists(skeleton)
+    children = [*ax.lines, *ax.texts]
+
+    with pytest.raises(ValueError, match="'axis_labels'") as excinfo:
+        skeleton.update(name, color="red")
+    assert repr(name) in str(excinfo.value)
+    with pytest.raises(ValueError, match="'vertex_labels'"):
+        skeleton.artists(name)
+
+    assert _same_objects(_skeleton_artists(skeleton), before)
+    assert _same_objects([*ax.lines, *ax.texts], children)
+
+
+# A setting that makes the construction of a part fail, in the order of the
+# construction: grid, border, vertex labels, tick labels and axis titles.
+SKELETON_FAILURES = [
+    pytest.param("grid_kw", {"step": 0}, ValueError, id="grid-validation"),
+    pytest.param(
+        "border_kw", {"colour": "red"}, AttributeError, id="border-property"
+    ),
+    pytest.param(
+        "vertex_label_kw",
+        {"offsets": ((0.0, 0.0),)},
+        ValueError,
+        id="vertex-labels-validation",
+    ),
+    pytest.param(
+        "tick_kw", {"step": 0}, ValueError, id="tick-labels-validation"
+    ),
+    pytest.param(
+        "tick_kw",
+        {"color": "not-a-color"},
+        ValueError,
+        id="tick-labels-matplotlib",
+    ),
+    pytest.param(
+        "tick_kw",
+        {"fmt": _raise_runtime_error},
+        RuntimeError,
+        id="tick-labels-format-callable",
+    ),
+    pytest.param(
+        "axis_label_kw",
+        {"labels": ("A",)},
+        ValueError,
+        id="axis-labels-validation",
+    ),
+    pytest.param(
+        "axis_label_kw",
+        {"labels": ("A", "B", "C"), "color": "not-a-color"},
+        ValueError,
+        id="axis-labels-matplotlib",
+    ),
+]
+
+
+@pytest.mark.parametrize(("kw", "settings", "error"), SKELETON_FAILURES)
+def test_skeleton_failure_leaves_no_artist_of_the_skeleton(
+    ax, kw, settings, error
+):
+    (user_line,) = ax.plot([0.0, 1.0], [1.0, 1.0])
+    user_text = ax.text(0.5, 1.0, "user")
+
+    with pytest.raises(error):
+        _build_skeleton(ax, **{kw: settings})
+
+    assert _same_objects(ax.lines, [user_line])
+    assert _same_objects(ax.texts, [user_text])
+
+
+def test_skeleton_failure_in_a_middle_part_removes_the_parts_drawn_before(
+    ax, monkeypatch
+):
+    drawn_before: list = []
+
+    def failing_specs(self, options, style):
+        drawn_before.extend([*ax.lines, *ax.texts])
+        raise RuntimeError("tick labels failed")
+
+    monkeypatch.setattr(_TickLabels, "_specs", failing_specs)
+
+    with pytest.raises(RuntimeError, match="tick labels failed"):
+        _build_skeleton(ax)
+
+    # The grid, the border and the vertex labels were drawn first.
+    assert len(drawn_before) == 27 + 3 + 3
+    assert all(artist.axes is None for artist in drawn_before)
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+def test_skeleton_failure_on_keyboard_interrupt_leaves_no_artist(
+    ax, monkeypatch
+):
+    def interrupted_specs(self, options, style):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_AxisLabels, "_specs", interrupted_specs)
+
+    with pytest.raises(KeyboardInterrupt):
+        _build_skeleton(ax)
+
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+@pytest.mark.parametrize("zorder", [5, 0.5, None], ids=repr)
+@pytest.mark.parametrize("name", SKELETON_PART_NAMES)
+def test_skeleton_user_zorder_at_construction_is_the_same_as_update(
+    name, zorder
+):
+    # ``zorder`` is also an argument of the constructors of the parts, so
+    # it must not reach them twice.
+    settings = SKELETON_DRAWING_SETTINGS[name]
+    _, built_ax = plt.subplots()
+    built = _build_skeleton(
+        built_ax, **{SKELETON_PART_KW[name]: {**settings, "zorder": zorder}}
+    )
+    _, updated_ax = plt.subplots()
+    updated = _build_skeleton(updated_ax, **{SKELETON_PART_KW[name]: settings})
+    updated.update(name, zorder=zorder)
+
+    artists = built.artists(name)
+    assert artists
+    assert list(map(_artist_key, artists)) == list(
+        map(_artist_key, updated.artists(name))
+    )
+    # None gives the default zorder of matplotlib, as it does for update.
+    expected = type(artists[0]).zorder if zorder is None else zorder
+    assert all(artist.get_zorder() == expected for artist in artists)
+
+
+def test_skeleton_user_zorder_of_a_part_keeps_the_others(ax):
+    skeleton = _build_skeleton(ax, grid_kw={"zorder": 5})
+
+    assert all(line.get_zorder() == 5 for line in skeleton.artists("grid"))
+    assert all(
+        line.get_zorder() == LINE_ZORDER for line in skeleton.artists("border")
+    )
+
+
+def test_skeleton_zorder_is_the_default_of_the_lines_only(ax):
+    skeleton = _build_skeleton(ax, zorder=1.5)
+
+    lines = skeleton.artists("grid") + skeleton.artists("border")
+    assert all(line.get_zorder() == 1.5 for line in lines)
+    assert all(text.get_zorder() == TEXT_ZORDER for text in ax.texts)
+
+
+def test_skeleton_does_not_change_the_given_settings(ax):
+    grid_kw = {"zorder": 5, "step": 0.05}
+    vertex_label_kw = MappingProxyType({"zorder": 4, "fontsize": 20})
+
+    skeleton = _build_skeleton(
+        ax, grid_kw=grid_kw, vertex_label_kw=vertex_label_kw
+    )
+
+    assert grid_kw == {"zorder": 5, "step": 0.05}
+    assert dict(vertex_label_kw) == {"zorder": 4, "fontsize": 20}
+    assert len(skeleton.artists("grid")) == 57
+    assert all(
+        text.get_zorder() == 4 and text.get_fontsize() == 20
+        for text in skeleton.artists("vertex_labels")
+    )
+
+
+# Arguments of the constructors of the parts, which are neither options nor
+# properties of their artists.
+SKELETON_CONSTRUCTOR_ARGUMENTS = [
+    *[
+        (name, keyword)
+        for name in SKELETON_PART_NAMES
+        for keyword in ("ax", "self")
+    ],
+    ("vertex_labels", "auto_latex_notation"),
+]
+
+
+@pytest.mark.parametrize(("name", "keyword"), SKELETON_CONSTRUCTOR_ARGUMENTS)
+def test_skeleton_rejects_constructor_arguments_as_update_does(name, keyword):
+    _, ax = plt.subplots()
+    with pytest.raises(
+        AttributeError, match=f"unexpected keyword argument '{keyword}'"
+    ) as at_construction:
+        _build_skeleton(ax, **{SKELETON_PART_KW[name]: {keyword: False}})
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+    _, other_ax = plt.subplots()
+    skeleton = _build_skeleton(other_ax)
+    before = _skeleton_artists(skeleton)
+    with pytest.raises(AttributeError) as at_update:
+        skeleton.update(name, **{keyword: False})
+    assert str(at_update.value) == str(at_construction.value)
+    assert _same_objects(_skeleton_artists(skeleton), before)
+
+
+def test_skeleton_rejects_labels_in_vertex_label_kw(ax):
+    with pytest.raises(ValueError, match="`labels`.*`materials`"):
+        _build_skeleton(ax, vertex_label_kw={"labels": ("A", "B", "C")})
     assert list(ax.lines) == []
     assert list(ax.texts) == []

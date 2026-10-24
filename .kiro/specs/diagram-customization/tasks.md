@@ -41,7 +41,7 @@
   - _Boundary: `src/ternary_diagram/_skeleton.py: _LineSpec, _TextSpec, Spec, _SkeletonPart`（新規モジュールの作成）, `tests/test_skeleton_parts.py`（新規: `_SkeletonPart` の単体テスト）_
   - _Requirements: 2.3, 2.4, 2.5, 2.6, 2.7, 3.3, 3.4, 9.3, 10.3, 10.7, 10.8_
 
-- [ ] 3. 土台の 5 つの部品と集約を作る
+- [x] 3. 土台の 5 つの部品と集約を作る
 - [x] 3.1 外枠とグリッドの部品を作る
   - 外枠は黒・線幅 2・実線の 3 本（底辺・左辺・右辺の順）を、グリッドは灰色・線幅 0.5 の等組成線を成分ごとに描き、どちらも構築時に受け取った重なり順の値を既定にする
   - グリッドの間隔は値の列の関数で、線の両端は等組成線の関数で決め、目盛りラベルの間隔とは独立に持つ
@@ -72,7 +72,7 @@
   - _Boundary: `src/ternary_diagram/_skeleton.py: _VertexLabels` と頂点ラベルの `DEFAULT_*` 定数, `tests/test_skeleton_parts.py`（`_VertexLabels` のテストの追加だけ）_
   - _Requirements: 1.1, 1.4, 8.1, 8.2, 8.3, 8.4, 9.1, 10.2, 10.3, 11.2_
 
-- [ ] 3.5 部品を束ねる集約を作る
+- [x] 3.5 部品を束ねる集約を作る
   - 構築時に三角形の 3 頂点を Axes のデータ範囲へ登録して自動スケールを要求し、グリッド → 外枠 → 頂点ラベル → 目盛りラベル → 軸タイトルの順に、それぞれの初期指定で 1 回ずつ描く
   - 途中の部品の構築が失敗したら、先に描いた部品の図形を取り除いてから例外を送出する
   - 部品の名前（design の「`*_kw` と `set_*` の対応」の `PartName`）で更新と図形の取り出しを行い、グリッドを更新したら外枠を積み直す。図のレイアウトは変更しない
@@ -149,3 +149,4 @@
 - 修正済み（3.4 の後の 2.3 の追加修正）: 非表示の部品に未知のプロパティを渡すと、図形を作らないため拒否されずに `_style` に確定し、以後は表示に戻すたびに AttributeError になって二度と表示できない（10.7・2.6 に反する）。`_SkeletonPart` の範囲で、確定前にプロパティ名を ARTIST_CLASS の setter と照合して AttributeError を出すよう直す（3.4 の後、3.5 の前に対応）
 - 2.3 の追加修正の結果、プロパティ名は手順 (3) で `ARTIST_CLASS` の setter と照合し、未知の名前は `Artist.set` と同じ文面の AttributeError、部品が自分で渡す名前（Line2D の `xdata`/`ydata`、Text の `x`/`y`/`text`）は TypeError で、表示・非表示にかかわらず拒否する。値の不正は従来どおり手順 (5) で matplotlib の例外がそのまま出る。design.md の `_SkeletonPart` の Implementation Notes（「手順 (5) で捕まえる」）と Error Handling 表の該当行は、この実装に合わせて読み替える
 - 4.3 の docstring に書くこと（2.3 の追加修正のレビューより）: `*_kw` / `set_*` が受け付けるのは部品の項目と artist のプロパティだけ。`fontdict` や `scalex` などの `Axes.text` / `Axes.plot` の呼び出し引数は受け付けない（`fontdict` は `**fontdict` と展開して渡す）
+- 4.1 / 4.2 で守ること（3.5 のレビューより）: `_Skeleton.update(name, /, **kwargs)` の `name` は位置専用（Text の `name` 別名を通すため）なので、`set_*` は `self.__skeleton.update("grid", ...)` のように部品名を位置で渡す。`_Skeleton` は `tuple(materials)[:3]` を頂点ラベルにする。`vertex_label_kw` の `labels` の衝突検査は `_Skeleton` にもあるが、4.1 では検証の順を守るため `__init__` でも Axes の設定より前に行う。文面がずれないよう `_skeleton` 側の検査関数（または定数）を共有する

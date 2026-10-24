@@ -22,7 +22,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence, Set
 from math import isfinite, sqrt
 from numbers import Real
-from typing import Any, ClassVar, NamedTuple, Union, cast
+from typing import Any, ClassVar, Literal, NamedTuple, Union, cast, get_args
 
 import matplotlib.artist
 import matplotlib.axes
@@ -41,7 +41,7 @@ from ternary_diagram.utils import (
     get_tick_values,
 )
 
-__all__ = ("Spec",)
+__all__ = ("PartName", "Spec")
 
 # Height of the triangle whose edges have length 1.
 ROOT3_OVER_2 = sqrt(3.0) / 2.0
@@ -136,6 +136,11 @@ class _TextSpec(NamedTuple):
 
 # Evaluated at runtime, so ``|`` cannot be used on Python 3.9.
 Spec = Union[_LineSpec, _TextSpec]
+
+# Names of the parts of the skeleton, by which ``_Skeleton`` updates them
+# and returns their artists.
+PartName = Literal["border", "grid", "ticks", "axis_labels", "vertex_labels"]
+_PART_NAMES: tuple[str, ...] = get_args(PartName)
 
 
 def _normalize_kwargs_accepts_artist() -> bool:
@@ -1109,3 +1114,312 @@ class _VertexLabels(_SkeletonPart):
                 _TextSpec(x + dx, y + dy, text, {**vertex_style, **style})
             )
         return specs
+
+
+# The vertices of the triangle whose edges have length 1: top, bottom left
+# and bottom right.
+TRIANGLE_VERTICES: tuple[tuple[float, float], ...] = (
+    (0.5, ROOT3_OVER_2),
+    (0.0, 0.0),
+    (1.0, 0.0),
+)
+
+# Arguments of the constructors of the parts other than ``zorder``, which
+# cannot be passed through ``**initial``. They are neither options nor
+# properties, so ``update`` rejects them as unknown properties.
+_PART_CONSTRUCTOR_ARGUMENTS: frozenset[str] = frozenset({"self", "ax"})
+# The same for ``_VertexLabels``, whose ``labels`` are checked separately as
+# they are an option given by the materials.
+_VERTEX_LABELS_CONSTRUCTOR_ARGUMENTS: frozenset[str] = (
+    _PART_CONSTRUCTOR_ARGUMENTS | {"auto_latex_notation"}
+)
+# The argument of ``_SkeletonPart.update`` that cannot be passed through
+# ``**kwargs``.
+_PART_UPDATE_ARGUMENTS: frozenset[str] = frozenset({"self"})
+
+
+def _reject_arguments(
+    kwargs: Mapping[str, Any],
+    arguments: frozenset[str],
+    artist_class: type[matplotlib.artist.Artist],
+) -> None:
+    """Reject keywords that would collide with the arguments of a method.
+
+    A part receives its settings through ``**kwargs``, so a setting named
+    like another argument of the method would reach it twice and fail with
+    a TypeError that names the internal method. Such names are neither
+    options nor properties, so they are rejected with the error that the
+    part raises for any unknown property.
+
+    Parameters
+    ----------
+    kwargs : Mapping[str, Any]
+        Settings to pass to the part.
+    arguments : frozenset[str]
+        Names of the other arguments of the method that receives them.
+    artist_class : type[matplotlib.artist.Artist]
+        Class of the artists of the part.
+
+    Raises
+    ------
+    AttributeError
+        If a key of `kwargs` is in `arguments`, with the message of
+        ``Artist.set``, as raised by the part for an unknown property.
+    """
+    _check_style_names(
+        {name: kwargs[name] for name in sorted(arguments) if name in kwargs},
+        artist_class,
+    )
+
+
+def _initial_settings(
+    settings: Mapping[str, Any],
+    artist_class: type[matplotlib.artist.Artist],
+    zorder: float | None,
+    arguments: frozenset[str] = _PART_CONSTRUCTOR_ARGUMENTS,
+) -> dict[str, Any]:
+    """Turn the initial settings of a part into keywords of its constructor.
+
+    The constructors take the default zorder of the part as an argument of
+    their own, while ``update`` takes ``zorder`` as a property like the
+    others. A ``zorder`` in `settings` is passed as that argument in place
+    of `zorder`, so that it wins over the default, as it does when given to
+    ``update``.
+
+    Parameters
+    ----------
+    settings : Mapping[str, Any]
+        Initial options and properties of the part. It is not changed.
+    artist_class : type[matplotlib.artist.Artist]
+        Class of the artists of the part.
+    zorder : float or None
+        Default zorder of the artists of the part. None leaves it to
+        matplotlib.
+    arguments : frozenset[str], optional
+        The other arguments of the constructor of the part, which `settings`
+        cannot contain, by default ``_PART_CONSTRUCTOR_ARGUMENTS``
+
+    Returns
+    -------
+    dict[str, Any]
+        A new dict of `settings` with ``zorder``.
+
+    Raises
+    ------
+    AttributeError
+        If `settings` contains one of `arguments`.
+    """
+    _reject_arguments(settings, arguments, artist_class)
+    return {"zorder": zorder, **settings}
+
+
+class _Skeleton:
+    """The skeleton of a ternary diagram: its 5 parts.
+
+    At construction, the vertices of the triangle are added to the data
+    limits of the Axes and the view is autoscaled, so that the view limits
+    are the same whether the border and the grid are drawn or not. Then the
+    parts are drawn once each with their initial settings, in the order
+    grid, border, vertex labels, tick labels and axis titles: the order of
+    ternary-diagram v3, with the new axis titles last.
+
+    After that, a part is updated and its artists are returned by its name
+    (`PartName`). The border and the grid have the same zorder, so the lines
+    added last are drawn on top: whenever the grid is updated, the border
+    lines are moved back to the end of the lines of the Axes, so that the
+    border is always drawn over the grid.
+
+    The skeleton never changes the layout of the figure or the position of
+    the Axes. The other settings of the Axes (the aspect ratio, the ticks
+    and the spines) are made by ``TernaryDiagram``.
+    """
+
+    def __init__(
+        self,
+        ax: matplotlib.axes.Axes,
+        materials: Sequence[Any],
+        auto_latex_notation: bool,
+        *,
+        zorder: float,
+        border_kw: Mapping[str, Any],
+        grid_kw: Mapping[str, Any],
+        tick_kw: Mapping[str, Any],
+        axis_label_kw: Mapping[str, Any],
+        vertex_label_kw: Mapping[str, Any],
+    ) -> None:
+        """Draw the 5 parts with their initial settings.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axes to draw on.
+        materials : Sequence[Any]
+            Materials of the diagram, already validated by the caller. The
+            first 3 are the labels of the top, bottom left and bottom right
+            vertices.
+        auto_latex_notation : bool
+            Whether to turn the vertex labels into chemical formulas, now
+            and on every later change (see ``_VertexLabels``).
+        zorder : float
+            Default zorder of the border and grid lines. The labels keep
+            the default zorder of matplotlib.
+        border_kw : Mapping[str, Any]
+            Initial settings of the border: what `update` accepts for the
+            part ``"border"``, with the same meaning. A ``zorder`` among
+            them wins over `zorder`. It is not changed, nor are the other
+            mappings below.
+        grid_kw : Mapping[str, Any]
+            Initial settings of the grid, as for the part ``"grid"``. A
+            ``zorder`` among them wins over `zorder`.
+        tick_kw : Mapping[str, Any]
+            Initial settings of the tick labels, as for the part
+            ``"ticks"``.
+        axis_label_kw : Mapping[str, Any]
+            Initial settings of the axis titles, as for the part
+            ``"axis_labels"``.
+        vertex_label_kw : Mapping[str, Any]
+            Initial settings of the vertex labels, as for the part
+            ``"vertex_labels"``, except ``labels``, which are given by
+            `materials`.
+
+        Raises
+        ------
+        ValueError
+            If `vertex_label_kw` contains ``labels``, or as raised by the
+            parts for invalid settings.
+        AttributeError
+            If a setting is neither an option of its part nor a property of
+            its artists, including ``ax``, ``self`` and, in
+            `vertex_label_kw`, ``auto_latex_notation``, which `update`
+            rejects in the same way.
+        Exception
+            Whatever validating or drawing a part raises (see
+            ``_SkeletonPart.update``). The artists of the parts drawn
+            before are removed first, so that no artist of the skeleton is
+            left on `ax`. The data limits registered before are kept.
+        """
+        # Settings that the parts cannot check, checked before drawing.
+        grid_settings = _initial_settings(grid_kw, _Grid.ARTIST_CLASS, zorder)
+        border_settings = _initial_settings(
+            border_kw, _Border.ARTIST_CLASS, zorder
+        )
+        if "labels" in vertex_label_kw:
+            raise ValueError(
+                "`vertex_label_kw` cannot contain `labels`: the vertex labels "
+                "are given by `materials`, so it is ambiguous which to use."
+            )
+        vertex_label_settings = _initial_settings(
+            vertex_label_kw,
+            _VertexLabels.ARTIST_CLASS,
+            None,
+            _VERTEX_LABELS_CONSTRUCTOR_ARGUMENTS,
+        )
+        tick_settings = _initial_settings(
+            tick_kw, _TickLabels.ARTIST_CLASS, None
+        )
+        axis_label_settings = _initial_settings(
+            axis_label_kw, _AxisLabels.ARTIST_CLASS, None
+        )
+        labels = tuple(materials)[:3]
+
+        ax.update_datalim(TRIANGLE_VERTICES)
+        ax.autoscale_view()
+
+        parts: dict[PartName, _SkeletonPart] = {}
+        try:
+            parts["grid"] = _Grid(ax, **grid_settings)
+            parts["border"] = _Border(ax, **border_settings)
+            parts["vertex_labels"] = _VertexLabels(
+                ax,
+                auto_latex_notation=auto_latex_notation,
+                labels=labels,
+                **vertex_label_settings,
+            )
+            parts["ticks"] = _TickLabels(ax, **tick_settings)
+            parts["axis_labels"] = _AxisLabels(ax, **axis_label_settings)
+        except BaseException:
+            # A part that fails leaves nothing on the Axes. Remove the parts
+            # drawn before it, even on KeyboardInterrupt, then let the
+            # original error propagate.
+            for part in parts.values():
+                for artist in part.artists:
+                    artist.remove()
+            raise
+        self._parts = parts
+
+    def update(
+        self, name: PartName, /, **kwargs: Any
+    ) -> list[matplotlib.artist.Artist]:
+        """Redraw a part with new settings.
+
+        Parameters
+        ----------
+        name : PartName
+            Name of the part. It is positional only, so that a property
+            called ``name`` (an alias of ``fontname`` of ``Text``) can be
+            given in `kwargs`.
+        **kwargs
+            Options of the part and properties of its artists, merged with
+            its current settings by ``_SkeletonPart.update``.
+
+        Returns
+        -------
+        list[matplotlib.artist.Artist]
+            A new list of the artists drawn by the part, empty when it is
+            invisible.
+
+        Raises
+        ------
+        ValueError
+            If `name` is not the name of a part, or as raised by the part
+            for invalid settings.
+        AttributeError
+            If a setting is neither an option of the part nor a property of
+            its artists, including ``self``.
+        Exception
+            Whatever validating or drawing the part raises (see
+            ``_SkeletonPart.update``). The part then keeps its previous
+            settings and artists, and the border lines are not moved.
+        """
+        part = self._part(name)
+        _reject_arguments(kwargs, _PART_UPDATE_ARGUMENTS, part.ARTIST_CLASS)
+        artists = part.update(**kwargs)
+        if name == "grid":
+            self._parts["border"].restack()
+        return artists
+
+    def artists(self, name: PartName) -> list[matplotlib.artist.Artist]:
+        """Return a new list of the artists that a part draws now.
+
+        Parameters
+        ----------
+        name : PartName
+            Name of the part.
+
+        Returns
+        -------
+        list[matplotlib.artist.Artist]
+            The artists of the part, empty when it is invisible.
+
+        Raises
+        ------
+        ValueError
+            If `name` is not the name of a part.
+        """
+        return self._part(name).artists
+
+    def _part(self, name: PartName) -> _SkeletonPart:
+        """Return the part called `name`.
+
+        Raises
+        ------
+        ValueError
+            If `name` is not the name of a part.
+        """
+        part = self._parts.get(name)
+        if part is None:
+            raise ValueError(
+                f"`name` must be one of {', '.join(map(repr, _PART_NAMES))}, "
+                f"but got {name!r}."
+            )
+        return part
