@@ -10,6 +10,7 @@ import matplotlib
 import matplotlib.lines
 import matplotlib.text
 import numpy as np
+import pandas as pd
 import pytest
 from _skeleton_expected import (
     BORDER_COLOR,
@@ -33,6 +34,7 @@ from matplotlib.colors import to_rgba
 from ternary_diagram import _skeleton
 from ternary_diagram._skeleton import (
     Spec,
+    _AxisLabels,
     _Border,
     _Grid,
     _LineSpec,
@@ -41,6 +43,7 @@ from ternary_diagram._skeleton import (
     _TickLabels,
 )
 from ternary_diagram.utils import (
+    get_axis_label_position,
     get_edge_points,
     get_grid_segments,
     get_tick_formatter,
@@ -1358,4 +1361,568 @@ def test_tick_labels_raising_format_callable_at_construction(ax):
 
     with pytest.raises(RuntimeError, match="cannot format the value"):
         _TickLabels(ax, fmt=fmt)
+    assert list(ax.texts) == []
+
+
+# ---------------------------------------------------------------------------
+# _AxisLabels
+# ---------------------------------------------------------------------------
+
+AXIS_LABEL_FONTSIZE = 12.0
+AXIS_LABEL_PAD = 0.15
+THREE_TITLES = ("Li2O / mol%", "La2O3 / mol%", "TiO2 / mol%")
+
+
+def _expected_axis_label_layout(
+    titles: dict[int, str], pad: float = AXIS_LABEL_PAD
+) -> list[tuple]:
+    """Layout of the axis titles given by ``get_axis_label_position``.
+
+    `titles` maps the components that have a title to the title. The
+    titles follow in the order of the components, centered, in the form
+    returned by `_tick_layout`.
+    """
+    layout = []
+    for component in sorted(titles):
+        x, y, rotation = get_axis_label_position(component, pad)
+        layout.append(
+            (titles[component], point_key(x, y), rotation, "center", "center")
+        )
+    return layout
+
+
+def test_axis_labels_annotations_are_not_evaluated():
+    for func in (_AxisLabels._validate, _AxisLabels._specs):
+        annotations = func.__annotations__
+        assert annotations
+        assert all(isinstance(value, str) for value in annotations.values())
+
+
+def test_axis_labels_defaults():
+    assert _AxisLabels.OPTION_DEFAULTS == {
+        "visible": True,
+        "labels": (None, None, None),
+        "pad": AXIS_LABEL_PAD,
+    }
+    assert _AxisLabels.STYLE_DEFAULTS == {
+        "fontsize": AXIS_LABEL_FONTSIZE,
+        "horizontalalignment": "center",
+        "verticalalignment": "center",
+    }
+    assert _AxisLabels.ARTIST_CLASS is matplotlib.text.Text
+    assert _skeleton.DEFAULT_AXIS_LABELS == (None, None, None)
+    assert _skeleton.DEFAULT_AXIS_LABEL_PAD == AXIS_LABEL_PAD
+    assert _skeleton.DEFAULT_AXIS_LABEL_FONTSIZE == AXIS_LABEL_FONTSIZE
+    assert _skeleton.DEFAULT_AXIS_LABEL_HORIZONTALALIGNMENT == "center"
+    assert _skeleton.DEFAULT_AXIS_LABEL_VERTICALALIGNMENT == "center"
+
+
+def test_axis_labels_draw_nothing_by_default(ax):
+    part = _AxisLabels(ax)
+    assert part.artists == []
+    assert list(ax.texts) == []
+    assert list(ax.lines) == []
+    # The part is visible; it only has no titles.
+    assert part._options["visible"] is True
+
+
+def test_axis_labels_three_titles_draw_three_texts(ax):
+    texts = _AxisLabels(ax, labels=THREE_TITLES).artists
+
+    assert len(texts) == 3
+    assert all(isinstance(text, matplotlib.text.Text) for text in texts)
+    assert _same_objects(ax.texts, texts)
+    assert list(ax.lines) == []
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        dict(enumerate(THREE_TITLES))
+    )
+    # Parallel to the right, left and bottom edges, never upside down.
+    assert [text.get_rotation() for text in texts] == [300.0, 60.0, 0.0]
+    assert text_key(texts[2]).position == point_key(0.5, -AXIS_LABEL_PAD)
+    assert all(text.get_fontsize() == AXIS_LABEL_FONTSIZE for text in texts)
+
+
+@pytest.mark.parametrize(
+    ("labels", "titles"),
+    [
+        (("A", None, ""), {0: "A"}),
+        ((None, "B", None), {1: "B"}),
+        (("", "", "C"), {2: "C"}),
+        (("A", None, "C"), {0: "A", 2: "C"}),
+        ((None, None, None), {}),
+        (("", "", ""), {}),
+    ],
+    ids=repr,
+)
+def test_axis_labels_draw_only_given_titles(ax, labels, titles):
+    texts = _AxisLabels(ax, labels=labels).artists
+
+    assert len(texts) == len(titles)
+    assert _same_objects(ax.texts, texts)
+    assert _tick_layout(texts) == _expected_axis_label_layout(titles)
+
+
+@pytest.mark.parametrize(
+    "label", ["Li2O / mol%", "La2O3", "TiO$_2$ (at.%)", " "], ids=repr
+)
+def test_axis_labels_are_shown_as_given(ax, label):
+    # Unlike the vertex labels, the titles are not turned into chemical
+    # formulas such as "Li$_{2}$O".
+    texts = _AxisLabels(ax, labels=(label, label, label)).artists
+    assert [text.get_text() for text in texts] == [label] * 3
+
+
+@pytest.mark.parametrize("pad", [0.0, 0.05, 0.15, 0.3, -0.05, 1], ids=repr)
+def test_axis_labels_layout_comes_from_geometry_function(ax, pad):
+    texts = _AxisLabels(ax, labels=("A", "B", "C"), pad=pad).artists
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        {0: "A", 1: "B", 2: "C"}, pad
+    )
+
+
+def test_axis_labels_are_outside_the_middle_of_their_tick_edges(ax):
+    pad = 0.2
+    texts = _AxisLabels(ax, labels=("A", "B", "C"), pad=pad).artists
+    centroid = (0.5, ROOT3_OVER_2 / 3.0)
+
+    for component, text in enumerate(texts):
+        # The edge that carries the ticks of the component, from 0 to 1.
+        (x0, x1), (y0, y1) = get_edge_points([0.0, 1.0], component)
+        mid_x, mid_y = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+        x, y = text.get_position()
+
+        def side(px, py):
+            return (x1 - x0) * (py - y0) - (y1 - y0) * (px - x0)
+
+        # `pad` away from the midpoint, perpendicular to the edge, on the
+        # other side of the edge than the triangle.
+        assert np.hypot(x - mid_x, y - mid_y) == pytest.approx(pad)
+        assert (x - mid_x) * (x1 - x0) + (y - mid_y) * (
+            y1 - y0
+        ) == pytest.approx(0.0, abs=1e-12)
+        assert side(x, y) * side(*centroid) < 0
+        # Parallel to the edge and not upside down.
+        edge_angle = np.degrees(np.arctan2(y1 - y0, x1 - x0))
+        rotation = text.get_rotation()
+        assert (rotation - edge_angle) % 180.0 == pytest.approx(
+            0.0, abs=1e-9
+        ) or (rotation - edge_angle) % 180.0 == pytest.approx(180.0)
+        assert rotation <= 90.0 or rotation > 270.0
+
+
+def test_axis_labels_update_replaces_titles(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    old = part.artists
+    texts = part.update(labels=("X", None, "Z"))
+
+    assert [text.get_text() for text in texts] == ["X", "Z"]
+    assert _same_objects(ax.texts, texts)
+    assert _same_objects(part.artists, texts)
+    assert all(text.axes is None for text in old)
+
+
+def test_axis_labels_update_adds_titles_to_the_default(ax):
+    part = _AxisLabels(ax)
+    texts = part.update(labels=THREE_TITLES)
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        dict(enumerate(THREE_TITLES))
+    )
+    assert _same_objects(ax.texts, texts)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"fontsize": 14, "color": "red"}, {"size": 14, "c": "red"}],
+    ids=["canonical", "aliases"],
+)
+def test_axis_labels_style_applies_to_all_titles(ax, kwargs):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    texts = part.update(**kwargs)
+
+    assert len(texts) == 3
+    assert all(text.get_fontsize() == 14 for text in texts)
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+    # The positions, rotations and alignments are kept.
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        {0: "A", 1: "B", 2: "C"}
+    )
+
+
+def test_axis_labels_style_at_construction(ax):
+    texts = _AxisLabels(ax, labels=("A", "B", "C"), fontsize=16).artists
+    assert len(texts) == 3
+    assert all(text.get_fontsize() == 16 for text in texts)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"rotation": 0, "ha": "left", "va": "top"},
+        {
+            "rotation": 0,
+            "horizontalalignment": "left",
+            "verticalalignment": "top",
+        },
+    ],
+    ids=["aliases", "canonical"],
+)
+def test_axis_labels_user_properties_override_defaults(ax, kwargs):
+    texts = _AxisLabels(ax, labels=("A", "B", "C")).update(**kwargs)
+
+    # The same value applies to the titles of every edge.
+    assert all(text.get_rotation() == 0 for text in texts)
+    assert all(text.get_horizontalalignment() == "left" for text in texts)
+    assert all(text.get_verticalalignment() == "top" for text in texts)
+    # The positions do not change.
+    assert [text_key(text).position for text in texts] == [
+        key[1] for key in _expected_axis_label_layout({0: "A", 1: "B", 2: "C"})
+    ]
+
+
+def test_axis_labels_keep_matplotlib_default_zorder(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    assert len(part.artists) == 3
+    assert all(text.get_zorder() == TEXT_ZORDER for text in part.artists)
+    # Redrawing keeps the zorder of the other labels.
+    texts = part.update(pad=0.2, fontsize=8)
+    assert len(texts) == 3
+    assert all(text.get_zorder() == TEXT_ZORDER for text in texts)
+
+
+def test_axis_labels_user_zorder_overrides_default(ax):
+    texts = _AxisLabels(ax, labels=("A", "B", "C")).update(zorder=5)
+    assert len(texts) == 3
+    assert all(text.get_zorder() == 5 for text in texts)
+
+
+def test_axis_labels_keep_options_when_only_style_changes(ax):
+    part = _AxisLabels(ax, labels=("A", None, "C"), pad=0.25)
+    texts = part.update(color="red")
+
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        {0: "A", 2: "C"}, 0.25
+    )
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+
+
+def test_axis_labels_keep_style_when_only_options_change(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"), fontsize=8, color="blue")
+    texts = part.update(labels=(None, "Y", None), pad=0.3)
+
+    assert _tick_layout(texts) == _expected_axis_label_layout({1: "Y"}, 0.3)
+    assert all(text.get_fontsize() == 8 for text in texts)
+    assert all(to_rgba(text.get_color()) == to_rgba("blue") for text in texts)
+
+
+def test_axis_labels_keep_titles_when_only_pad_changes(ax):
+    part = _AxisLabels(ax, labels=("A", None, "C"))
+    texts = part.update(labels=None, pad=0.05)
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        {0: "A", 2: "C"}, 0.05
+    )
+
+
+def test_axis_labels_keep_a_copy_of_the_titles(ax):
+    labels = ["A", None, "C"]
+    part = _AxisLabels(ax, labels=labels)
+    # Changing the given list afterwards does not change the part.
+    labels[1] = "B"
+    assert part._options["labels"] == ("A", None, "C")
+    texts = part.update(fontsize=14)
+    assert [text.get_text() for text in texts] == ["A", "C"]
+
+
+def test_axis_labels_accept_numpy_str_titles(ax):
+    part = _AxisLabels(ax, labels=[np.str_("A"), None, np.str_("C")])
+    assert [text.get_text() for text in part.artists] == ["A", "C"]
+    # Kept as the built-in str, as matplotlib converts them when drawing.
+    assert part._options["labels"] == ("A", None, "C")
+    assert [type(item) for item in part._options["labels"]] == [
+        str,
+        type(None),
+        str,
+    ]
+
+
+def _assert_titles_stored(part: _AxisLabels, expected: tuple) -> None:
+    """The part keeps `expected` as a tuple of built-in str and None."""
+    stored = part._options["labels"]
+    assert type(stored) is tuple
+    assert stored == expected
+    assert all(item is None or type(item) is str for item in stored)
+
+
+@pytest.mark.parametrize(
+    ("labels", "expected"),
+    [
+        (["A", None, "C"], ("A", None, "C")),
+        (("A", "B", ""), ("A", "B", "")),
+        (pd.Index(["Li2O", "La2O3", "TiO2"]), ("Li2O", "La2O3", "TiO2")),
+        (
+            pd.Index(["Li2O", "La2O3", "TiO2"]) + " / mol%",
+            ("Li2O / mol%", "La2O3 / mol%", "TiO2 / mol%"),
+        ),
+        (pd.Series(["A", "", "C"]), ("A", "", "C")),
+        (np.array(["A", "B", "C"]), ("A", "B", "C")),
+        (np.array(["A", None, "C"], dtype=object), ("A", None, "C")),
+    ],
+    ids=[
+        "list",
+        "tuple",
+        "pandas-index",
+        "pandas-index-with-unit",
+        "pandas-series",
+        "numpy-str",
+        "numpy-object",
+    ],
+)
+def test_axis_labels_accept_ordered_iterables(ax, labels, expected):
+    part = _AxisLabels(ax, labels=labels)
+
+    _assert_titles_stored(part, expected)
+    titles = {k: title for k, title in enumerate(expected) if title}
+    assert _tick_layout(part.artists) == _expected_axis_label_layout(titles)
+    assert _same_objects(ax.texts, part.artists)
+
+
+def test_axis_labels_accept_dataframe_columns(ax, df_contour):
+    # The same usage as ``TernaryDiagram(materials=df.columns[:3])``.
+    part = _AxisLabels(ax)
+    texts = part.update(labels=df_contour.columns[:3] + " / mol%")
+
+    expected = ("Li2O / mol%", "TiO2 / mol%", "La2O3 / mol%")
+    _assert_titles_stored(part, expected)
+    assert [text.get_text() for text in texts] == list(expected)
+
+
+def test_axis_labels_accept_a_generator_consumed_once(ax):
+    part = _AxisLabels(ax, labels=(f"{m} / mol%" for m in ("A", "B", "C")))
+    expected = ("A / mol%", "B / mol%", "C / mol%")
+    _assert_titles_stored(part, expected)
+
+    # Redrawing uses the stored titles, not the exhausted generator.
+    texts = part.update(fontsize=14)
+    assert [text.get_text() for text in texts] == list(expected)
+
+
+def test_axis_labels_reject_a_generator_of_wrong_length(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    with pytest.raises(ValueError, match="`labels` must have 3 items"):
+        part.update(labels=(m for m in ("A", "B")))
+    _assert_unchanged(ax, part, before)
+
+
+def test_axis_labels_reject_0d_array_from_the_iteration_error(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    with pytest.raises(
+        TypeError, match="`labels` must be a sequence .* iterating over"
+    ) as excinfo:
+        part.update(labels=np.array("ABC"))
+    # The error of numpy is kept as the cause.
+    assert isinstance(excinfo.value.__cause__, TypeError)
+    _assert_unchanged(ax, part, before)
+
+
+def test_axis_labels_invisible_at_construction_draws_nothing(ax):
+    part = _AxisLabels(ax, labels=("A", "B", "C"), visible=False)
+    assert part.artists == []
+    assert list(ax.texts) == []
+
+
+def test_axis_labels_invisible_removes_titles_and_visible_restores_them(ax):
+    part = _AxisLabels(ax, labels=("A", None, "C"), pad=0.2, size=14)
+    old = part.artists
+    assert len(old) == 2
+    assert part.update(visible=False) == []
+    assert part.artists == []
+    assert list(ax.texts) == []
+    assert all(text.axes is None for text in old)
+
+    # The settings given before hiding the titles are used again.
+    texts = part.update(visible=True)
+    assert _tick_layout(texts) == _expected_axis_label_layout(
+        {0: "A", 2: "C"}, 0.2
+    )
+    assert all(text.get_fontsize() == 14 for text in texts)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("A", "B"),
+        ("A", "B", "C", "D"),
+        (),
+        ["A"],
+        (None, None),
+        np.array(["A", "B"]),
+        pd.Index(["A", "B", "C", "D"]),
+    ],
+    ids=[
+        "tuple-2",
+        "tuple-4",
+        "empty",
+        "list-1",
+        "none-2",
+        "numpy-2",
+        "pandas-index-4",
+    ],
+)
+def test_axis_labels_reject_wrong_number_of_titles(ax, labels):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    with pytest.raises(ValueError, match="`labels` must have 3 items"):
+        part.update(labels=labels, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        "ABC",
+        np.str_("ABC"),
+        b"ABC",
+        3,
+        3.0,
+        {"A", "B", "C"},
+        frozenset({"A", "B", "C"}),
+        {"A": 0, "B": 1, "C": 2},
+        np.array("ABC"),
+    ],
+    ids=[
+        "str",
+        "numpy-str",
+        "bytes",
+        "int",
+        "float",
+        "set",
+        "frozenset",
+        "dict",
+        "numpy-0d",
+    ],
+)
+def test_axis_labels_reject_non_sequence_titles(ax, labels):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    # The message names the accepted types.
+    with pytest.raises(
+        TypeError,
+        match=(
+            "`labels` must be a sequence of 3 titles \\(str or None\\) such "
+            "as a list, a tuple, a numpy array or a pandas Index"
+        ),
+    ):
+        part.update(labels=labels, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("A", 1, None),
+        (b"A", None, None),
+        (None, None, ["C"]),
+        ("A", "B", 0.5),
+        ("A", "B", float("nan")),
+        np.array([["A"], ["B"], ["C"]]),
+        pd.Series(["A", "B", 1]),
+    ],
+    ids=[
+        "int",
+        "bytes",
+        "list",
+        "float",
+        "nan",
+        "numpy-shape-3x1",
+        "pandas-series-int",
+    ],
+)
+def test_axis_labels_reject_non_str_titles(ax, labels):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    with pytest.raises(
+        TypeError, match="Each item of `labels` must be a str or None"
+    ):
+        part.update(labels=labels, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize(
+    ("pad", "error"),
+    [
+        ("0.15", TypeError),
+        (True, TypeError),
+        (np.bool_(True), TypeError),
+        (float("nan"), ValueError),
+        (float("inf"), ValueError),
+        (-float("inf"), ValueError),
+    ],
+    ids=repr,
+)
+def test_axis_labels_reject_invalid_pad(ax, pad, error):
+    part = _AxisLabels(ax, labels=("A", "B", "C"))
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match="`pad`"):
+        part.update(pad=pad, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+AXIS_LABEL_INVALID_OPTIONS = [
+    ({"labels": ("A", "B")}, ValueError, "`labels` must have 3 items"),
+    ({"labels": "ABC"}, TypeError, "`labels` must be a sequence"),
+    ({"labels": ("A", 1, None)}, TypeError, "Each item of `labels`"),
+    ({"pad": "0.15"}, TypeError, "`pad` must be a real number"),
+    ({"pad": float("nan")}, ValueError, "`pad` must be a finite real number"),
+]
+AXIS_LABEL_INVALID_OPTION_IDS = [
+    "labels-count",
+    "labels-type",
+    "labels-item",
+    "pad-type",
+    "pad-value",
+]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "match"),
+    AXIS_LABEL_INVALID_OPTIONS,
+    ids=AXIS_LABEL_INVALID_OPTION_IDS,
+)
+def test_axis_labels_validate_options_while_invisible(
+    ax, kwargs, error, match
+):
+    # Nothing is drawn, so only the validation step can catch these.
+    part = _AxisLabels(ax, labels=("A", "B", "C"), visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match=match):
+        part.update(**kwargs)
+    _assert_unchanged(ax, part, before)
+    with pytest.raises(error, match=match):
+        _AxisLabels(ax, visible=False, **kwargs)
+    assert list(ax.texts) == []
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "match"),
+    AXIS_LABEL_INVALID_OPTIONS,
+    ids=AXIS_LABEL_INVALID_OPTION_IDS,
+)
+def test_axis_labels_invalid_options_at_construction_leave_nothing(
+    ax, kwargs, error, match
+):
+    with pytest.raises(error, match=match):
+        _AxisLabels(ax, **{"labels": ("A", "B", "C"), **kwargs})
+    assert list(ax.texts) == []
+
+
+def test_axis_labels_validate_pad_without_titles(ax):
+    # No title is drawn, so the position of a title is never computed.
+    part = _AxisLabels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(TypeError, match="`pad` must be a real number"):
+        part.update(pad="0.15")
+    _assert_unchanged(ax, part, before)
+    with pytest.raises(ValueError, match="`pad` must be a finite real number"):
+        _AxisLabels(ax, pad=float("inf"))
     assert list(ax.texts) == []

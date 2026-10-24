@@ -56,7 +56,7 @@
   - _Boundary: `src/ternary_diagram/_skeleton.py: _TickLabels` と目盛りラベルの `DEFAULT_*` 定数, `tests/test_skeleton_parts.py`（`_TickLabels` のテストの追加だけ）_
   - _Requirements: 1.1, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 6.8, 9.1, 10.3, 11.2_
 
-- [ ] 3.3 軸タイトルの部品を作る
+- [x] 3.3 軸タイトルの部品を作る
   - 3 つの成分の軸タイトルを、なし（None または空文字）を除いて、軸タイトルの位置の関数が返す位置と回転で描き、文字列は化学式に整形しない
   - 既定はタイトルなし、辺からの距離 0.15、フォントサイズ 12、中央揃えとし、既定の距離を example の図で目視確認する
   - タイトルの個数が 3 でないとき、要素が文字列でもなしでもないときはエラーにする
@@ -142,3 +142,5 @@
 - 3.5 で必ず扱うこと: `_SkeletonPart.__init__(ax, *, zorder=None, **initial)` なので、`_Grid(ax, zorder=Z, **grid_kw)` のように渡すと、利用者が `grid_kw` に `zorder`（や `ax`）を入れたときに「同じキーワード引数が 2 つ」の TypeError になる。要件 2.2・9.3 では作成時の指定でも利用者の zorder が優先されるので、`kw = dict(grid_kw); _Grid(ax, zorder=kw.pop("zorder", Z), **kw)` のように取り出して渡し、テストを足す（2.3 のレビューでの指摘）
 - 未決（ユーザー確認待ち）: 利用者が部品の artist を自分で `remove()` した後に `update` / `restack` すると、古い artist を消す段で matplotlib の `ValueError` になり、新しい artist が Axes に残る（呼ぶたびに孤立した artist が増える）。design の不変条件の前提外。4.2 で `grid_lines_` などを公開すると起こりうるので、「`artist.axes is None` のものは飛ばす」か「design に制約として書く」かを決める（2.3 のレビューでの指摘）
 - 4.3 の docstring に書くこと（3.2 のレビューより）: (1) 呼び出し可能な `fmt` は検証時ではなく描画時に初めて呼ばれる（非表示中に設定すると、表示に戻すときに例外になり得る）。(2) 一度 `rotation` や `ha` などを指定すると辺・頂点ごとの既定には戻せない（`rotation=None` は全辺 0° になる。既定 → 直前 → 今回の統合規則の性質）
+- 3 つの名前を受け取る引数（`_AxisLabels.labels`、`_VertexLabels.labels`、`*_kw` 経由の指定）は、3 つの str を持つ pandas Index / Series・numpy 配列も受け付ける（`materials=df.columns[:3]` が定着した使い方のため）。規則: str / bytes / Mapping / Set / 非 Iterable は TypeError、それ以外は `tuple(...)` に変換してから個数（ValueError）と要素（TypeError）を検査する（3.3 のレビューでの指摘。3.4 も同じ規則にそろえる）
+- 4.3 の docstring に書くこと（3.3 のレビューより）: 軸タイトルの距離 `pad` はデータ単位で文字はポイント単位なので、小さい図（3×3 インチ程度）では目盛りラベルと重なる。小さい図では `pad` を大きくするか `fontsize` を下げる

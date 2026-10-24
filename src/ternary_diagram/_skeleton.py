@@ -19,7 +19,7 @@ the lines) are passed as arguments.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence, Set
 from math import sqrt
 from typing import Any, ClassVar, NamedTuple, Union, cast
 
@@ -32,6 +32,7 @@ from matplotlib.artist import ArtistInspector
 
 from ternary_diagram.utils import (
     check_bool,
+    get_axis_label_position,
     get_edge_points,
     get_grid_segments,
     get_tick_formatter,
@@ -82,6 +83,15 @@ DEFAULT_TICK_EDGE_STYLES: tuple[dict[str, Any], ...] = (
         "horizontalalignment": "right",
     },
 )
+
+# Defaults of the axis titles (``_AxisLabels``), which ternary-diagram v3
+# does not draw: no titles, centered at 0.15 from the midpoints of their
+# edges (checked by eye on the example figures to clear the tick labels).
+DEFAULT_AXIS_LABELS: tuple[str | None, ...] = (None, None, None)
+DEFAULT_AXIS_LABEL_PAD = 0.15
+DEFAULT_AXIS_LABEL_FONTSIZE = 12
+DEFAULT_AXIS_LABEL_HORIZONTALALIGNMENT = "center"
+DEFAULT_AXIS_LABEL_VERTICALALIGNMENT = "center"
 
 
 class _LineSpec(NamedTuple):
@@ -629,4 +639,121 @@ class _TickLabels(_SkeletonPart):
             for component, edge_style in enumerate(DEFAULT_TICK_EDGE_STYLES):
                 x, y = positions[component][i]
                 specs.append(_TextSpec(x, y, label, {**edge_style, **style}))
+        return specs
+
+
+class _AxisLabels(_SkeletonPart):
+    """The axis titles: one title per component, outside its tick edge.
+
+    The options are ``visible``; ``labels``, the titles of the components
+    0, 1 and 2, where ``None`` or ``""`` draws no title; and ``pad``, the
+    distance of the titles from the midpoints of their edges, where each
+    edge has length 1.
+
+    The title of component ``k`` is drawn at the position and with the
+    rotation returned by ``get_axis_label_position(k, pad)``: outside the
+    middle of the edge that carries the ticks of the component, parallel to
+    it and never upside down. The rotation of the edge is overridden by the
+    style of the part. The titles are shown as given, without the
+    conversion to chemical formulas applied to the vertex labels. The zorder
+    is left to matplotlib, like the other labels.
+    """
+
+    OPTION_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "visible": True,
+        "labels": DEFAULT_AXIS_LABELS,
+        "pad": DEFAULT_AXIS_LABEL_PAD,
+    }
+    STYLE_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "fontsize": DEFAULT_AXIS_LABEL_FONTSIZE,
+        "horizontalalignment": DEFAULT_AXIS_LABEL_HORIZONTALALIGNMENT,
+        "verticalalignment": DEFAULT_AXIS_LABEL_VERTICALALIGNMENT,
+    }
+    ARTIST_CLASS: ClassVar[type[matplotlib.artist.Artist]] = (
+        matplotlib.text.Text
+    )
+
+    def _validate(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Validate ``labels`` and ``pad``.
+
+        ``labels`` may be any ordered iterable of 3 titles, such as a list,
+        a tuple, a numpy array, a pandas Index or Series, or a generator,
+        which is consumed once. ``pad`` is validated even when no title is
+        drawn.
+
+        Returns
+        -------
+        dict[str, Any]
+            A new dict of the options, with ``labels`` converted to a tuple
+            of built-in str (str subclasses such as ``numpy.str_`` are
+            converted with ``str``, as matplotlib does when it draws them)
+            and None, so that later changes to the given object have no
+            effect.
+
+        Raises
+        ------
+        TypeError
+            If ``labels`` is a str, bytes, a mapping, a set or not iterable,
+            if iterating over it fails with a TypeError (such as a 0-d numpy
+            array), if an item of ``labels`` is neither a str nor None, or
+            if ``pad`` is not a real number (``bool`` is rejected).
+        ValueError
+            If ``labels`` does not have 3 items, or if ``pad`` is not
+            finite.
+        """
+        labels = self._titles(options["labels"])
+        get_axis_label_position(0, options["pad"])
+        return {**options, "labels": labels}
+
+    @staticmethod
+    def _titles(labels: object) -> tuple[str | None, ...]:
+        """Turn ``labels`` into a tuple of 3 built-in str or None.
+
+        Raises
+        ------
+        TypeError, ValueError
+            As described in `_validate`.
+        """
+        accepted = (
+            "a sequence of 3 titles (str or None) such as a list, a tuple, "
+            "a numpy array or a pandas Index, not a str, bytes, mapping or "
+            "set"
+        )
+        if isinstance(labels, (str, bytes, Mapping, Set)) or not isinstance(
+            labels, Iterable
+        ):
+            raise TypeError(
+                f"`labels` must be {accepted}, but got {labels!r}."
+            )
+        try:
+            items = tuple(labels)
+        except TypeError as error:
+            raise TypeError(
+                f"`labels` must be {accepted}, but iterating over "
+                f"{labels!r} failed: {error}"
+            ) from error
+        if len(items) != 3:
+            raise ValueError(
+                f"`labels` must have 3 items, one title per component, but "
+                f"got {len(items)}: {labels!r}."
+            )
+        for index, item in enumerate(items):
+            if item is not None and not isinstance(item, str):
+                raise TypeError(
+                    f"Each item of `labels` must be a str or None, but got "
+                    f"{item!r} at index {index}."
+                )
+        return tuple(None if item is None else str(item) for item in items)
+
+    def _specs(
+        self, options: dict[str, Any], style: dict[str, Any]
+    ) -> list[Spec]:
+        specs: list[Spec] = []
+        for component, label in enumerate(options["labels"]):
+            if label is None or label == "":
+                continue
+            x, y, rotation = get_axis_label_position(component, options["pad"])
+            specs.append(
+                _TextSpec(x, y, label, {"rotation": rotation, **style})
+            )
         return specs
