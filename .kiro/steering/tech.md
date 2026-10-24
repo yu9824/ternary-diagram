@@ -2,7 +2,7 @@
 
 ## Architecture
 
-matplotlib の薄いラッパーとして作られた純 Python ライブラリ。ファサード（`TernaryDiagram`）が描画種別ごとの Plotter クラスに処理を委譲し、各 Plotter が「3 成分ベクトルの検証・正規化 → 2 次元座標への変換 → matplotlib の呼び出し」を受け持つ。保持する状態は描画先の `Axes` と、描画済み座標の記録（`x_` / `y_`）だけ。
+matplotlib の薄いラッパーとして作られた純 Python ライブラリ。ファサード（`TernaryDiagram`）が描画種別ごとの Plotter クラスに処理を委譲し、各 Plotter が「3 成分ベクトルの検証・正規化 → 2 次元座標への変換 → matplotlib の呼び出し」を受け持つ。保持する状態は描画先の `Axes`、描画済み座標の記録（`x_` / `y_`）、三角図ごとの描画後処理の状態（`PostDrawContext`: レイアウト設定、この三角図が付けたカラーバー、出した警告）だけ。描画後の処理は「図を変えない純粋な判定（`_post_draw.py` の決定表）」と「副作用を 1 か所で実行する入口（`_BasePlotter._post_draw`）」に分けている。
 
 ## Core Technologies
 
@@ -57,6 +57,7 @@ else:
 - 入力検証は `utils.check_*` に集約し、何が悪いかを示すメッセージ付きで `TypeError` / `ValueError` を送出する
 - 検証に `assert` は使わない（`python -O` で消えるため）
 - matplotlib の kwargs と内部で渡す引数が衝突する場合は、別名として受ける（`vmin` → `z_min`）か、ユーザー指定を優先する（`contour(levels=...)`）。どちらを使うか決められない組み合わせだけ `ValueError` にする
+- 利用者向けの警告は `_deprecation.warn_external` だけから出す（発生位置はパッケージ外で最初の呼び出し元＝利用者の行）。既定値の変更は FutureWarning で予告し、三角図ごと・理由ごとに 1 回に絞る。引数の改名は旧名を非推奨の別名として残し、`resolve_renamed_parameter` で解決する
 
 ### Testing
 
@@ -65,6 +66,8 @@ else:
 - 共通 fixture は `tests/conftest.py`（Agg バックエンド、テストごとの `plt.close("all")`、`ax` / `td`、サンプル CSV）
 - デフォルト値を持つ引数は「デフォルト」と「上書き」の両方をテストする
 - `utils.py` の関数は docstring に doctest 形式の Examples を持つ（実行は上の共通ランナー）
+- テスト一式は `-W error::FutureWarning` でも通る状態を保つ。共通 fixture `td` は `tight_layout=True` を明示している。既定値そのものを確かめるテストは fixture を使わず、その場で引数を省略して作り、出る警告は `pytest.warns` で捕まえる
+- 警告の文面は全文一致ではなく `match=` で要点を確かめ、発生位置（`filename`）がテストファイルであることも確かめる
 
 ## Development Environment
 
@@ -99,9 +102,10 @@ else:
 - **kwargs の透過とデフォルト注入**: ライブラリ側のデフォルトは `_set_default_params` で「ユーザーが指定していなければ設定」する。ユーザー指定が常に優先される
 - **zorder による描画レイヤーの固定**: 等高線 (0) < グリッド (1) < 線 (2) < 散布図 (3) をモジュール定数 `DEFAULT_ZORDER_*` で管理し、呼び出し順に関係なく重なり順を保つ
 - **入力の自動正規化**: 各行を合計 1 に正規化してから座標変換するので、ユーザーは比率をそのまま渡せる
-- **描画ごとの `fig.tight_layout()`**: 各 Plotter は描画後にレイアウトを整え、colorbar やラベルのはみ出しを防ぐ
+- **描画後処理の一元化と既存レイアウトの尊重**: 描画後のレイアウト調整とカラーバーの追加は `_BasePlotter._post_draw` だけが行う。図にレイアウトエンジン（constrained など）があれば調整しない、subfigure では調整しない。v3.x の既定（エンジンのない図では `tight_layout()`、`z` 付きの描画ごとにカラーバー追加）は保ち、v4.0.0 で変える既定には FutureWarning で予告する。決定表は未指定の行だけを変えれば v4.0.0 に移れる形にしてある
 
 ---
 _Document standards and patterns, not every dependency_
 
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
+_updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
