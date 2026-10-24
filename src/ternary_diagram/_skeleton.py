@@ -231,6 +231,64 @@ def _normalize_style(
     )
 
 
+# Properties that ``_SkeletonPart`` gives itself to the call that creates
+# each artist: ``Axes.plot(xdata, ydata, ...)`` and ``Axes.text(x, y, s,
+# ...)``. Given again in the style, matplotlib raises TypeError ("got
+# multiple values") whatever their values.
+_PROPERTIES_SET_BY_THE_PART: tuple[
+    tuple[type[matplotlib.artist.Artist], frozenset[str]], ...
+] = (
+    (matplotlib.lines.Line2D, frozenset({"xdata", "ydata"})),
+    (matplotlib.text.Text, frozenset({"x", "y", "text"})),
+)
+
+
+def _check_style_names(
+    style: Mapping[str, Any], artist_class: type[matplotlib.artist.Artist]
+) -> None:
+    """Check that the artists can be created with these property names.
+
+    matplotlib only rejects a name when it creates an artist, which never
+    happens while a part draws nothing (for example while it is invisible).
+    Checking the names first keeps a part from storing a name that would
+    make every later redraw fail, and raises the same type of error as
+    matplotlib does when the artists are created.
+
+    Parameters
+    ----------
+    style : Mapping[str, Any]
+        Properties with canonical names, as returned by `_normalize_style`.
+    artist_class : type[matplotlib.artist.Artist]
+        Artist class that the properties belong to.
+
+    Raises
+    ------
+    AttributeError
+        If a name is not a property of `artist_class`, that is, the class
+        has no setter ``set_<name>``, with the message of ``Artist.set``.
+    TypeError
+        If a name is a property that the part sets for each artist: the
+        data of a ``Line2D`` or the position and the string of a ``Text``.
+    """
+    set_by_the_part = frozenset(
+        name
+        for owner, names in _PROPERTIES_SET_BY_THE_PART
+        if issubclass(artist_class, owner)
+        for name in names
+    )
+    for name in style:
+        if not callable(getattr(artist_class, f"set_{name}", None)):
+            raise AttributeError(
+                f"{artist_class.__name__}.set() got an unexpected keyword "
+                f"argument {name!r}"
+            )
+        if name in set_by_the_part:
+            raise TypeError(
+                f"{artist_class.__name__} property {name!r} cannot be given: "
+                f"it is set by the part for each artist."
+            )
+
+
 def _ordered_items(
     value: object, count: int, name: str, accepted: str, each: str
 ) -> tuple[Any, ...]:
@@ -419,11 +477,15 @@ class _SkeletonPart(ABC):
         ------
         TypeError
             If ``visible`` is not a bool, if an alias and its canonical name
-            are both given, or as raised by `_validate`.
+            are both given, if a property is one that the part sets for each
+            artist (``xdata`` and ``ydata`` of ``Line2D``, ``x``, ``y`` and
+            ``text`` of ``Text``), or as raised by `_validate`.
         ValueError
             As raised by `_validate`.
         AttributeError
-            If matplotlib rejects a property while creating the artists.
+            If a keyword is neither an option nor a property of
+            `ARTIST_CLASS`, checked even while the part is invisible, or if
+            matplotlib rejects a property while creating the artists.
         """
         # (1) Split the keywords into options and matplotlib properties.
         option_kw = {
@@ -449,11 +511,14 @@ class _SkeletonPart(ABC):
         options["visible"] = check_bool(options["visible"], "visible")
         options = self._validate(options)
 
-        # (3) Merge the properties under their canonical names.
+        # (3) Merge the properties under their canonical names, then check
+        # their names even when nothing will be drawn, so that a name that
+        # matplotlib rejects is never kept.
         style = {
             **self._style,
             **_normalize_style(style_kw, self.ARTIST_CLASS),
         }
+        _check_style_names(style, self.ARTIST_CLASS)
 
         # (4) Compute the specs. Nothing on the Axes has changed so far.
         specs: list[Spec] = []

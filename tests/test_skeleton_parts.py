@@ -10,6 +10,7 @@ from typing import Any
 
 import matplotlib
 import matplotlib.lines
+import matplotlib.pyplot as plt
 import matplotlib.text
 import numpy as np
 import pandas as pd
@@ -33,6 +34,7 @@ from _skeleton_expected import (
     point_key,
     text_key,
 )
+from matplotlib.artist import ArtistInspector
 from matplotlib.colors import to_rgba
 
 from ternary_diagram import _skeleton
@@ -417,6 +419,189 @@ def test_unknown_property_raises_matplotlib_error(ax, part_class):
     with pytest.raises(AttributeError, match="colour"):
         part.update(colour="red")
     _assert_unchanged(ax, part, before)
+
+
+# Properties that the part gives itself to ``Axes.plot(xdata, ydata, ...)``
+# and ``Axes.text(x, y, s, ...)``: matplotlib rejects them as keywords with
+# TypeError ("got multiple values"), whatever their values.
+PROPERTIES_SET_BY_THE_PART = {
+    matplotlib.lines.Line2D: ("xdata", "ydata"),
+    matplotlib.text.Text: ("x", "y", "text"),
+}
+
+
+@pytest.mark.parametrize("part_class", [_LinePart, _TextPart])
+def test_unknown_property_while_invisible_raises_and_keeps_state(
+    ax, part_class
+):
+    # Nothing is created while invisible, so the name must be rejected
+    # before it is kept: once kept, every later show would fail.
+    part = part_class(ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(AttributeError, match="colour"):
+        part.update(colour="red")
+    _assert_unchanged(ax, part, before)
+
+    shown = part.update(visible=True)
+    assert len(shown) == 2
+    assert _same_objects(_children(ax, part), shown)
+
+
+@pytest.mark.parametrize("part_class", [_LinePart, _TextPart])
+def test_unknown_property_at_construction_while_invisible_raises(
+    ax, part_class
+):
+    with pytest.raises(AttributeError, match="colour"):
+        part_class(ax, visible=False, colour="red")
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+    # The same Axes still takes a valid part.
+    assert len(part_class(ax).artists) == 2
+
+
+@pytest.mark.parametrize("part_class", [_LinePart, _TextPart])
+def test_unknown_property_raises_the_same_error_visible_or_not(ax, part_class):
+    errors = []
+    for visible in (True, False):
+        part = part_class(ax, visible=visible)
+        with pytest.raises(AttributeError) as excinfo:
+            part.update(colour="red")
+        errors.append((type(excinfo.value), str(excinfo.value)))
+        part.update(visible=False)
+    assert errors[0] == errors[1]
+
+
+@pytest.mark.parametrize(
+    ("part_class", "artist_name"),
+    [(_LinePart, "Line2D"), (_TextPart, "Text")],
+)
+def test_unknown_property_message_follows_matplotlib(
+    ax, part_class, artist_name
+):
+    part = part_class(ax, visible=False)
+    with pytest.raises(
+        AttributeError,
+        match=(
+            rf"^{artist_name}\.set\(\) got an unexpected keyword argument "
+            r"'colour'$"
+        ),
+    ):
+        part.update(colour="red")
+
+
+@pytest.mark.parametrize("part_class", [_LinePart, _TextPart])
+def test_unknown_property_after_valid_ones_keeps_state(ax, part_class):
+    # A valid property given with the unknown one is not kept either.
+    part = part_class(ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(AttributeError, match="colour"):
+        part.update(alpha=0.5, zorder=7, colour="red")
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.filterwarnings("ignore::DeprecationWarning")
+def test_unknown_property_while_invisible_with_fallback_normalization(
+    ax, monkeypatch
+):
+    monkeypatch.setattr(_skeleton, "_NORMALIZE_KWARGS_ACCEPTS_ARTIST", False)
+    part = _TextPart(ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(AttributeError, match="colour"):
+        part.update(colour="red")
+    _assert_unchanged(ax, part, before)
+    # A one-way alias kept by the fallback mapping is a property of Text.
+    assert part.update(fontname="DejaVu Sans", ha="left") == []
+    texts = part.update(visible=True)
+    assert all(text.get_horizontalalignment() == "left" for text in texts)
+
+
+@pytest.mark.parametrize(
+    ("part_class", "kwargs"),
+    [
+        (_LinePart, {"c": "red", "lw": 3, "ls": "--", "zorder": 4}),
+        (
+            _TextPart,
+            {
+                "c": "red",
+                "size": 7,
+                "ha": "left",
+                "va": "top",
+                "rotation": 30,
+                "zorder": 4,
+            },
+        ),
+    ],
+    ids=["line", "text"],
+)
+def test_known_properties_while_invisible_apply_when_shown(
+    ax, part_class, kwargs
+):
+    part = part_class(ax, visible=False)
+    assert part.update(**kwargs) == []
+    artists = part.update(visible=True)
+    assert len(artists) == 2
+    for artist in artists:
+        assert to_rgba(artist.get_color()) == to_rgba("red")
+        assert artist.get_zorder() == 4
+    if part_class is _LinePart:
+        assert all(line.get_linewidth() == 3 for line in artists)
+        assert all(line.get_linestyle() == "--" for line in artists)
+    else:
+        assert all(text.get_fontsize() == 7 for text in artists)
+        assert all(
+            text.get_horizontalalignment() == "left" for text in artists
+        )
+        assert all(text.get_verticalalignment() == "top" for text in artists)
+        assert all(text.get_rotation() == 30 for text in artists)
+
+
+@pytest.mark.parametrize("part_class", [_LinePart, _TextPart])
+def test_every_settable_property_is_accepted_while_invisible(ax, part_class):
+    # Only the names of properties are checked while nothing is drawn, so
+    # no property of the artist class may be rejected, apart from the ones
+    # that the part sets itself and the options of the part.
+    artist_class = part_class.ARTIST_CLASS
+    excluded = set(PROPERTIES_SET_BY_THE_PART[artist_class]) | set(
+        part_class.OPTION_DEFAULTS
+    )
+    names = [
+        name
+        for name in ArtistInspector(artist_class).get_setters()
+        if name not in excluded
+    ]
+    assert len(names) > 30
+    part = part_class(ax, visible=False)
+    for name in names:
+        assert part.update(**{name: None}) == []
+    assert set(names) <= set(part._style)
+
+
+@pytest.mark.parametrize(
+    ("part_class", "name"),
+    [
+        (part_class, name)
+        for part_class in (_LinePart, _TextPart)
+        for name in PROPERTIES_SET_BY_THE_PART[part_class.ARTIST_CLASS]
+    ],
+    ids=repr,
+)
+def test_property_set_by_the_part_raises_the_same_error_visible_or_not(
+    ax, part_class, name
+):
+    for visible in (True, False):
+        part = part_class(ax, visible=visible)
+        before = _snapshot(ax, part)
+        with pytest.raises(TypeError, match=f"'{name}'"):
+            part.update(**{name: 0})
+        _assert_unchanged(ax, part, before)
+        # The name was not kept: the part can still be shown.
+        assert len(part.update(visible=True)) == 2
+        part.update(visible=False)
+
+    with pytest.raises(TypeError, match=f"'{name}'"):
+        part_class(ax, visible=False, **{name: 0})
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
 
 
 @pytest.mark.parametrize(
@@ -2715,4 +2900,187 @@ def test_vertex_labels_invalid_options_at_construction_leave_nothing(
         _VertexLabels(
             ax, auto_latex_notation=True, **{"labels": MATERIALS, **kwargs}
         )
+    assert list(ax.texts) == []
+
+
+# ---------------------------------------------------------------------------
+# All parts: property names are checked even when nothing is drawn
+# ---------------------------------------------------------------------------
+
+PART_FACTORIES = {
+    "border": lambda ax, **kwargs: _Border(
+        ax, **{"zorder": LINE_ZORDER, **kwargs}
+    ),
+    "grid": lambda ax, **kwargs: _Grid(
+        ax, **{"zorder": LINE_ZORDER, **kwargs}
+    ),
+    "tick-labels": lambda ax, **kwargs: _TickLabels(ax, **kwargs),
+    "axis-labels": lambda ax, **kwargs: _AxisLabels(
+        ax, **{"labels": ("A", "B", "C"), **kwargs}
+    ),
+    "vertex-labels": lambda ax, **kwargs: _vertex_labels(ax, **kwargs),
+}
+PART_NAMES = list(PART_FACTORIES)
+
+# Keywords that are not properties of the artists of the part, including
+# options of other parts and ``auto_latex_notation``, which is fixed at
+# construction.
+PART_UNKNOWN_PROPERTIES = [
+    ("border", "colour"),
+    ("border", "step"),
+    ("grid", "colour"),
+    ("grid", "fmt"),
+    ("tick-labels", "colour"),
+    ("tick-labels", "labels"),
+    ("axis-labels", "colour"),
+    ("axis-labels", "offsets"),
+    ("vertex-labels", "colour"),
+    ("vertex-labels", "auto_latex_notation"),
+]
+# ``auto_latex_notation`` is an argument of the constructor of
+# ``_VertexLabels``, so it is only unknown when given to ``update``.
+PART_UNKNOWN_PROPERTIES_AT_CONSTRUCTION = [
+    case
+    for case in PART_UNKNOWN_PROPERTIES
+    if case != ("vertex-labels", "auto_latex_notation")
+]
+
+
+def _part_artist_count(name: str) -> int:
+    """Number of artists that the part draws by default, on its own Axes."""
+    _, other_ax = plt.subplots()
+    return len(PART_FACTORIES[name](other_ax).artists)
+
+
+@pytest.mark.parametrize(("name", "prop"), PART_UNKNOWN_PROPERTIES)
+def test_parts_reject_unknown_property_while_invisible(ax, name, prop):
+    part = PART_FACTORIES[name](ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(AttributeError, match=prop):
+        part.update(**{prop: False})
+    _assert_unchanged(ax, part, before)
+
+    # The part can be shown again, with its previous settings.
+    shown = part.update(visible=True)
+    assert len(shown) == _part_artist_count(name)
+    assert _same_objects(_children(ax, part), shown)
+
+
+@pytest.mark.parametrize(
+    ("name", "prop"), PART_UNKNOWN_PROPERTIES_AT_CONSTRUCTION
+)
+def test_parts_reject_unknown_property_at_construction_while_invisible(
+    ax, name, prop
+):
+    with pytest.raises(AttributeError, match=prop):
+        PART_FACTORIES[name](ax, visible=False, **{prop: False})
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+@pytest.mark.parametrize(("name", "prop"), PART_UNKNOWN_PROPERTIES)
+def test_parts_raise_the_same_error_for_unknown_property_visible_or_not(
+    ax, name, prop
+):
+    errors = []
+    for visible in (True, False):
+        part = PART_FACTORIES[name](ax, visible=visible)
+        before = _snapshot(ax, part)
+        with pytest.raises(AttributeError) as excinfo:
+            part.update(**{prop: False})
+        _assert_unchanged(ax, part, before)
+        errors.append((type(excinfo.value), str(excinfo.value)))
+        part.update(visible=False)
+    assert errors[0] == errors[1]
+
+
+@pytest.mark.parametrize(
+    ("make", "show"),
+    [
+        (lambda ax: _AxisLabels(ax), {"labels": ("A", "B", "C")}),
+        (lambda ax: _Grid(ax, zorder=LINE_ZORDER, step=1), {"step": 0.1}),
+        (lambda ax: _TickLabels(ax, step=1), {"step": 0.1}),
+    ],
+    ids=["axis-labels-without-titles", "grid-step-1", "tick-labels-step-1"],
+)
+def test_parts_drawing_nothing_reject_unknown_property(ax, make, show):
+    # Visible parts that draw nothing create no artist either.
+    part = make(ax)
+    assert part.artists == []
+    before = _snapshot(ax, part)
+    with pytest.raises(AttributeError, match="colour"):
+        part.update(colour="red")
+    _assert_unchanged(ax, part, before)
+    assert part.update(**show)
+
+
+def _style_keys_of_part(part: _SkeletonPart) -> dict[str, Any]:
+    """Valid properties that the part or its user may give, with values."""
+    style: dict[str, Any] = {**part.STYLE_DEFAULTS, "zorder": 5}
+    if part.ARTIST_CLASS is matplotlib.lines.Line2D:
+        style.update(linestyle="--")
+        return style
+    style.update(
+        rotation=15,
+        horizontalalignment="left",
+        verticalalignment="top",
+        fontsize=9,
+    )
+    # The keys of the per-edge and per-vertex defaults of the labels.
+    default_keys = {
+        key
+        for defaults in (
+            *_skeleton.DEFAULT_TICK_EDGE_STYLES,
+            *_skeleton.DEFAULT_VERTEX_LABEL_STYLES,
+        )
+        for key in defaults
+    }
+    assert default_keys <= set(style)
+    return style
+
+
+@pytest.mark.parametrize("name", PART_NAMES)
+def test_parts_accept_their_style_keys_while_invisible(ax, name):
+    part = PART_FACTORIES[name](ax, visible=False)
+    style = _style_keys_of_part(part)
+    assert part.update(**style) == []
+    shown = part.update(visible=True)
+    assert len(shown) == _part_artist_count(name)
+    assert all(artist.get_zorder() == 5 for artist in shown)
+    if part.ARTIST_CLASS is matplotlib.lines.Line2D:
+        assert all(line.get_linestyle() == "--" for line in shown)
+    else:
+        assert all(text.get_rotation() == 15 for text in shown)
+        assert all(text.get_horizontalalignment() == "left" for text in shown)
+        assert all(text.get_verticalalignment() == "top" for text in shown)
+        assert all(text.get_fontsize() == 9 for text in shown)
+
+    # The same keys are accepted at construction.
+    _, other_ax = plt.subplots()
+    assert PART_FACTORIES[name](other_ax, visible=False, **style).artists == []
+
+
+@pytest.mark.parametrize(
+    ("name", "prop"),
+    [
+        ("border", "xdata"),
+        ("grid", "ydata"),
+        ("tick-labels", "x"),
+        ("axis-labels", "y"),
+        ("vertex-labels", "text"),
+    ],
+)
+def test_parts_reject_property_set_by_the_part_visible_or_not(ax, name, prop):
+    for visible in (True, False):
+        part = PART_FACTORIES[name](ax, visible=visible)
+        before = _snapshot(ax, part)
+        with pytest.raises(TypeError, match=f"'{prop}'"):
+            part.update(**{prop: 0})
+        _assert_unchanged(ax, part, before)
+        assert len(part.update(visible=True)) == _part_artist_count(name)
+        part.update(visible=False)
+
+    with pytest.raises(TypeError, match=f"'{prop}'"):
+        PART_FACTORIES[name](ax, visible=False, **{prop: 0})
+    assert list(ax.lines) == []
     assert list(ax.texts) == []
