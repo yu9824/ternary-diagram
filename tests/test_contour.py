@@ -46,7 +46,7 @@ def test_z_min_z_max_set_level_range(td):
 
 def test_defaults_can_be_overridden(td):
     default = td.contour(VECTOR, z=Z)
-    custom = td.contour(VECTOR, z=Z, cmap="viridis", zorder=5)
+    custom = td.contour(VECTOR, z=Z, cmap="viridis", zorder=5, colorbar=True)
 
     assert default.cmap.name == "rainbow"
     assert default.get_zorder() == 0
@@ -60,8 +60,8 @@ def test_adds_colorbar(td):
     assert _n_axes(td) == 2
 
 
-def test_flag_cbar_false(td):
-    td.contour(VECTOR, z=Z, flag_cbar=False)
+def test_colorbar_false(td):
+    td.contour(VECTOR, z=Z, colorbar=False)
 
     assert _n_axes(td) == 1
 
@@ -119,7 +119,7 @@ def test_without_z(td):
 
 
 def test_example_contour(df_contour: pd.DataFrame):
-    td = TernaryDiagram(materials=df_contour.columns[:3])
+    td = TernaryDiagram(materials=df_contour.columns[:3], tight_layout=True)
     z = df_contour.loc[:, "z"]
 
     collection = td.contour(df_contour.iloc[:, :3], z)

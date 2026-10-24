@@ -63,7 +63,7 @@ def test_hides_cartesian_axes(td):
 def test_uses_current_axes_by_default():
     _, ax = plt.subplots()
 
-    td = TernaryDiagram(MATERIALS)
+    td = TernaryDiagram(MATERIALS, tight_layout=True)
 
     assert td.ax is ax
     assert td.fig is ax.figure
@@ -83,7 +83,9 @@ def test_invalid_ax():
 
 def test_multiple_diagrams_in_one_figure():
     _, axes = plt.subplots(1, 2)
-    left, right = (TernaryDiagram(MATERIALS, ax=ax) for ax in axes)
+    left, right = (
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=True) for ax in axes
+    )
 
     left.scatter(VECTOR)
 
@@ -104,7 +106,7 @@ def test_records_plotted_coordinates(td):
 
 
 def test_colorbar(td):
-    collection = td.scatter(VECTOR, z=Z, flag_cbar=False)
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
 
     cbar = td.colorbar(collection, label="z")
 
@@ -114,7 +116,7 @@ def test_colorbar(td):
 
 
 def test_colorbar_with_cax(td):
-    collection = td.scatter(VECTOR, z=Z, flag_cbar=False)
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
     cax = td.fig.add_axes((0.85, 0.1, 0.03, 0.8))
 
     cbar = td.colorbar(collection, cax=cax)
@@ -123,7 +125,7 @@ def test_colorbar_with_cax(td):
 
 
 def test_colorbar_horizontal(td):
-    collection = td.scatter(VECTOR, z=Z, flag_cbar=False)
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
 
     cbar = td.colorbar(collection, orientation="horizontal", location="bottom")
 
@@ -184,7 +186,7 @@ def test_ax_is_checked_before_tight_layout():
 
 def test_colorbar_is_registered_to_the_diagram(ax):
     td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
-    collection = td.scatter(VECTOR, z=Z, flag_cbar=False)
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
     context = _post_draw_context(td)
     assert not context.has_colorbar()
 
@@ -201,7 +203,7 @@ def test_each_diagram_has_its_own_post_draw_context():
         TernaryDiagram(MATERIALS, ax=ax, tight_layout=True) for ax in axes
     )
 
-    left.colorbar(left.scatter(VECTOR, z=Z, flag_cbar=False))
+    left.colorbar(left.scatter(VECTOR, z=Z, colorbar=False))
 
     assert _post_draw_context(left) is not _post_draw_context(right)
     assert _post_draw_context(left).has_colorbar()

@@ -89,13 +89,14 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.7, 4.2, 4.4, 5.1, 5.2, 5.3, 5.4, 6.2, 6.5, 7.3, 8.2_
 
 - [ ] 4. 検証と変更履歴
-- [ ] 4.1 既存のテストを新しい引数へ移行し、FutureWarning が出ない状態にする
+- [x] 4.1 既存のテストを新しい引数へ移行し、FutureWarning が出ない状態にする
   - 共通 fixture の三角図はレイアウト設定（従来と同じ `tight_layout=True`）を明示し、既存テストが同じ処理経路を通りつつ警告を出さないようにする
   - 既存テストの `flag_cbar=False` を `colorbar=False` に置き換え、example の CSV を読むテストもレイアウト設定を明示する
+  - 同じ三角図に `colorbar` 未指定で `z` 付きの描画を 2 回以上するテスト（`test_contour.py::test_defaults_can_be_overridden`）は、2 回目以降に `colorbar=True` を明示する（4.1 の実装中に判明した境界の不足を補う）
   - 置き換え以外の assert は変えない
   - 完了時: 既存のテスト一式を FutureWarning をエラーとして扱う設定（`-W error::FutureWarning`）で実行しても通る（共通 doctest ランナーの `__init__` の 1 件は xfail のまま）
   - fixture を使わずに三角図を作って描画する既存テスト（`test_multiple_diagrams_in_one_figure`、`test_uses_current_axes_by_default` など）にも、同じくレイアウト設定（`tight_layout=True`）を明示する（3.1 のレビューで判明した境界の不足を補う）
-  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py / tests/test_plot.py / tests/test_annotate.py`（`flag_cbar=False` の置き換えと、fixture を使わずに三角図を作るテストへのレイアウト設定の明示のみ）_
+  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py / tests/test_plot.py / tests/test_annotate.py`（`flag_cbar=False` の置き換えと、fixture を使わずに三角図を作るテストへのレイアウト設定の明示、同じ三角図に `colorbar` 未指定で `z` 付きの描画を 2 回以上するテストへの `colorbar=True` の明示（従来どおり毎回追加する経路を保つ）のみ）_
   - _Requirements: 7.2, 7.4_
 
 - [ ] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
@@ -138,3 +139,4 @@
 - 描画を伴うテストは、共通 fixture `td` を使うか `tight_layout` を明示する。既定値そのものを確かめるテストは fixture に頼らず、その場で `tight_layout` を省略して作る（4.1 で fixture が `tight_layout=True` になるため。3.1 のレビューでの指摘）
 - 4.3 で足すこと: 決定表が警告を求めない呼び出しでは `first_time` のキーを消費しないこと（既存ありで `colorbar=True` → `colorbar=None` の順に描くと、2 回目で警告が出る）を固定するテスト（3.2 のレビューでの提案）
 - 4.3 で足すこと: `flag_cbar=None` でカラーバーを追加しないこと（従来の意味。`_resolve_colorbar_arg` の `bool()` を外すと壊れる）、`colorbar=None` を明示して `flag_cbar` を渡しても ValueError にならないこと（design どおり、`None` は未指定）を固定するテスト（3.3 のレビューでの提案）
+- 4.1 では design「Testing Strategy > 後方互換」に挙げた置き換え（`flag_cbar` → `colorbar`、レイアウト設定の明示）に加え、同じ三角図に `z` 付きで 2 回描く `test_defaults_can_be_overridden` の 2 回目に `colorbar=True` を明示した（従来どおり毎回追加する経路を保つため。assert は不変）

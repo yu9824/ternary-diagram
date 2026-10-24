@@ -49,8 +49,8 @@ def test_with_z_colors_points_and_adds_colorbar(td):
     assert _n_axes(td) == 2
 
 
-def test_flag_cbar_false(td):
-    td.scatter(VECTOR, z=Z, flag_cbar=False)
+def test_colorbar_false(td):
+    td.scatter(VECTOR, z=Z, colorbar=False)
 
     assert _n_axes(td) == 1
 
@@ -129,7 +129,7 @@ def test_invalid_vector_shape(td):
 
 
 def test_example_scatter(df_scatter: pd.DataFrame):
-    td = TernaryDiagram(materials=df_scatter.columns[:3])
+    td = TernaryDiagram(materials=df_scatter.columns[:3], tight_layout=True)
 
     collection = td.scatter(df_scatter.iloc[:, :3], df_scatter.loc[:, "z"])
 
@@ -137,7 +137,7 @@ def test_example_scatter(df_scatter: pd.DataFrame):
 
 
 def test_example_mono_scatter(df_mono_scatter: pd.DataFrame):
-    td = TernaryDiagram(materials=df_mono_scatter.columns)
+    td = TernaryDiagram(materials=df_mono_scatter.columns, tight_layout=True)
 
     collection = td.scatter(df_mono_scatter)
 
