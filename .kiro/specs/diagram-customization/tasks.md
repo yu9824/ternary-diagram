@@ -49,7 +49,7 @@
   - _Boundary: `src/ternary_diagram/_skeleton.py: _Border, _Grid` と外枠・グリッドの `DEFAULT_*` 定数, `tests/test_skeleton_parts.py`（`_Border` / `_Grid` のテストの追加だけ）_
   - _Requirements: 1.1, 4.1, 4.2, 5.1, 5.2, 5.3, 5.4, 9.1, 11.2_
 
-- [ ] 3.2 目盛りラベルの部品を作る
+- [x] 3.2 目盛りラベルの部品を作る
   - 値ごとに成分 0, 1, 2 の順で、辺上の点に辺ごとのずらし量を足した位置へ、辺ごとの文字揃えと回転の上に利用者のプロパティを重ねて描く
   - 間隔・書式・両端の表示・フォントサイズなどを受け付け、両端の表示の有無は `utils.check_bool(endpoints, "endpoints")` で検証する。書式の関数が例外を出したときは共通手順の巻き戻しに任せる
   - 既定で 27 個の文字列・位置・回転・文字揃えが特性テストの期待値と一致し、両端の表示で各辺 11 個（計 33 個）、割合の書式で「0.1」になる単体テストが通る
@@ -141,3 +141,4 @@
 - 型検査: `mypy src` で新しいエラーを出さない（tech.md「Type Safety」、5.3）。py312 環境に mypy はないので、既存環境のものを読み取り専用で使う: `/Users/yu9824/opt/miniforge3/envs/yikit-dev/bin/mypy --no-incremental --cache-dir=/dev/null src`（mpl 3.11.2、基準 19 件はすべて既存の `_api.py`）と `/Users/yu9824/opt/miniforge3/envs/qchemdb311/bin/mypy --no-incremental --cache-dir=/dev/null src`（mpl 3.10.9、基準 13 件）。新しいモジュールは 0 件にする（2.3 のレビューでの指摘）
 - 3.5 で必ず扱うこと: `_SkeletonPart.__init__(ax, *, zorder=None, **initial)` なので、`_Grid(ax, zorder=Z, **grid_kw)` のように渡すと、利用者が `grid_kw` に `zorder`（や `ax`）を入れたときに「同じキーワード引数が 2 つ」の TypeError になる。要件 2.2・9.3 では作成時の指定でも利用者の zorder が優先されるので、`kw = dict(grid_kw); _Grid(ax, zorder=kw.pop("zorder", Z), **kw)` のように取り出して渡し、テストを足す（2.3 のレビューでの指摘）
 - 未決（ユーザー確認待ち）: 利用者が部品の artist を自分で `remove()` した後に `update` / `restack` すると、古い artist を消す段で matplotlib の `ValueError` になり、新しい artist が Axes に残る（呼ぶたびに孤立した artist が増える）。design の不変条件の前提外。4.2 で `grid_lines_` などを公開すると起こりうるので、「`artist.axes is None` のものは飛ばす」か「design に制約として書く」かを決める（2.3 のレビューでの指摘）
+- 4.3 の docstring に書くこと（3.2 のレビューより）: (1) 呼び出し可能な `fmt` は検証時ではなく描画時に初めて呼ばれる（非表示中に設定すると、表示に戻すときに例外になり得る）。(2) 一度 `rotation` や `ha` などを指定すると辺・頂点ごとの既定には戻せない（`rotation=None` は全辺 0° になる。既定 → 直前 → 今回の統合規則の性質）

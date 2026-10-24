@@ -19,9 +19,14 @@ from _skeleton_expected import (
     LINE_ZORDER,
     LINESTYLE,
     ROOT3_OVER_2,
+    TEXT_ZORDER,
+    TICK_LABEL_FONTSIZE,
     expected_border_lines,
     expected_grid_lines,
+    expected_tick_label_texts,
     line_key,
+    point_key,
+    text_key,
 )
 from matplotlib.colors import to_rgba
 
@@ -33,8 +38,14 @@ from ternary_diagram._skeleton import (
     _LineSpec,
     _SkeletonPart,
     _TextSpec,
+    _TickLabels,
 )
-from ternary_diagram.utils import get_grid_segments, get_tick_values
+from ternary_diagram.utils import (
+    get_edge_points,
+    get_grid_segments,
+    get_tick_formatter,
+    get_tick_values,
+)
 
 # ---------------------------------------------------------------------------
 # _SkeletonPart: minimal parts used only by these tests
@@ -924,3 +935,427 @@ def test_grid_invalid_step_at_construction_leaves_nothing(ax):
     with pytest.raises(ValueError, match="`step` must satisfy 0 < step <= 1"):
         _Grid(ax, zorder=LINE_ZORDER, step=0)
     assert list(ax.lines) == []
+
+
+# ---------------------------------------------------------------------------
+# _TickLabels
+# ---------------------------------------------------------------------------
+
+# Offset from the point on the edge, rotation, horizontal alignment and
+# vertical alignment of the tick labels of the components 0 (right edge),
+# 1 (left edge) and 2 (bottom edge), as given by the design.
+TICK_EDGE_LAYOUT = (
+    ((0.0, 0.0), 0.0, "left", "bottom"),
+    ((-0.01, 0.04), 300.0, "right", "top"),
+    ((0.02, 0.0), 60.0, "right", "top"),
+)
+
+
+def _tick_layout(texts) -> list[tuple]:
+    """(text, position, rotation, ha, va) of each label, in order."""
+    return [
+        (
+            key.text,
+            key.position,
+            key.rotation,
+            key.horizontalalignment,
+            key.verticalalignment,
+        )
+        for key in map(text_key, texts)
+    ]
+
+
+def _expected_tick_layout(
+    step: float = 0.1, *, endpoints: bool = False, fmt: Any = "percent"
+) -> list[tuple]:
+    """Layout of the tick labels given by the geometry functions.
+
+    For each value in ascending order, the labels of the components 0, 1
+    and 2 follow in turn, in the form returned by `_tick_layout`.
+    """
+    values = get_tick_values(step, endpoints=endpoints)
+    format_value = get_tick_formatter(fmt)
+    points = [get_edge_points(values, k) for k in range(3)]
+    layout = []
+    for i, value in enumerate(values.tolist()):
+        for (xs, ys), ((dx, dy), rotation, ha, va) in zip(
+            points, TICK_EDGE_LAYOUT
+        ):
+            layout.append(
+                (
+                    format_value(value),
+                    point_key(xs[i] + dx, ys[i] + dy),
+                    rotation,
+                    ha,
+                    va,
+                )
+            )
+    return layout
+
+
+def test_tick_labels_annotations_are_not_evaluated():
+    for func in (_TickLabels._validate, _TickLabels._specs):
+        annotations = func.__annotations__
+        assert annotations
+        assert all(isinstance(value, str) for value in annotations.values())
+
+
+def test_tick_labels_defaults():
+    assert _TickLabels.OPTION_DEFAULTS == {
+        "visible": True,
+        "step": 0.1,
+        "fmt": "percent",
+        "endpoints": False,
+    }
+    assert _TickLabels.STYLE_DEFAULTS == {"fontsize": TICK_LABEL_FONTSIZE}
+    assert _TickLabels.ARTIST_CLASS is matplotlib.text.Text
+    assert _skeleton.DEFAULT_TICK_STEP == 0.1
+    assert _skeleton.DEFAULT_TICK_FORMAT == "percent"
+    assert _skeleton.DEFAULT_TICK_ENDPOINTS is False
+    assert _skeleton.DEFAULT_TICK_FONTSIZE == TICK_LABEL_FONTSIZE
+
+
+def test_tick_labels_default_texts_match_v3(ax):
+    texts = _TickLabels(ax).artists
+    assert len(texts) == 27
+    assert all(isinstance(text, matplotlib.text.Text) for text in texts)
+    assert _same_objects(ax.texts, texts)
+    assert list(ax.lines) == []
+    # For each value from "10" to "90": the right, left and bottom edges.
+    assert [text_key(text) for text in texts] == expected_tick_label_texts()
+
+
+@pytest.mark.parametrize("endpoints", [False, True])
+@pytest.mark.parametrize("step", [0.1, 0.05, 0.25, 0.3])
+def test_tick_labels_layout_comes_from_geometry_functions(ax, step, endpoints):
+    texts = _TickLabels(ax, step=step, endpoints=endpoints).artists
+    assert _tick_layout(texts) == _expected_tick_layout(
+        step, endpoints=endpoints
+    )
+
+
+def test_tick_labels_follow_the_placement_convention(ax):
+    # Component 0 on the right edge, 1 on the left edge and 2 on the bottom
+    # edge, with the values increasing counterclockwise from 0 to 1.
+    texts = _TickLabels(ax, endpoints=True).artists
+    right, left, bottom = texts[0::3], texts[1::3], texts[2::3]
+
+    def ends(edge):
+        return text_key(edge[0]).position, text_key(edge[-1]).position
+
+    assert ends(right) == (point_key(1.0, 0.0), point_key(0.5, ROOT3_OVER_2))
+    assert ends(left) == (
+        point_key(0.5 - 0.01, ROOT3_OVER_2 + 0.04),
+        point_key(-0.01, 0.04),
+    )
+    assert ends(bottom) == (point_key(0.02, 0.0), point_key(1.02, 0.0))
+
+
+def test_tick_labels_endpoints_draw_11_labels_per_edge(ax):
+    part = _TickLabels(ax)
+    old = part.artists
+    texts = part.update(endpoints=True)
+
+    assert len(texts) == 33
+    assert _same_objects(ax.texts, texts)
+    assert all(text.axes is None for text in old)
+    labels = [str(10 * i) for i in range(11)]
+    for k in range(3):
+        assert [text.get_text() for text in texts[k::3]] == labels
+
+
+def test_tick_labels_endpoints_at_construction(ax):
+    part = _TickLabels(ax, endpoints=True)
+    assert len(part.artists) == 33
+    assert len(ax.texts) == 33
+
+
+def test_tick_labels_fraction_format(ax):
+    part = _TickLabels(ax)
+    texts = part.update(fmt="fraction")
+
+    assert texts[0].get_text() == "0.1"
+    fractions = [f"0.{i}" for i in range(1, 10)]
+    for k in range(3):
+        assert [text.get_text() for text in texts[k::3]] == fractions
+    # Only the strings changed.
+    assert [key[1:] for key in _tick_layout(texts)] == [
+        key[1:] for key in _expected_tick_layout()
+    ]
+
+
+@pytest.mark.parametrize(
+    ("fmt", "first", "last"),
+    [
+        ("percent", "10", "90"),
+        ("fraction", "0.1", "0.9"),
+        ("%.2f", "0.10", "0.90"),
+        ("{:.0%}", "10%", "90%"),
+        ("{x:.1f}", "0.1", "0.9"),
+        (lambda value: f"{value * 100:.1f}%", "10.0%", "90.0%"),
+    ],
+    ids=["percent", "fraction", "%-style", "{}-style", "{x}-style", "func"],
+)
+def test_tick_labels_format(ax, fmt, first, last):
+    texts = _TickLabels(ax, fmt=fmt).artists
+    assert len(texts) == 27
+    for k in range(3):
+        edge = texts[k::3]
+        assert edge[0].get_text() == first
+        assert edge[-1].get_text() == last
+
+
+def test_tick_labels_format_callable_receives_fractions(ax):
+    received = []
+
+    def fmt(value):
+        received.append(value)
+        return "x"
+
+    texts = _TickLabels(ax, fmt=fmt).artists
+    assert [text.get_text() for text in texts] == ["x"] * 27
+    assert all(type(value) is float for value in received)
+    assert sorted(set(received)) == get_tick_values(0.1).tolist()
+
+
+@pytest.mark.parametrize(
+    ("step", "per_edge"), [(0.1, 9), (0.05, 19), (0.25, 3), (0.5, 1), (1, 0)]
+)
+def test_tick_labels_step(ax, step, per_edge):
+    texts = _TickLabels(ax, step=step).artists
+    assert len(texts) == 3 * per_edge
+    assert len(ax.texts) == 3 * per_edge
+
+
+def test_tick_labels_step_005_replaces_labels(ax):
+    part = _TickLabels(ax)
+    old = part.artists
+    texts = part.update(step=0.05)
+
+    assert len(texts) == 57
+    assert _same_objects(ax.texts, texts)
+    assert all(text.axes is None for text in old)
+    assert [text.get_text() for text in texts[2::3]][:3] == ["5", "10", "15"]
+    assert _tick_layout(texts) == _expected_tick_layout(0.05)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"fontsize": 8, "color": "red"}, {"size": 8, "c": "red"}],
+    ids=["canonical", "aliases"],
+)
+def test_tick_labels_style_applies_to_all_labels(ax, kwargs):
+    part = _TickLabels(ax)
+    texts = part.update(**kwargs)
+
+    assert len(texts) == 27
+    assert all(text.get_fontsize() == 8 for text in texts)
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+    # The per-edge layout is kept.
+    assert _tick_layout(texts) == _expected_tick_layout()
+
+
+def test_tick_labels_style_at_construction(ax):
+    texts = _TickLabels(ax, fontsize=12).artists
+    assert len(texts) == 27
+    assert all(text.get_fontsize() == 12 for text in texts)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"rotation": 45, "ha": "center"},
+        {"rotation": 45, "horizontalalignment": "center"},
+    ],
+    ids=["alias", "canonical"],
+)
+def test_tick_labels_user_properties_override_edge_defaults(ax, kwargs):
+    texts = _TickLabels(ax).update(**kwargs)
+
+    # The same value applies to the labels of every edge.
+    assert all(text.get_rotation() == 45 for text in texts)
+    assert all(text.get_horizontalalignment() == "center" for text in texts)
+    # Properties not given keep their per-edge defaults, and the positions
+    # do not change.
+    assert [text.get_verticalalignment() for text in texts[:3]] == [
+        "bottom",
+        "top",
+        "top",
+    ]
+    assert [text_key(text).position for text in texts] == [
+        key[1] for key in _expected_tick_layout()
+    ]
+
+
+def test_tick_labels_keep_matplotlib_default_zorder(ax):
+    part = _TickLabels(ax)
+    assert len(part.artists) == 27
+    assert all(text.get_zorder() == TEXT_ZORDER for text in part.artists)
+    # Redrawing keeps the zorder of the labels of v3.
+    texts = part.update(step=0.05, fontsize=8)
+    assert len(texts) == 57
+    assert all(text.get_zorder() == TEXT_ZORDER for text in texts)
+
+
+def test_tick_labels_user_zorder_overrides_default(ax):
+    texts = _TickLabels(ax).update(zorder=5)
+    assert len(texts) == 27
+    assert all(text.get_zorder() == 5 for text in texts)
+
+
+def test_tick_labels_keep_options_when_only_style_changes(ax):
+    part = _TickLabels(ax)
+    part.update(step=0.05, fmt="fraction", endpoints=True)
+    texts = part.update(color="red")
+
+    assert len(texts) == 63
+    assert _tick_layout(texts) == _expected_tick_layout(
+        0.05, endpoints=True, fmt="fraction"
+    )
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+
+
+def test_tick_labels_keep_style_when_only_options_change(ax):
+    part = _TickLabels(ax, fontsize=8, color="blue")
+    texts = part.update(fmt="fraction", step=0.25)
+
+    assert [text.get_text() for text in texts] == [
+        label for label in ("0.25", "0.5", "0.75") for _ in range(3)
+    ]
+    assert all(text.get_fontsize() == 8 for text in texts)
+    assert all(to_rgba(text.get_color()) == to_rgba("blue") for text in texts)
+
+
+def test_tick_labels_invisible_at_construction_draws_nothing(ax):
+    part = _TickLabels(ax, visible=False)
+    assert part.artists == []
+    assert list(ax.texts) == []
+
+
+def test_tick_labels_invisible_removes_labels_and_visible_restores_them(ax):
+    part = _TickLabels(ax, step=0.25, fmt="fraction", endpoints=True, size=8)
+    old = part.artists
+    assert part.update(visible=False) == []
+    assert part.artists == []
+    assert list(ax.texts) == []
+    assert all(text.axes is None for text in old)
+
+    # The settings given before hiding the labels are used again.
+    texts = part.update(visible=True)
+    assert _tick_layout(texts) == _expected_tick_layout(
+        0.25, endpoints=True, fmt="fraction"
+    )
+    assert all(text.get_fontsize() == 8 for text in texts)
+
+
+@pytest.mark.parametrize(
+    ("step", "error"),
+    [
+        (0, ValueError),
+        (-0.1, ValueError),
+        (1.5, ValueError),
+        (float("nan"), ValueError),
+        (float("inf"), ValueError),
+        ("0.1", TypeError),
+        (True, TypeError),
+    ],
+    ids=repr,
+)
+def test_tick_labels_reject_invalid_step(ax, step, error):
+    part = _TickLabels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match="`step`"):
+        part.update(step=step, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize(
+    ("fmt", "error"),
+    [("abc", ValueError), ("{y}", ValueError), (1, TypeError)],
+    ids=repr,
+)
+def test_tick_labels_reject_invalid_fmt(ax, fmt, error):
+    part = _TickLabels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match="`fmt`"):
+        part.update(fmt=fmt, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize("endpoints", [1, 0, 1.0, "yes"], ids=repr)
+def test_tick_labels_reject_non_bool_endpoints(ax, endpoints):
+    part = _TickLabels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(TypeError, match="`endpoints` must be True or False"):
+        part.update(endpoints=endpoints, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+def test_tick_labels_accept_numpy_bool_endpoints(ax):
+    part = _TickLabels(ax)
+    assert len(part.update(endpoints=np.bool_(True))) == 33
+    # Kept as the built-in bool returned by check_bool.
+    assert part._options["endpoints"] is True
+    assert len(part.update(endpoints=np.bool_(False))) == 27
+    assert part._options["endpoints"] is False
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "match"),
+    [
+        ({"step": 0}, ValueError, "`step` must satisfy 0 < step <= 1"),
+        ({"step": "0.1"}, TypeError, "`step` must be a real number"),
+        ({"fmt": "abc"}, ValueError, "`fmt` must be"),
+        ({"fmt": 1}, TypeError, "`fmt` must be a str or a callable"),
+        ({"endpoints": 1}, TypeError, "`endpoints` must be True or False"),
+    ],
+    ids=["step-value", "step-type", "fmt-value", "fmt-type", "endpoints"],
+)
+def test_tick_labels_validate_options_while_invisible(
+    ax, kwargs, error, match
+):
+    # Nothing is drawn, so only the validation step can catch these.
+    part = _TickLabels(ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match=match):
+        part.update(**kwargs)
+    _assert_unchanged(ax, part, before)
+    with pytest.raises(error, match=match):
+        _TickLabels(ax, visible=False, **kwargs)
+    assert list(ax.texts) == []
+
+
+def test_tick_labels_invalid_step_at_construction_leaves_nothing(ax):
+    with pytest.raises(ValueError, match="`step` must satisfy 0 < step <= 1"):
+        _TickLabels(ax, step=0)
+    assert list(ax.texts) == []
+
+
+def test_tick_labels_raising_format_callable_keeps_state(ax):
+    part = _TickLabels(ax, fmt="fraction", fontsize=8)
+    before = _snapshot(ax, part)
+
+    def fmt(value):
+        # Some values are formatted before the error.
+        if value > 0.5:
+            raise RuntimeError("cannot format the value")
+        return f"{value:.1f}"
+
+    with pytest.raises(RuntimeError, match="cannot format the value"):
+        part.update(fmt=fmt, step=0.05, color="red")
+    # The same texts and settings, and no new texts on the Axes.
+    _assert_unchanged(ax, part, before)
+
+    # The settings in effect before the failing call are used again.
+    texts = part.update()
+    assert _tick_layout(texts) == _expected_tick_layout(fmt="fraction")
+    assert all(text.get_fontsize() == 8 for text in texts)
+
+
+def test_tick_labels_raising_format_callable_at_construction(ax):
+    def fmt(value):
+        raise RuntimeError("cannot format the value")
+
+    with pytest.raises(RuntimeError, match="cannot format the value"):
+        _TickLabels(ax, fmt=fmt)
+    assert list(ax.texts) == []

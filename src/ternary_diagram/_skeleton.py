@@ -32,7 +32,9 @@ from matplotlib.artist import ArtistInspector
 
 from ternary_diagram.utils import (
     check_bool,
+    get_edge_points,
     get_grid_segments,
+    get_tick_formatter,
     get_tick_values,
 )
 
@@ -51,6 +53,35 @@ DEFAULT_BORDER_LINESTYLE = "-"
 DEFAULT_GRID_STEP = 0.1
 DEFAULT_GRID_COLOR = "gray"
 DEFAULT_GRID_LINEWIDTH = 0.5
+
+# Defaults of the tick labels (``_TickLabels``), the same as
+# ternary-diagram v3.
+DEFAULT_TICK_STEP = 0.1
+DEFAULT_TICK_FORMAT = "percent"
+DEFAULT_TICK_ENDPOINTS = False
+DEFAULT_TICK_FONTSIZE = 10
+# Offsets of the tick labels from their points on the edges, for the
+# components 0 (right edge), 1 (left edge) and 2 (bottom edge).
+DEFAULT_TICK_OFFSETS: tuple[tuple[float, float], ...] = (
+    (0.0, 0.0),
+    (-0.01, 0.04),
+    (0.02, 0.0),
+)
+# Alignments and rotations of the tick labels for the same components, with
+# canonical names. The style of the part overrides them on every edge.
+DEFAULT_TICK_EDGE_STYLES: tuple[dict[str, Any], ...] = (
+    {"verticalalignment": "bottom", "horizontalalignment": "left"},
+    {
+        "rotation": 300,
+        "verticalalignment": "top",
+        "horizontalalignment": "right",
+    },
+    {
+        "rotation": 60,
+        "verticalalignment": "top",
+        "horizontalalignment": "right",
+    },
+)
 
 
 class _LineSpec(NamedTuple):
@@ -504,4 +535,98 @@ class _Grid(_SkeletonPart):
             xs, ys = get_grid_segments(values, component)
             for xdata, ydata in zip(xs.tolist(), ys.tolist()):
                 specs.append(_LineSpec(xdata, ydata, dict(style)))
+        return specs
+
+
+class _TickLabels(_SkeletonPart):
+    """The tick labels on the 3 edges.
+
+    The ticks of component ``k`` are on the edge where component
+    ``(k + 1) % 3`` is 0 (see ``get_edge_points``): component 0 on the right
+    edge, 1 on the left edge and 2 on the bottom edge, with the values
+    increasing counterclockwise.
+
+    The options are ``visible``; ``step``, the interval of the labels as a
+    fraction in ``(0, 1]``; ``fmt``, the format given to
+    ``get_tick_formatter``; and ``endpoints``, whether to also label the
+    values 0 and 1. The step is independent of the interval of the grid.
+
+    For each value returned by ``get_tick_values`` in ascending order, the
+    labels of the components 0, 1 and 2 are drawn in turn, at the point of
+    ``get_edge_points`` moved by the offset of the edge
+    (`DEFAULT_TICK_OFFSETS`). The alignments and the rotation of the edge
+    (`DEFAULT_TICK_EDGE_STYLES`) are overridden by the style of the part,
+    so a property given by the user applies to the labels of every edge.
+    The zorder is left to matplotlib, as in ternary-diagram v3.
+    """
+
+    OPTION_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "visible": True,
+        "step": DEFAULT_TICK_STEP,
+        "fmt": DEFAULT_TICK_FORMAT,
+        "endpoints": DEFAULT_TICK_ENDPOINTS,
+    }
+    STYLE_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "fontsize": DEFAULT_TICK_FONTSIZE,
+    }
+    ARTIST_CLASS: ClassVar[type[matplotlib.artist.Artist]] = (
+        matplotlib.text.Text
+    )
+
+    def _validate(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Validate ``step``, ``fmt`` and ``endpoints``.
+
+        Returns
+        -------
+        dict[str, Any]
+            A new dict of the options, with ``endpoints`` converted to the
+            built-in ``bool``.
+
+        Raises
+        ------
+        TypeError
+            If ``step`` is not a real number (``bool`` is rejected), if
+            ``fmt`` is neither a str nor a callable, or if ``endpoints`` is
+            neither True nor False.
+        ValueError
+            If ``step`` is not finite or not in ``(0, 1]``, or if ``fmt`` is
+            a str that cannot be used as a format.
+        """
+        get_tick_values(options["step"])
+        get_tick_formatter(options["fmt"])
+        return {
+            **options,
+            "endpoints": check_bool(options["endpoints"], "endpoints"),
+        }
+
+    def _specs(
+        self, options: dict[str, Any], style: dict[str, Any]
+    ) -> list[Spec]:
+        """Compute the specs of the labels.
+
+        Raises
+        ------
+        Exception
+            Whatever a callable ``fmt`` raises. No artist has been created
+            at that point, so the part keeps its previous state.
+        """
+        values = get_tick_values(
+            options["step"], endpoints=options["endpoints"]
+        )
+        format_value = get_tick_formatter(options["fmt"])
+        labels = [format_value(value) for value in values.tolist()]
+
+        # Positions of the labels of each component, in the order of values.
+        positions: list[list[tuple[float, float]]] = []
+        for component, (dx, dy) in enumerate(DEFAULT_TICK_OFFSETS):
+            xs, ys = get_edge_points(values, component)
+            positions.append(
+                [(x + dx, y + dy) for x, y in zip(xs.tolist(), ys.tolist())]
+            )
+
+        specs: list[Spec] = []
+        for i, label in enumerate(labels):
+            for component, edge_style in enumerate(DEFAULT_TICK_EDGE_STYLES):
+                x, y = positions[component][i]
+                specs.append(_TextSpec(x, y, label, {**edge_style, **style}))
         return specs
