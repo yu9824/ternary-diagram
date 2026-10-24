@@ -1,8 +1,8 @@
 # deprecated in python>=3.9
 from typing import Tuple  # isort: skip
 
-from math import sqrt
-from numbers import Real
+from math import isfinite, sqrt
+from numbers import Integral, Real
 from typing import Callable, Optional, Union
 
 import matplotlib.axes
@@ -347,6 +347,221 @@ def get_tick_values(step: float, endpoints: bool = False) -> np.ndarray:
     if with_endpoints:
         return np.concatenate(([0.0], values, [1.0]))
     return values
+
+
+def _check_component(component: object) -> int:
+    # bool is rejected although True == 1, and so are floats such as 1.0.
+    if (
+        isinstance(component, (bool, np.bool_))
+        or not isinstance(component, Integral)
+        or component not in (0, 1, 2)
+    ):
+        raise ValueError(
+            f"`component` must be 0, 1 or 2, but got {component!r}."
+        )
+    return int(component)
+
+
+def _iso_compositions(
+    values: ArrayLike, component: int, zero: int
+) -> np.ndarray:
+    """Compositions where `component` equals `values` and `zero` is 0."""
+    arr_values = np.atleast_1d(np.asarray(values, dtype=float))
+    if arr_values.ndim != 1:
+        raise ValueError(
+            "`values` must be a scalar or one-dimensional, but got shape "
+            f"{arr_values.shape}."
+        )
+    compositions = np.zeros((len(arr_values), 3))
+    compositions[:, component] = arr_values
+    compositions[:, 3 - component - zero] = 1.0 - arr_values
+    return compositions
+
+
+def get_edge_points(
+    values: ArrayLike, component: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the points for values on the edge of a component's ticks.
+
+    The ticks of component ``k`` are on the edge where component
+    ``(k + 1) % 3`` is 0: the right edge for component 0 (top vertex), the
+    left edge for component 1 (bottom-left vertex) and the bottom edge for
+    component 2 (bottom-right vertex). Along each edge the values increase
+    counterclockwise, from 0 at the vertex of component ``(k + 2) % 3`` to
+    1 at the vertex of component ``k``. The points are computed with
+    :func:`three2two`.
+
+    Parameters
+    ----------
+    values : ArrayLike
+        Values of `component` as fractions in [0, 1], given as a scalar or
+        a one-dimensional sequence.
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+
+    Returns
+    -------
+    x : numpy.ndarray
+        x coordinates of the points, a one-dimensional array with one
+        element per value.
+    y : numpy.ndarray
+        y coordinates of the points, with the same shape as `x`.
+
+    Raises
+    ------
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `values` has more than one dimension.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_edge_points
+    >>> x, y = get_edge_points([0.0, 0.5, 1.0], 2)
+    >>> x.tolist(), y.tolist()
+    ([0.0, 0.5, 1.0], [0.0, 0.0, 0.0])
+    >>> x, y = get_edge_points([0.0, 1.0], 0)
+    >>> x.round(3).tolist(), y.round(3).tolist()
+    ([1.0, 0.5], [0.0, 0.866])
+    >>> get_edge_points([0.5], 3)
+    Traceback (most recent call last):
+        ...
+    ValueError: `component` must be 0, 1 or 2, but got 3.
+    """
+    k = _check_component(component)
+    return three2two(_iso_compositions(values, k, zero=(k + 1) % 3))
+
+
+def get_grid_segments(
+    values: ArrayLike, component: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the end points of the iso-composition lines of a component.
+
+    The line where `component` (``k``) equals a value runs between two
+    edges. It starts on the edge where component ``(k + 1) % 3`` is 0,
+    which carries the ticks of `component` (see :func:`get_edge_points`),
+    and ends on the edge where component ``(k + 2) % 3`` is 0. The points
+    are computed with :func:`three2two`.
+
+    Parameters
+    ----------
+    values : ArrayLike
+        Values of `component` on the lines as fractions in [0, 1], given as
+        a scalar or a one-dimensional sequence.
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+
+    Returns
+    -------
+    xs : numpy.ndarray
+        x coordinates of the end points, an array of shape ``(n, 2)`` where
+        ``n`` is the number of values. Row ``i`` is the line of the
+        ``i``-th value: column 0 is its start on the tick edge and column 1
+        its end.
+    ys : numpy.ndarray
+        y coordinates of the end points, with the same layout as `xs`.
+
+    Raises
+    ------
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `values` has more than one dimension.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_grid_segments
+    >>> xs, ys = get_grid_segments([0.5], 2)
+    >>> xs.round(3).tolist(), ys.round(3).tolist()
+    ([[0.5, 0.75]], [[0.0, 0.433]])
+    >>> xs, ys = get_grid_segments([0.25, 0.5, 0.75], 0)
+    >>> xs.shape, ys.shape
+    ((3, 2), (3, 2))
+    """
+    k = _check_component(component)
+    start_x, start_y = get_edge_points(values, k)
+    end_x, end_y = three2two(_iso_compositions(values, k, zero=(k + 2) % 3))
+    return np.column_stack((start_x, end_x)), np.column_stack((start_y, end_y))
+
+
+def get_axis_label_position(
+    component: int, pad: float
+) -> Tuple[float, float, float]:
+    """Return the position and rotation of the axis title of a component.
+
+    The title is placed outside the edge that carries the ticks of
+    `component` (see :func:`get_edge_points`): at the midpoint of the edge
+    moved by `pad` along the outward unit normal of the edge. The rotation
+    makes the text parallel to the edge and never upside down.
+
+    Parameters
+    ----------
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+    pad : float
+        Distance from the midpoint of the edge to the title in data
+        coordinates, where each edge has length 1. Positive values move
+        the title away from the triangle. ``bool`` is not accepted.
+
+    Returns
+    -------
+    x : float
+        x coordinate of the title.
+    y : float
+        y coordinate of the title.
+    rotation : float
+        Rotation of the title in degrees: 300 for the right edge
+        (component 0), 60 for the left edge (component 1) and 0 for the
+        bottom edge (component 2).
+
+    Raises
+    ------
+    TypeError
+        If `pad` is not a real number (``bool`` is rejected).
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `pad` is not finite.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_axis_label_position
+    >>> get_axis_label_position(2, 0.15)
+    (0.5, -0.15, 0.0)
+    >>> x, y, rotation = get_axis_label_position(0, 0.15)
+    >>> round(x, 3), round(y, 3), rotation
+    (0.88, 0.508, 300.0)
+    >>> x, y, rotation = get_axis_label_position(1, 0.15)
+    >>> round(x, 3), round(y, 3), rotation
+    (0.12, 0.508, 60.0)
+    """
+    k = _check_component(component)
+    if isinstance(pad, (bool, np.bool_)) or not isinstance(pad, Real):
+        raise TypeError(f"`pad` must be a real number, but got {pad!r}.")
+    try:
+        distance = float(pad)
+    except OverflowError:
+        # An int or a Fraction too large for a float
+        distance = float("inf")
+    if not isfinite(distance):
+        raise ValueError(
+            f"`pad` must be a finite real number, but got {pad!r}."
+        )
+
+    (mid_x,), (mid_y,) = get_edge_points([0.5], k)
+    # The edge where component k+1 is 0 is opposite to the vertex of
+    # component k+1, and the median from that vertex is perpendicular to
+    # the edge, so it points along the outward normal.
+    opposite = np.zeros((1, 3))
+    opposite[0, (k + 1) % 3] = 1.0
+    (vertex_x,), (vertex_y,) = three2two(opposite)
+    median_length = float(np.hypot(mid_x - vertex_x, mid_y - vertex_y))
+    rotation = (300.0, 60.0, 0.0)[k]
+    return (
+        float(mid_x + distance * (mid_x - vertex_x) / median_length),
+        float(mid_y + distance * (mid_y - vertex_y) / median_length),
+        rotation,
+    )
 
 
 def get_tick_formatter(fmt: TickFormat) -> Callable[[float], str]:

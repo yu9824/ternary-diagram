@@ -6,6 +6,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pytest
+from _skeleton_expected import (
+    expected_grid_lines,
+    expected_tick_label_texts,
+    segment_key,
+)
 
 from ternary_diagram.utils import (
     check_1d_vector,
@@ -13,6 +18,9 @@ from ternary_diagram.utils import (
     check_ax,
     check_bool,
     check_optional_bool,
+    get_axis_label_position,
+    get_edge_points,
+    get_grid_segments,
     get_label,
     get_tick_formatter,
     get_tick_values,
@@ -464,3 +472,348 @@ def test_get_tick_formatter_not_str_or_callable(fmt):
 
     with pytest.raises(TypeError, match=re.escape(expected)):
         get_tick_formatter(fmt)
+
+
+# Vertices of the triangle: top, bottom left and bottom right.
+VERTICES = ((0.5, ROOT3_OVER_2), (0.0, 0.0), (1.0, 0.0))
+EDGE_VALUES = [0.0, 0.1, 0.25, 0.5, 0.9, 1.0]
+INVALID_COMPONENTS = [3, -1, 10**400, 1.0, True, np.bool_(False), "0", None]
+
+
+def _compositions_of(x, y):
+    """Invert ``three2two`` independently of the code under test.
+
+    Returns the compositions as an array of shape ``(n, 3)``. A component
+    is negative for a point outside the triangle beyond the edge where it
+    is 0.
+    """
+    top = np.asarray(y, dtype=float) / ROOT3_OVER_2
+    bottom_right = np.asarray(x, dtype=float) - top / 2.0
+    bottom_left = 1.0 - top - bottom_right
+    return np.stack((top, bottom_left, bottom_right), axis=-1)
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_edge_points_lie_on_the_tick_edge(component):
+    x, y = get_edge_points(EDGE_VALUES, component)
+
+    compositions = _compositions_of(x, y)
+    np.testing.assert_allclose(
+        compositions[:, component], EDGE_VALUES, atol=1e-12
+    )
+    # The ticks of component k are on the edge where component k+1 is 0.
+    np.testing.assert_allclose(
+        compositions[:, (component + 1) % 3], 0.0, atol=1e-12
+    )
+
+
+@pytest.mark.parametrize(
+    "component, start, end",
+    [
+        (0, VERTICES[2], VERTICES[0]),  # right edge: bottom right -> top
+        (1, VERTICES[0], VERTICES[1]),  # left edge: top -> bottom left
+        (2, VERTICES[1], VERTICES[2]),  # bottom edge: left -> right
+    ],
+)
+def test_get_edge_points_increase_counterclockwise(component, start, end):
+    values = np.array(EDGE_VALUES)
+
+    x, y = get_edge_points(values, component)
+
+    np.testing.assert_allclose(
+        x, start[0] + values * (end[0] - start[0]), atol=1e-12
+    )
+    np.testing.assert_allclose(
+        y, start[1] + values * (end[1] - start[1]), atol=1e-12
+    )
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_edge_points_match_three2two(component):
+    values = get_tick_values(0.1, endpoints=True)
+    compositions = np.zeros((len(values), 3))
+    compositions[:, component] = values
+    compositions[:, (component + 2) % 3] = 1.0 - values
+
+    x, y = get_edge_points(values, component)
+
+    expected_x, expected_y = three2two(compositions)
+    np.testing.assert_allclose(x, expected_x, rtol=0, atol=1e-15)
+    np.testing.assert_allclose(y, expected_y, rtol=0, atol=1e-15)
+
+
+@pytest.mark.parametrize(
+    "component, rotation, offset",
+    [
+        # v3 tick labels: rotation and offset from the edge point, by edge
+        (0, 0.0, (0.0, 0.0)),
+        (1, 300.0, (-0.01, 0.04)),
+        (2, 60.0, (0.02, 0.0)),
+    ],
+)
+def test_get_edge_points_reproduce_v3_tick_positions(
+    component, rotation, offset
+):
+    expected = {
+        text.text: text.position
+        for text in expected_tick_label_texts()
+        if text.rotation == rotation
+    }
+    values = get_tick_values(0.1)
+
+    x, y = get_edge_points(values, component)
+
+    assert len(expected) == len(values) == 9
+    for value, point_x, point_y in zip(values, x, y):
+        label = "%d0" % round(value * 10)
+        assert (point_x + offset[0], point_y + offset[1]) == pytest.approx(
+            expected[label], abs=1e-9
+        )
+
+
+def test_get_edge_points_return_one_dimensional_float_arrays():
+    x, y = get_edge_points([0, 1], 2)
+
+    for coordinates in (x, y):
+        assert isinstance(coordinates, np.ndarray)
+        assert coordinates.shape == (2,)
+        assert coordinates.dtype == np.float64
+    assert x.tolist() == [0.0, 1.0]
+    assert y.tolist() == [0.0, 0.0]
+
+
+def test_get_edge_points_accepts_scalar():
+    x, y = get_edge_points(0.5, 2)
+
+    assert x.tolist() == [0.5]
+    assert y.tolist() == [0.0]
+
+
+def test_get_edge_points_accepts_numpy_integer_component():
+    x, y = get_edge_points([0.5], np.int64(0))
+    expected_x, expected_y = get_edge_points([0.5], 0)
+
+    assert x.tolist() == expected_x.tolist()
+    assert y.tolist() == expected_y.tolist()
+
+
+def test_get_edge_points_empty():
+    x, y = get_edge_points(get_tick_values(1), 0)
+
+    assert x.shape == y.shape == (0,)
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_grid_segments_shape(component):
+    xs, ys = get_grid_segments(get_tick_values(0.1), component)
+
+    for coordinates in (xs, ys):
+        assert isinstance(coordinates, np.ndarray)
+        assert coordinates.shape == (9, 2)
+        assert coordinates.dtype == np.float64
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_grid_segments_are_iso_composition_lines(component):
+    values = np.array(EDGE_VALUES)
+
+    xs, ys = get_grid_segments(values, component)
+
+    start = _compositions_of(xs[:, 0], ys[:, 0])
+    end = _compositions_of(xs[:, 1], ys[:, 1])
+    np.testing.assert_allclose(start[:, component], values, atol=1e-12)
+    np.testing.assert_allclose(end[:, component], values, atol=1e-12)
+    # Column 0 is on the edge where component k+1 is 0 (the tick edge),
+    # column 1 on the edge where component k+2 is 0.
+    np.testing.assert_allclose(start[:, (component + 1) % 3], 0.0, atol=1e-12)
+    np.testing.assert_allclose(end[:, (component + 2) % 3], 0.0, atol=1e-12)
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_grid_segments_start_at_the_edge_points(component):
+    values = get_tick_values(0.1)
+
+    xs, ys = get_grid_segments(values, component)
+
+    x, y = get_edge_points(values, component)
+    np.testing.assert_array_equal(xs[:, 0], x)
+    np.testing.assert_array_equal(ys[:, 0], y)
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_grid_segments_end_match_three2two(component):
+    values = get_tick_values(0.1)
+    compositions = np.zeros((len(values), 3))
+    compositions[:, component] = values
+    compositions[:, (component + 1) % 3] = 1.0 - values
+
+    xs, ys = get_grid_segments(values, component)
+
+    expected_x, expected_y = three2two(compositions)
+    np.testing.assert_allclose(xs[:, 1], expected_x, rtol=0, atol=1e-15)
+    np.testing.assert_allclose(ys[:, 1], expected_y, rtol=0, atol=1e-15)
+
+
+def test_get_grid_segments_reproduce_v3_grid():
+    values = get_tick_values(0.1)
+    segments = []
+
+    for component in range(3):
+        xs, ys = get_grid_segments(values, component)
+        segments.extend(
+            segment_key((x0, y0), (x1, y1))
+            for (x0, x1), (y0, y1) in zip(xs, ys)
+        )
+
+    assert len(segments) == len(set(segments)) == 27
+    assert set(segments) == {line.segment for line in expected_grid_lines()}
+
+
+def test_get_grid_segments_empty():
+    xs, ys = get_grid_segments(get_tick_values(1), 1)
+
+    assert xs.shape == ys.shape == (0, 2)
+
+
+def test_get_grid_segments_accepts_scalar():
+    xs, ys = get_grid_segments(0.5, 2)
+
+    assert xs.shape == ys.shape == (1, 2)
+    assert xs[0] == pytest.approx([0.5, 0.75])
+    assert ys[0] == pytest.approx([0.0, ROOT3_OVER_2 / 2.0])
+
+
+def test_edge_points_and_grid_segments_do_not_change_values():
+    values = np.array([0.1, 0.5])
+
+    first = get_edge_points(values, 0)
+    get_grid_segments(values, 1)
+    second = get_edge_points(values, 0)
+
+    assert values.tolist() == [0.1, 0.5]
+    np.testing.assert_array_equal(first[0], second[0])
+    np.testing.assert_array_equal(first[1], second[1])
+
+
+@pytest.mark.parametrize("func", [get_edge_points, get_grid_segments])
+@pytest.mark.parametrize("component", INVALID_COMPONENTS)
+def test_edge_points_and_grid_segments_invalid_component(func, component):
+    expected = f"`component` must be 0, 1 or 2, but got {component!r}."
+
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        func([0.5], component)
+
+
+@pytest.mark.parametrize("func", [get_edge_points, get_grid_segments])
+def test_edge_points_and_grid_segments_values_not_one_dimensional(func):
+    with pytest.raises(ValueError, match=r"one-dimensional.*\(1, 2\)"):
+        func([[0.1, 0.2]], 0)
+
+
+@pytest.mark.parametrize(
+    "component, midpoint, normal",
+    [
+        (0, (0.75, ROOT3_OVER_2 / 2.0), (ROOT3_OVER_2, 0.5)),  # right edge
+        (1, (0.25, ROOT3_OVER_2 / 2.0), (-ROOT3_OVER_2, 0.5)),  # left edge
+        (2, (0.5, 0.0), (0.0, -1.0)),  # bottom edge
+    ],
+)
+@pytest.mark.parametrize("pad", [0.15, 0.3, 0.0, -0.05])
+def test_get_axis_label_position(component, midpoint, normal, pad):
+    x, y, _ = get_axis_label_position(component, pad)
+
+    assert (x, y) == pytest.approx(
+        (midpoint[0] + pad * normal[0], midpoint[1] + pad * normal[1]),
+        abs=1e-12,
+    )
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+@pytest.mark.parametrize("pad", [0.15, 0.4])
+def test_get_axis_label_position_is_pad_away_outside_the_edge(component, pad):
+    x, y, _ = get_axis_label_position(component, pad)
+
+    (title,) = _compositions_of([x], [y])
+    zero = (component + 1) % 3
+    # Distance from the edge where component k+1 is 0 is pad (the height
+    # of the triangle corresponds to 1), on the outer side of the edge.
+    assert title[zero] == pytest.approx(-pad / ROOT3_OVER_2)
+    # On the perpendicular bisector of the edge: the other two components
+    # are equal, so the title is pad away from the midpoint of the edge.
+    assert title[component] == pytest.approx(title[(component + 2) % 3])
+    (mid_x,), (mid_y,) = get_edge_points([0.5], component)
+    assert np.hypot(x - mid_x, y - mid_y) == pytest.approx(pad)
+
+
+@pytest.mark.parametrize("component, rotation", [(0, 300), (1, 60), (2, 0)])
+def test_get_axis_label_position_rotation(component, rotation):
+    *_, actual = get_axis_label_position(component, 0.15)
+
+    assert actual == rotation
+    # Parallel to the edge and not upside down (the text runs rightward).
+    x, y = get_edge_points([0.0, 1.0], component)
+    angle = np.deg2rad(actual)
+    direction = (np.cos(angle), np.sin(angle))
+    cross = direction[0] * (y[1] - y[0]) - direction[1] * (x[1] - x[0])
+    assert cross == pytest.approx(0.0, abs=1e-12)
+    assert direction[0] > 0
+
+
+@pytest.mark.parametrize("component", [0, 1, 2])
+def test_get_axis_label_position_returns_builtin_floats(component):
+    result = get_axis_label_position(component, np.float64(0.15))
+
+    assert isinstance(result, tuple)
+    assert len(result) == 3
+    assert all(type(value) is float for value in result)
+
+
+@pytest.mark.parametrize(
+    "pad",
+    [np.float64(0.15), np.float32(0.25), 1, np.int64(0), Fraction(3, 20)],
+)
+def test_get_axis_label_position_accepts_real_numbers(pad):
+    x, y, rotation = get_axis_label_position(2, pad)
+
+    assert (x, y, rotation) == pytest.approx((0.5, -float(pad), 0.0))
+
+
+@pytest.mark.parametrize("component", INVALID_COMPONENTS)
+def test_get_axis_label_position_invalid_component(component):
+    expected = f"`component` must be 0, 1 or 2, but got {component!r}."
+
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        get_axis_label_position(component, 0.15)
+
+
+@pytest.mark.parametrize(
+    "pad", ["0.15", None, True, False, np.bool_(True), 1j, [0.15]]
+)
+def test_get_axis_label_position_pad_not_real(pad):
+    expected = f"`pad` must be a real number, but got {pad!r}."
+
+    with pytest.raises(TypeError, match=re.escape(expected)):
+        get_axis_label_position(0, pad)
+
+
+@pytest.mark.parametrize(
+    "pad",
+    [
+        float("nan"),
+        float("inf"),
+        float("-inf"),
+        np.float64("nan"),
+        np.float64("inf"),
+    ],
+)
+def test_get_axis_label_position_pad_not_finite(pad):
+    expected = f"`pad` must be a finite real number, but got {pad!r}."
+
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        get_axis_label_position(0, pad)
+
+
+def test_get_axis_label_position_huge_pad_is_not_finite():
+    # Too large to convert to float, but a ValueError, not OverflowError.
+    with pytest.raises(ValueError, match="finite real number"):
+        get_axis_label_position(0, 10**400)
