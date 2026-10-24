@@ -7,7 +7,7 @@ from typing import Tuple, List  # isort: skip
 
 from abc import abstractmethod
 from collections import defaultdict
-from math import sqrt
+from collections.abc import Mapping
 from numbers import Number
 from typing import Any, Optional, Union
 
@@ -46,6 +46,7 @@ from ternary_diagram._post_draw import (
     get_layout_state,
     layout_warning_message,
 )
+from ternary_diagram._skeleton import _check_vertex_label_kw, _Skeleton
 from ternary_diagram.utils import (
     check_1d_vector,
     check_2d_vector,
@@ -119,6 +120,11 @@ class TernaryDiagram:
         auto_latex_notation: bool = True,
         *,
         tight_layout: Optional[bool] = None,
+        border_kw: Optional[Mapping[str, Any]] = None,
+        grid_kw: Optional[Mapping[str, Any]] = None,
+        tick_kw: Optional[Mapping[str, Any]] = None,
+        axis_label_kw: Optional[Mapping[str, Any]] = None,
+        vertex_label_kw: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         Make instance.
@@ -180,17 +186,46 @@ class TernaryDiagram:
 
         # check `ax`
         self.__ax = check_ax(ax)
+        # check `materials` before changing anything on `ax`. A str is a
+        # sequence of 1-letter materials, as in ternary-diagram v3.
+        try:
+            material_items = tuple(materials)
+        except TypeError as error:
+            raise TypeError(
+                "`materials` must be a sequence of 3 materials, such as a "
+                f"list or a tuple, but got {materials!r}."
+            ) from error
+        if len(material_items) < 3:
+            raise ValueError(
+                "`materials` needs 3 materials, for the top, bottom left and "
+                f"bottom right vertices, but got {len(material_items)}: "
+                f"{material_items!r}."
+            )
         # check `tight_layout` before drawing anything on `ax`
         self.__post_draw_context = PostDrawContext(
             tight_layout=check_optional_bool(tight_layout, "tight_layout")
         )
+        part_kw = {
+            "border_kw": border_kw,
+            "grid_kw": grid_kw,
+            "tick_kw": tick_kw,
+            "axis_label_kw": axis_label_kw,
+            "vertex_label_kw": vertex_label_kw,
+        }
+        # check the settings of the parts before changing anything on `ax`.
+        # The parts check their content when they are drawn.
+        for name, kw in part_kw.items():
+            if kw is not None and not (
+                isinstance(kw, Mapping)
+                and all(isinstance(key, str) for key in kw)
+            ):
+                raise TypeError(
+                    f"`{name}` must be None or a mapping of str names to "
+                    f"values, such as a dict, but got {kw!r}."
+                )
+        if vertex_label_kw is not None:
+            _check_vertex_label_kw(vertex_label_kw)
         self.__fig = self.ax.figure
-
-        # Generate material_labels (LaTeX notation)
-        if auto_latex_notation:
-            material_labels = tuple(map(get_label, materials))
-        else:
-            material_labels = materials
 
         # Allign the aspect
         self.ax.set_aspect("equal", adjustable="datalim")
@@ -208,102 +243,15 @@ class TernaryDiagram:
         for position in ("bottom", "left", "right", "top"):
             self.ax.spines[position].set_visible(False)
 
-        # ROOT3_OVER_2 = √3/2
-        ROOT3_OVER_2 = sqrt(3.0) / 2.0
-
-        # inner tick marks
-        INNER_BORDER_OPTIONS = {
-            "color": "gray",
-            "lw": 0.5,
-            "zorder": DEFAULT_ZORDER_GRIDS,
-        }
-        for i in range(1, 10):
-            self.ax.plot(
-                [i / 20.0, 1.0 - i / 20.0],
-                [ROOT3_OVER_2 * i / 10.0, ROOT3_OVER_2 * i / 10.0],
-                **INNER_BORDER_OPTIONS,
-            )
-            self.ax.plot(
-                [i / 20.0, i / 10.0],
-                [ROOT3_OVER_2 * i / 10.0, 0.0],
-                **INNER_BORDER_OPTIONS,
-            )
-            self.ax.plot(
-                [0.5 + i / 20.0, i / 10.0],
-                [ROOT3_OVER_2 * (1.0 - i / 10.0), 0.0],
-                **INNER_BORDER_OPTIONS,
-            )
-
-        # borders
-        OUTER_BORDER_OPTIONS = {
-            "color": "black",
-            "lw": 2,
-            "linestyle": "-",
-            "zorder": DEFAULT_ZORDER_GRIDS,
-        }
-        self.ax.plot([0.0, 1.0], [0.0, 0.0], **OUTER_BORDER_OPTIONS)
-        self.ax.plot([0.0, 0.5], [0.0, ROOT3_OVER_2], **OUTER_BORDER_OPTIONS)
-        self.ax.plot([1.0, 0.5], [0.0, ROOT3_OVER_2], **OUTER_BORDER_OPTIONS)
-
-        # 頂点のラベル (Labels of vertices)
-        FONT_SIZE_MATERIAL_LABEL = 16
-        # top label
-        self.ax.text(
-            0.5,
-            ROOT3_OVER_2 + 0.02,
-            material_labels[0],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="center",
-            va="bottom",
+        # Draw the parts of the skeleton with their initial settings. The
+        # parts drawn before a part that fails are removed.
+        self.__skeleton = _Skeleton(
+            self.ax,
+            material_items,
+            auto_latex_notation,
+            zorder=DEFAULT_ZORDER_GRIDS,
+            **{name: {} if kw is None else kw for name, kw in part_kw.items()},
         )
-        # left bottom label
-        self.ax.text(
-            0,
-            -0.05,
-            material_labels[1],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="right",
-            va="top",
-        )  # , rotation=300)
-        # right bottom label
-        self.ax.text(
-            1,
-            -0.05,
-            material_labels[2],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="left",
-            va="top",
-        )  # , rotation=60)
-
-        # 軸ラベル (Axis-label)
-        FONT_SIZE_AXIS_LABEL = 10
-        for i in range(1, 10):
-            self.ax.text(
-                0.5 + (10 - i) / 20.0,
-                ROOT3_OVER_2 * (1.0 - (10 - i) / 10.0),
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                va="bottom",
-                ha="left",
-            )
-            self.ax.text(
-                (10 - i) / 20.0 - 0.01,
-                ROOT3_OVER_2 * (10 - i) / 10.0 + 0.04,
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                rotation=300,
-                va="top",
-                ha="right",
-            )
-            self.ax.text(
-                i / 10.0 + 0.02,
-                0,
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                rotation=60,
-                va="top",
-                ha="right",
-            )
 
         # FIXME: mypy
         # 二次元に変換したデータを保存しておく (Save the data converted to two dimensions)

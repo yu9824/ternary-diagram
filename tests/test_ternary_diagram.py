@@ -1,6 +1,8 @@
 import inspect
 from collections import Counter
+from itertools import combinations
 from math import sqrt
+from types import MappingProxyType
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -298,3 +300,412 @@ def test_default_skeleton_does_not_advance_color_cycle(td):
     (line,) = td.ax.plot([0.0, 1.0], [0.0, 1.0])
 
     assert to_rgba(line.get_color()) == to_rgba("C0")
+
+
+# The construction with the settings of the parts (`*_kw`) and its
+# validation. The settings are passed to the skeleton, which draws the parts.
+PART_KW_NAMES = (
+    "border_kw",
+    "grid_kw",
+    "tick_kw",
+    "axis_label_kw",
+    "vertex_label_kw",
+)
+# Not a mapping of names to values: the pairs of a dict as a list.
+NOT_A_MAPPING = [("visible", False)]
+LABELS_IN_VERTEX_LABEL_KW = {"labels": ("A", "B", "C")}
+
+
+def _skeleton(td: TernaryDiagram):
+    # The parts are reached through the aggregate kept by the diagram until
+    # the public `set_*` methods exist.
+    return td._TernaryDiagram__skeleton
+
+
+def _skeleton_keys(ax):
+    return Counter(map(line_key, ax.lines)), Counter(map(text_key, ax.texts))
+
+
+def _default_skeleton_keys():
+    return (
+        Counter(expected_grid_lines() + expected_border_lines()),
+        Counter(
+            expected_vertex_label_texts(LATEX_MATERIALS)
+            + expected_tick_label_texts()
+        ),
+    )
+
+
+def _assert_untouched(ax):
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+    assert all(spine.get_visible() for spine in ax.spines.values())
+    assert ax.get_aspect() == "auto"
+
+
+def test_init_signature_matches_the_roadmap():
+    positional = inspect.Parameter.POSITIONAL_OR_KEYWORD
+    keyword_only = inspect.Parameter.KEYWORD_ONLY
+    empty = inspect.Parameter.empty
+    parameters = inspect.signature(TernaryDiagram.__init__).parameters
+
+    assert [
+        (name, parameter.kind, parameter.default)
+        for name, parameter in parameters.items()
+    ] == [
+        ("self", positional, empty),
+        ("materials", positional, empty),
+        ("ax", positional, None),
+        ("auto_latex_notation", positional, True),
+        ("tight_layout", keyword_only, None),
+        ("border_kw", keyword_only, None),
+        ("grid_kw", keyword_only, None),
+        ("tick_kw", keyword_only, None),
+        ("axis_label_kw", keyword_only, None),
+        ("vertex_label_kw", keyword_only, None),
+    ]
+
+
+PART_KW_CASES = [
+    ("border_kw", "border", {"color": "red", "linewidth": 1}),
+    ("border_kw", "border", {"visible": False}),
+    ("grid_kw", "grid", {"step": 0.05, "linestyle": "--"}),
+    ("grid_kw", "grid", {"visible": False, "color": "blue"}),
+    ("grid_kw", "grid", {"zorder": 5}),
+    ("tick_kw", "ticks", {"step": 0.2, "fmt": "fraction", "fontsize": 8}),
+    ("tick_kw", "ticks", {"endpoints": True}),
+    ("axis_label_kw", "axis_labels", {"labels": ("A", None, "C")}),
+    ("axis_label_kw", "axis_labels", {"labels": ("A", "B", "C"), "pad": 0.2}),
+    (
+        "vertex_label_kw",
+        "vertex_labels",
+        {"offsets": ((0.0, 0.1), (-0.1, 0.0), (0.1, 0.0)), "fontsize": 20},
+    ),
+    ("vertex_label_kw", "vertex_labels", {"visible": False}),
+]
+
+
+@pytest.mark.parametrize("kw_name, part, settings", PART_KW_CASES)
+def test_part_kw_means_the_same_as_updating_the_part_after_creation(
+    kw_name, part, settings
+):
+    _, ax_created = plt.subplots()
+    _, ax_updated = plt.subplots()
+
+    created = TernaryDiagram(
+        MATERIALS, ax=ax_created, tight_layout=True, **{kw_name: settings}
+    )
+    updated = TernaryDiagram(MATERIALS, ax=ax_updated, tight_layout=True)
+    _skeleton(updated).update(part, **settings)
+
+    assert _skeleton_keys(created.ax) != _default_skeleton_keys()
+    assert _skeleton_keys(created.ax) == _skeleton_keys(updated.ax)
+    assert len(created.ax.get_children()) == len(updated.ax.get_children())
+
+
+def test_part_kw_draw_the_parts(ax):
+    td = TernaryDiagram(
+        MATERIALS,
+        ax=ax,
+        tight_layout=True,
+        border_kw={"color": "red"},
+        grid_kw={"visible": False},
+        tick_kw={"step": 0.5},
+        axis_label_kw={"labels": ("A", "B", "C")},
+        vertex_label_kw={"fontsize": 20},
+    )
+
+    assert [to_rgba(line.get_color()) for line in td.ax.lines] == [
+        to_rgba("red")
+    ] * 3
+    texts = {text.get_text(): text for text in td.ax.texts}
+    assert sorted(texts) == sorted(["50", "A", "B", "C", *LATEX_MATERIALS])
+    assert [text.get_text() for text in td.ax.texts].count("50") == 3
+    assert all(texts[label].get_fontsize() == 20 for label in LATEX_MATERIALS)
+
+
+@pytest.mark.parametrize(
+    "settings",
+    [None, {}, MappingProxyType({})],
+    ids=["none", "empty-dict", "empty-mapping-proxy"],
+)
+def test_empty_part_kw_draw_the_default_skeleton(ax, settings):
+    td = TernaryDiagram(
+        MATERIALS,
+        ax=ax,
+        tight_layout=True,
+        **dict.fromkeys(PART_KW_NAMES, settings),
+    )
+
+    assert _skeleton_keys(td.ax) == _default_skeleton_keys()
+
+
+def test_part_kw_accept_any_mapping(ax):
+    td = TernaryDiagram(
+        MATERIALS,
+        ax=ax,
+        tight_layout=True,
+        grid_kw=MappingProxyType({"visible": False}),
+    )
+
+    assert len(td.ax.lines) == 3
+
+
+def test_part_kw_are_not_changed(ax):
+    settings = {name: {"zorder": 5, "visible": True} for name in PART_KW_NAMES}
+    copies = {name: dict(kw) for name, kw in settings.items()}
+
+    TernaryDiagram(MATERIALS, ax=ax, tight_layout=True, **settings)
+
+    assert settings == copies
+
+
+@pytest.mark.parametrize("kw_name", PART_KW_NAMES)
+@pytest.mark.parametrize(
+    "value",
+    [NOT_A_MAPPING, "visible", 0, False, {1: True}],
+    ids=["list-of-pairs", "str", "zero", "false", "non-str-key"],
+)
+def test_invalid_part_kw_leave_axes_untouched(ax, kw_name, value):
+    with pytest.raises(
+        TypeError, match=f"`{kw_name}` must be None or a mapping"
+    ):
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=True, **{kw_name: value})
+
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize(
+    "labels", [("A", "B", "C"), None], ids=["labels", "none"]
+)
+def test_vertex_label_kw_cannot_contain_labels(ax, labels):
+    with pytest.raises(
+        ValueError, match="`vertex_label_kw` cannot contain `labels`"
+    ) as excinfo:
+        TernaryDiagram(
+            MATERIALS,
+            ax=ax,
+            tight_layout=True,
+            vertex_label_kw={"labels": labels, "fontsize": 20},
+        )
+
+    assert "`materials`" in str(excinfo.value)
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize(
+    "materials, count",
+    [
+        ((), 0),
+        (["Li2O"], 1),
+        (("Li2O", "La2O3"), 2),
+        ("AB", 2),
+        (np.array(["Li2O", "La2O3"]), 2),
+        (iter(["Li2O", "La2O3"]), 2),
+    ],
+    ids=["empty", "list-of-1", "tuple-of-2", "str-of-2", "array", "iterator"],
+)
+def test_materials_with_fewer_than_3_items(ax, materials, count):
+    with pytest.raises(
+        ValueError, match=f"`materials` needs 3 materials.*but got {count}"
+    ):
+        TernaryDiagram(materials, ax=ax, tight_layout=True)
+
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize("materials", [None, 3], ids=["none", "int"])
+def test_materials_that_are_not_iterable(ax, materials):
+    with pytest.raises(TypeError, match="`materials` must be a sequence"):
+        TernaryDiagram(materials, ax=ax, tight_layout=True)
+
+    _assert_untouched(ax)
+
+
+def test_materials_with_more_than_3_items_use_the_first_3(ax):
+    td = TernaryDiagram([*MATERIALS, "SiO2"], ax=ax, tight_layout=True)
+
+    assert _skeleton_keys(td.ax) == _default_skeleton_keys()
+
+
+def test_items_after_the_3rd_material_are_not_validated(ax):
+    td = TernaryDiagram([*MATERIALS, 1], ax=ax, tight_layout=True)
+
+    assert _skeleton_keys(td.ax) == _default_skeleton_keys()
+
+
+@pytest.mark.parametrize("auto_latex_notation", [True, False])
+@pytest.mark.parametrize("materials", ["ABC", "ABCD"])
+def test_str_materials_label_one_vertex_per_character(
+    ax, materials, auto_latex_notation
+):
+    # ternary-diagram v3 takes a str as a sequence of 1-letter materials.
+    td = TernaryDiagram(
+        materials,
+        ax=ax,
+        auto_latex_notation=auto_latex_notation,
+        tight_layout=True,
+    )
+
+    assert Counter(map(text_key, td.ax.texts)) == Counter(
+        expected_vertex_label_texts(("A", "B", "C"))
+        + expected_tick_label_texts()
+    )
+
+
+def test_str_materials_with_vertex_label_kw(ax):
+    td = TernaryDiagram(
+        "ABC", ax=ax, tight_layout=True, vertex_label_kw={"fontsize": 20}
+    )
+
+    vertex_labels = _skeleton(td).artists("vertex_labels")
+    assert [text.get_text() for text in vertex_labels] == ["A", "B", "C"]
+    assert [text.get_fontsize() for text in vertex_labels] == [20] * 3
+
+
+def test_non_str_material_with_auto_latex_notation(ax):
+    # The error of ternary-diagram v3, raised by `get_label`.
+    with pytest.raises(ValueError, match="must be string"):
+        TernaryDiagram((1, "La2O3", "TiO2"), ax=ax, tight_layout=True)
+
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+def test_non_str_material_without_auto_latex_notation(ax):
+    td = TernaryDiagram(
+        (1, "La2O3", "TiO2"),
+        ax=ax,
+        auto_latex_notation=False,
+        tight_layout=True,
+    )
+
+    vertex_labels = _skeleton(td).artists("vertex_labels")
+    assert [text.get_text() for text in vertex_labels] == [
+        "1",
+        "La2O3",
+        "TiO2",
+    ]
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        {"grid_kw": {"step": 0}},
+        {"tick_kw": {"fmt": 1}},
+        {"axis_label_kw": {"labels": ("A",)}},
+        {"axis_label_kw": {"unknown_property": 1}},
+    ],
+    ids=["grid-step", "tick-fmt", "axis-labels", "unknown-property"],
+)
+def test_invalid_part_settings_leave_no_skeleton_artist(ax, kw):
+    with pytest.raises((TypeError, ValueError, AttributeError)):
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=True, **kw)
+
+    assert list(ax.lines) == []
+    assert list(ax.texts) == []
+
+
+# The order of the validation: ax -> materials -> tight_layout -> *_kw
+# (border_kw -> grid_kw -> tick_kw -> axis_label_kw -> vertex_label_kw).
+# When several arguments are invalid, the first one in this order raises.
+def test_ax_is_checked_first():
+    with pytest.raises(TypeError, match="`ax`"):
+        TernaryDiagram(
+            ("Li2O", "La2O3"),
+            ax="ax",
+            tight_layout="yes",
+            border_kw=NOT_A_MAPPING,
+            vertex_label_kw=LABELS_IN_VERTEX_LABEL_KW,
+        )
+
+
+@pytest.mark.parametrize(
+    "materials, error, match",
+    [
+        (("Li2O", "La2O3"), ValueError, "`materials` needs 3 materials"),
+        (None, TypeError, "`materials` must be a sequence"),
+    ],
+    ids=["too-few", "not-iterable"],
+)
+def test_materials_are_checked_before_tight_layout_and_part_kw(
+    ax, materials, error, match
+):
+    with pytest.raises(error, match=match):
+        TernaryDiagram(
+            materials,
+            ax=ax,
+            tight_layout="yes",
+            grid_kw=NOT_A_MAPPING,
+            vertex_label_kw=LABELS_IN_VERTEX_LABEL_KW,
+        )
+
+    _assert_untouched(ax)
+
+
+def test_materials_are_checked_before_part_kw(ax):
+    with pytest.raises(ValueError, match="`materials` needs 3 materials"):
+        TernaryDiagram(
+            ("Li2O", "La2O3"), ax=ax, tight_layout=True, grid_kw=NOT_A_MAPPING
+        )
+
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize(
+    "kw",
+    [
+        {"grid_kw": NOT_A_MAPPING},
+        {"vertex_label_kw": LABELS_IN_VERTEX_LABEL_KW},
+    ],
+    ids=["not-a-mapping", "labels"],
+)
+def test_tight_layout_is_checked_before_part_kw(ax, kw):
+    with pytest.raises(
+        TypeError, match="`tight_layout` must be None, True or False"
+    ):
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout="yes", **kw)
+
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize("first, second", list(combinations(PART_KW_NAMES, 2)))
+def test_part_kw_are_checked_in_order(ax, first, second):
+    with pytest.raises(TypeError, match=f"`{first}` must be None"):
+        TernaryDiagram(
+            MATERIALS,
+            ax=ax,
+            tight_layout=True,
+            **{first: NOT_A_MAPPING, second: NOT_A_MAPPING},
+        )
+
+    _assert_untouched(ax)
+
+
+@pytest.mark.parametrize("kw_name", PART_KW_NAMES[:-1])
+def test_part_kw_types_are_checked_before_the_vertex_labels(ax, kw_name):
+    with pytest.raises(TypeError, match=f"`{kw_name}` must be None"):
+        TernaryDiagram(
+            MATERIALS,
+            ax=ax,
+            tight_layout=True,
+            vertex_label_kw=LABELS_IN_VERTEX_LABEL_KW,
+            **{kw_name: NOT_A_MAPPING},
+        )
+
+    _assert_untouched(ax)
+
+
+def test_part_kw_are_checked_before_drawing_any_part(ax):
+    # An invalid setting of a part is found by the part when it is drawn,
+    # but an invalid `vertex_label_kw` is found before drawing anything.
+    with pytest.raises(ValueError, match="`vertex_label_kw`"):
+        TernaryDiagram(
+            MATERIALS,
+            ax=ax,
+            tight_layout=True,
+            grid_kw={"step": 0},
+            vertex_label_kw=LABELS_IN_VERTEX_LABEL_KW,
+        )
+
+    _assert_untouched(ax)

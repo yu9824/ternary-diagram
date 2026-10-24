@@ -81,7 +81,7 @@
   - _Requirements: 1.1, 1.2, 2.1, 2.8, 9.2, 9.4, 10.8_
 
 - [ ] 4. 三角図の公開 API へ統合する
-- [ ] 4.1 作成時の部品ごとの指定を受け付け、土台の描画を集約へ委譲する
+- [x] 4.1 作成時の部品ごとの指定を受け付け、土台の描画を集約へ委譲する
   - `__init__` のシグネチャを roadmap の最終形 `(materials, ax=None, auto_latex_notation=True, *, tight_layout=None, border_kw=None, grid_kw=None, tick_kw=None, axis_label_kw=None, vertex_label_kw=None)` に一致させる。`plot-side-effects` が足した `tight_layout` の後ろに 5 つの部品ごとの指定を足し、キーワード専用マーカーは 1 つだけにする。それぞれを作成後の変更と同じ意味で集約へ渡す
   - 検証は Axes の設定や土台の描画より前に、`ax` → `materials` → `tight_layout` → 部品ごとの指定の順で行う。`materials` の検証は `check_ax` と `tight_layout` の検証の間に入れ（3 要素未満なら 3 つ必要であることを示すエラー。4 要素以上は先頭 3 要素を使う現行の挙動を保つ）、部品ごとの指定の検証（項目名と値の対応でなければ種類のエラー、頂点ラベルの指定にラベルの文字列があれば materials と衝突することを示すエラー）は `tight_layout` の検証の後に入れる。`tight_layout` の検証と扱いには手を入れない
   - 描画メソッド（Plotter）のコードには手を入れない
@@ -150,3 +150,5 @@
 - 2.3 の追加修正の結果、プロパティ名は手順 (3) で `ARTIST_CLASS` の setter と照合し、未知の名前は `Artist.set` と同じ文面の AttributeError、部品が自分で渡す名前（Line2D の `xdata`/`ydata`、Text の `x`/`y`/`text`）は TypeError で、表示・非表示にかかわらず拒否する。値の不正は従来どおり手順 (5) で matplotlib の例外がそのまま出る。design.md の `_SkeletonPart` の Implementation Notes（「手順 (5) で捕まえる」）と Error Handling 表の該当行は、この実装に合わせて読み替える
 - 4.3 の docstring に書くこと（2.3 の追加修正のレビューより）: `*_kw` / `set_*` が受け付けるのは部品の項目と artist のプロパティだけ。`fontdict` や `scalex` などの `Axes.text` / `Axes.plot` の呼び出し引数は受け付けない（`fontdict` は `**fontdict` と展開して渡す）
 - 4.1 / 4.2 で守ること（3.5 のレビューより）: `_Skeleton.update(name, /, **kwargs)` の `name` は位置専用（Text の `name` 別名を通すため）なので、`set_*` は `self.__skeleton.update("grid", ...)` のように部品名を位置で渡す。`_Skeleton` は `tuple(materials)[:3]` を頂点ラベルにする。`vertex_label_kw` の `labels` の衝突検査は `_Skeleton` にもあるが、4.1 では検証の順を守るため `__init__` でも Axes の設定より前に行う。文面がずれないよう `_skeleton` 側の検査関数（または定数）を共有する
+- 4.1 の時点で mypy の基準は 7 件（yikit-dev / qchemdb311 とも、すべて `_api.py` の既存の行）に下がった（旧描画コードの削除による）。以後はこの 7 件を基準にする
+- 既定の図の画素比較（4.1 のレビューより）: 変更前後で、グリッドの交点の 57〜111 画素に輝度 ±1/255 の差が出る。`_Grid` が成分ごとの順でグリッド線を描く（v3 は値ごとに 3 方向を交互に描いていた）ためで、部品の並び・表示範囲・線のスタイルは同じ。目視では区別できない。5.3 の目視確認ではこの差を許容範囲として扱う（厳密な画素一致が必要なら `_Grid` の描画順を v3 に合わせる design 判断が要る）

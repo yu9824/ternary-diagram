@@ -1213,6 +1213,31 @@ def _initial_settings(
     return {"zorder": zorder, **settings}
 
 
+def _check_vertex_label_kw(vertex_label_kw: Mapping[str, Any]) -> None:
+    """Reject ``labels`` among the initial settings of the vertex labels.
+
+    At construction, the vertex labels are given by the materials, so
+    ``labels`` in `vertex_label_kw` would give them twice. Both
+    ``TernaryDiagram`` (before changing the Axes) and `_Skeleton` check it
+    with this function, so that the message is the same.
+
+    Parameters
+    ----------
+    vertex_label_kw : Mapping[str, Any]
+        Initial settings of the vertex labels.
+
+    Raises
+    ------
+    ValueError
+        If `vertex_label_kw` contains ``labels``, whatever its value.
+    """
+    if "labels" in vertex_label_kw:
+        raise ValueError(
+            "`vertex_label_kw` cannot contain `labels`: the vertex labels "
+            "are given by `materials`, so it is ambiguous which to use."
+        )
+
+
 class _Skeleton:
     """The skeleton of a ternary diagram: its 5 parts.
 
@@ -1303,11 +1328,7 @@ class _Skeleton:
         border_settings = _initial_settings(
             border_kw, _Border.ARTIST_CLASS, zorder
         )
-        if "labels" in vertex_label_kw:
-            raise ValueError(
-                "`vertex_label_kw` cannot contain `labels`: the vertex labels "
-                "are given by `materials`, so it is ambiguous which to use."
-            )
+        _check_vertex_label_kw(vertex_label_kw)
         vertex_label_settings = _initial_settings(
             vertex_label_kw,
             _VertexLabels.ARTIST_CLASS,
