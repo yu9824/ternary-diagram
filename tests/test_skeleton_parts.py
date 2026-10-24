@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import typing
 from collections import Counter
+from collections.abc import Sequence
+from fractions import Fraction
 from typing import Any
 
 import matplotlib
@@ -22,9 +24,11 @@ from _skeleton_expected import (
     ROOT3_OVER_2,
     TEXT_ZORDER,
     TICK_LABEL_FONTSIZE,
+    VERTEX_LABEL_FONTSIZE,
     expected_border_lines,
     expected_grid_lines,
     expected_tick_label_texts,
+    expected_vertex_label_texts,
     line_key,
     point_key,
     text_key,
@@ -41,11 +45,13 @@ from ternary_diagram._skeleton import (
     _SkeletonPart,
     _TextSpec,
     _TickLabels,
+    _VertexLabels,
 )
 from ternary_diagram.utils import (
     get_axis_label_position,
     get_edge_points,
     get_grid_segments,
+    get_label,
     get_tick_formatter,
     get_tick_values,
 )
@@ -1925,4 +1931,788 @@ def test_axis_labels_validate_pad_without_titles(ax):
     _assert_unchanged(ax, part, before)
     with pytest.raises(ValueError, match="`pad` must be a finite real number"):
         _AxisLabels(ax, pad=float("inf"))
+    assert list(ax.texts) == []
+
+
+# ---------------------------------------------------------------------------
+# _VertexLabels
+# ---------------------------------------------------------------------------
+
+MATERIALS = ("Li2O", "La2O3", "TiO2")
+# MATERIALS in the LaTeX notation of ``get_label``.
+MATERIAL_LABELS = ("Li$_{2}$O", "La$_{2}$O$_{3}$", "TiO$_{2}$")
+VERTEX_LABEL_OFFSETS = ((0.0, 0.02), (0.0, -0.05), (0.0, -0.05))
+NEW_VERTEX_LABEL_OFFSETS = ((0.05, 0.03), (-0.04, -0.02), (0.04, -0.08))
+# The top, bottom left and bottom right vertices of the triangle, and the
+# horizontal and vertical alignments of their labels, as given by the
+# design.
+VERTICES = ((0.5, ROOT3_OVER_2), (0.0, 0.0), (1.0, 0.0))
+VERTEX_ALIGNMENTS = (("center", "bottom"), ("right", "top"), ("left", "top"))
+
+
+def _vertex_labels(
+    ax, labels: Any = MATERIALS, *, auto_latex_notation: Any = True, **kwargs
+) -> _VertexLabels:
+    return _VertexLabels(
+        ax, auto_latex_notation=auto_latex_notation, labels=labels, **kwargs
+    )
+
+
+def _expected_vertex_label_layout(
+    texts: Sequence[str],
+    offsets: Sequence[tuple[float, float]] = VERTEX_LABEL_OFFSETS,
+) -> list[tuple]:
+    """Layout of the vertex labels: top, bottom left and bottom right.
+
+    Each label is at its vertex moved by its offset, not rotated, in the
+    form returned by `_tick_layout`.
+    """
+    return [
+        (text, point_key(vx + dx, vy + dy), 0.0, ha, va)
+        for text, (vx, vy), (dx, dy), (ha, va) in zip(
+            texts, VERTICES, offsets, VERTEX_ALIGNMENTS
+        )
+    ]
+
+
+def _assert_labels_stored(part: _VertexLabels, expected: tuple) -> None:
+    """The part keeps `expected` as a tuple of 3 built-in str."""
+    stored = part._options["labels"]
+    assert type(stored) is tuple
+    assert stored == expected
+    assert all(type(item) is str for item in stored)
+
+
+def test_vertex_labels_annotations_are_not_evaluated():
+    for func in (
+        _VertexLabels.__init__,
+        _VertexLabels._validate,
+        _VertexLabels._specs,
+    ):
+        annotations = func.__annotations__
+        assert annotations
+        assert all(isinstance(value, str) for value in annotations.values())
+
+
+def test_vertex_labels_defaults():
+    assert _VertexLabels.OPTION_DEFAULTS == {
+        "visible": True,
+        # No default labels: they are given at construction.
+        "labels": None,
+        "offsets": VERTEX_LABEL_OFFSETS,
+    }
+    assert _VertexLabels.STYLE_DEFAULTS == {"fontsize": VERTEX_LABEL_FONTSIZE}
+    assert _VertexLabels.ARTIST_CLASS is matplotlib.text.Text
+    assert _skeleton.DEFAULT_VERTEX_LABEL_OFFSETS == VERTEX_LABEL_OFFSETS
+    assert _skeleton.DEFAULT_VERTEX_LABEL_FONTSIZE == VERTEX_LABEL_FONTSIZE
+    assert _skeleton.DEFAULT_VERTEX_LABEL_STYLES == tuple(
+        {"horizontalalignment": ha, "verticalalignment": va}
+        for ha, va in VERTEX_ALIGNMENTS
+    )
+
+
+def test_vertex_labels_default_texts_match_v3(ax):
+    part = _vertex_labels(ax)
+    texts = part.artists
+
+    assert len(texts) == 3
+    assert all(isinstance(text, matplotlib.text.Text) for text in texts)
+    assert _same_objects(ax.texts, texts)
+    assert list(ax.lines) == []
+    # Top, bottom left and bottom right, in the LaTeX notation.
+    assert [text_key(text) for text in texts] == expected_vertex_label_texts(
+        MATERIAL_LABELS
+    )
+    _assert_labels_stored(part, MATERIALS)
+
+
+def test_vertex_labels_without_auto_latex_notation_match_v3(ax):
+    part = _vertex_labels(ax, auto_latex_notation=False)
+    assert [
+        text_key(text) for text in part.artists
+    ] == expected_vertex_label_texts(MATERIALS)
+    _assert_labels_stored(part, MATERIALS)
+
+
+def test_vertex_labels_accept_dataframe_columns(ax, df_contour):
+    # The labels of ``TernaryDiagram(materials=df.columns[:3])``.
+    part = _vertex_labels(ax, df_contour.columns[:3])
+
+    _assert_labels_stored(part, ("Li2O", "TiO2", "La2O3"))
+    assert [
+        text_key(text) for text in part.artists
+    ] == expected_vertex_label_texts(
+        ("Li$_{2}$O", "TiO$_{2}$", "La$_{2}$O$_{3}$")
+    )
+
+
+@pytest.mark.parametrize(
+    ("auto_latex_notation", "formatted"),
+    [(1, True), (0, False), (np.bool_(True), True), (np.bool_(False), False)],
+    ids=repr,
+)
+def test_vertex_labels_auto_latex_notation_keeps_v3_truthiness(
+    ax, auto_latex_notation, formatted
+):
+    # ternary-diagram v3 only tests the truth value of the flag.
+    part = _vertex_labels(ax, auto_latex_notation=auto_latex_notation)
+    assert [text.get_text() for text in part.artists] == list(
+        MATERIAL_LABELS if formatted else MATERIALS
+    )
+    texts = part.update(labels=("Li2O", "B", "C"))
+    assert [text.get_text() for text in texts] == [
+        "Li$_{2}$O" if formatted else "Li2O",
+        "B",
+        "C",
+    ]
+
+
+def test_vertex_labels_require_labels_and_auto_latex_notation(ax):
+    with pytest.raises(TypeError, match="labels"):
+        _VertexLabels(ax, auto_latex_notation=True)
+    with pytest.raises(TypeError, match="auto_latex_notation"):
+        _VertexLabels(ax, labels=MATERIALS)
+    assert list(ax.texts) == []
+
+
+def test_vertex_labels_reject_none_labels_at_construction(ax):
+    # None keeps the previous labels, and there are none at construction.
+    with pytest.raises(TypeError, match="`labels` must be a sequence"):
+        _vertex_labels(ax, None)
+    assert list(ax.texts) == []
+
+
+def test_vertex_labels_update_formats_new_labels(ax):
+    part = _vertex_labels(ax)
+    old = part.artists
+    texts = part.update(labels=["Li2O", "B", "C"])
+
+    assert [text.get_text() for text in texts] == ["Li$_{2}$O", "B", "C"]
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ["Li$_{2}$O", "B", "C"]
+    )
+    assert all(text.get_fontsize() == VERTEX_LABEL_FONTSIZE for text in texts)
+    assert _same_objects(ax.texts, texts)
+    assert _same_objects(part.artists, texts)
+    assert all(text.axes is None for text in old)
+    _assert_labels_stored(part, ("Li2O", "B", "C"))
+
+
+def test_vertex_labels_update_without_auto_latex_notation_keeps_labels(ax):
+    part = _vertex_labels(ax, auto_latex_notation=False)
+    texts = part.update(labels=["Li2O", "B", "C"])
+
+    assert [text.get_text() for text in texts] == ["Li2O", "B", "C"]
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ["Li2O", "B", "C"]
+    )
+    assert _same_objects(ax.texts, texts)
+
+
+@pytest.mark.parametrize("auto_latex_notation", [True, False])
+def test_vertex_labels_auto_latex_notation_is_fixed_at_construction(
+    ax, auto_latex_notation
+):
+    part = _vertex_labels(ax, auto_latex_notation=auto_latex_notation)
+    before = _snapshot(ax, part)
+    # It is not an option of the part, so matplotlib rejects it as a
+    # property of Text.
+    with pytest.raises(AttributeError, match="auto_latex_notation"):
+        part.update(auto_latex_notation=not auto_latex_notation)
+    _assert_unchanged(ax, part, before)
+
+
+def test_vertex_labels_offsets_move_the_labels(ax):
+    part = _vertex_labels(ax)
+    old = part.artists
+    texts = part.update(offsets=NEW_VERTEX_LABEL_OFFSETS)
+
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        MATERIAL_LABELS, NEW_VERTEX_LABEL_OFFSETS
+    )
+    # Each label is its offset away from its vertex.
+    for text, (vx, vy), (dx, dy) in zip(
+        texts, VERTICES, NEW_VERTEX_LABEL_OFFSETS
+    ):
+        x, y = text.get_position()
+        assert (x - vx, y - vy) == pytest.approx((dx, dy))
+    assert _same_objects(ax.texts, texts)
+    assert all(text.axes is None for text in old)
+
+
+def test_vertex_labels_offsets_at_construction(ax):
+    texts = _vertex_labels(ax, offsets=NEW_VERTEX_LABEL_OFFSETS).artists
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        MATERIAL_LABELS, NEW_VERTEX_LABEL_OFFSETS
+    )
+
+
+@pytest.mark.parametrize(
+    ("offsets", "expected"),
+    [
+        (
+            [list(pair) for pair in NEW_VERTEX_LABEL_OFFSETS],
+            NEW_VERTEX_LABEL_OFFSETS,
+        ),
+        (np.array(NEW_VERTEX_LABEL_OFFSETS), NEW_VERTEX_LABEL_OFFSETS),
+        (
+            ((0, 1), (np.int64(-1), np.float32(0.5)), (Fraction(1, 4), -2)),
+            ((0.0, 1.0), (-1.0, 0.5), (0.25, -2.0)),
+        ),
+        (((0, 0), (0, 0), (0, 0)), ((0.0, 0.0),) * 3),
+    ],
+    ids=["list-of-lists", "numpy-3x2", "mixed-reals", "zeros"],
+)
+def test_vertex_labels_accept_offsets_of_3_pairs_of_reals(
+    ax, offsets, expected
+):
+    part = _vertex_labels(ax, offsets=offsets)
+
+    stored = part._options["offsets"]
+    assert stored == expected
+    # Kept as built-in floats, so that later changes to the given object
+    # have no effect.
+    assert type(stored) is tuple
+    assert all(type(pair) is tuple for pair in stored)
+    assert all(type(value) is float for pair in stored for value in pair)
+    assert _tick_layout(part.artists) == _expected_vertex_label_layout(
+        MATERIAL_LABELS, expected
+    )
+
+
+def test_vertex_labels_accept_a_generator_of_offsets(ax):
+    part = _vertex_labels(
+        ax, offsets=(pair for pair in NEW_VERTEX_LABEL_OFFSETS)
+    )
+    assert part._options["offsets"] == NEW_VERTEX_LABEL_OFFSETS
+    # Redrawing uses the stored offsets, not the exhausted generator.
+    texts = part.update(fontsize=14)
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        MATERIAL_LABELS, NEW_VERTEX_LABEL_OFFSETS
+    )
+
+
+def test_vertex_labels_keep_a_copy_of_the_offsets(ax):
+    offsets = np.array(NEW_VERTEX_LABEL_OFFSETS)
+    part = _vertex_labels(ax, offsets=offsets)
+    offsets[0] = (9.0, 9.0)
+    texts = part.update(fontsize=14)
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        MATERIAL_LABELS, NEW_VERTEX_LABEL_OFFSETS
+    )
+
+
+def test_vertex_labels_keep_offsets_when_labels_change(ax):
+    part = _vertex_labels(ax, offsets=NEW_VERTEX_LABEL_OFFSETS, fontsize=20)
+    texts = part.update(labels=("A", "B", "C"))
+
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ("A", "B", "C"), NEW_VERTEX_LABEL_OFFSETS
+    )
+    assert all(text.get_fontsize() == 20 for text in texts)
+
+
+def test_vertex_labels_keep_labels_when_offsets_change(ax):
+    part = _vertex_labels(ax, ("A2", "B", "C"))
+    texts = part.update(labels=None, offsets=NEW_VERTEX_LABEL_OFFSETS)
+
+    # The stored labels are converted again with the same setting.
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ("A$_{2}$", "B", "C"), NEW_VERTEX_LABEL_OFFSETS
+    )
+
+
+def test_vertex_labels_keep_options_when_only_style_changes(ax):
+    part = _vertex_labels(
+        ax, ("A", "B", "C"), offsets=NEW_VERTEX_LABEL_OFFSETS
+    )
+    texts = part.update(color="red")
+
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ("A", "B", "C"), NEW_VERTEX_LABEL_OFFSETS
+    )
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [{"fontsize": 20, "color": "red"}, {"size": 20, "c": "red"}],
+    ids=["canonical", "aliases"],
+)
+def test_vertex_labels_style_applies_to_all_labels(ax, kwargs):
+    texts = _vertex_labels(ax).update(**kwargs)
+
+    assert len(texts) == 3
+    assert all(text.get_fontsize() == 20 for text in texts)
+    assert all(to_rgba(text.get_color()) == to_rgba("red") for text in texts)
+    # The positions and the alignments are kept.
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        MATERIAL_LABELS
+    )
+
+
+def test_vertex_labels_style_at_construction(ax):
+    texts = _vertex_labels(ax, fontsize=20).artists
+    assert len(texts) == 3
+    assert all(text.get_fontsize() == 20 for text in texts)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"ha": "left", "va": "center"},
+        {"horizontalalignment": "left", "verticalalignment": "center"},
+    ],
+    ids=["aliases", "canonical"],
+)
+def test_vertex_labels_user_alignments_override_vertex_defaults(ax, kwargs):
+    texts = _vertex_labels(ax).update(**kwargs)
+
+    # The same value applies to the labels of every vertex.
+    assert all(text.get_horizontalalignment() == "left" for text in texts)
+    assert all(text.get_verticalalignment() == "center" for text in texts)
+    # The positions do not change.
+    assert [text_key(text).position for text in texts] == [
+        key[1] for key in _expected_vertex_label_layout(MATERIAL_LABELS)
+    ]
+
+
+def test_vertex_labels_keep_matplotlib_default_zorder(ax):
+    part = _vertex_labels(ax)
+    assert all(text.get_zorder() == TEXT_ZORDER for text in part.artists)
+    texts = part.update(offsets=NEW_VERTEX_LABEL_OFFSETS, fontsize=8)
+    assert len(texts) == 3
+    assert all(text.get_zorder() == TEXT_ZORDER for text in texts)
+
+
+def test_vertex_labels_user_zorder_overrides_default(ax):
+    texts = _vertex_labels(ax).update(zorder=5)
+    assert len(texts) == 3
+    assert all(text.get_zorder() == 5 for text in texts)
+
+
+def test_vertex_labels_invisible_at_construction_draws_nothing(ax):
+    part = _vertex_labels(ax, visible=False)
+    assert part.artists == []
+    assert list(ax.texts) == []
+
+
+def test_vertex_labels_invisible_removes_labels_and_visible_restores_them(ax):
+    part = _vertex_labels(
+        ax, ("A2", "B", "C"), offsets=NEW_VERTEX_LABEL_OFFSETS, size=20
+    )
+    old = part.artists
+    assert len(old) == 3
+    assert part.update(visible=False) == []
+    assert part.artists == []
+    assert list(ax.texts) == []
+    assert all(text.axes is None for text in old)
+
+    # The settings given before hiding the labels are used again.
+    texts = part.update(visible=True)
+    assert _tick_layout(texts) == _expected_vertex_label_layout(
+        ("A$_{2}$", "B", "C"), NEW_VERTEX_LABEL_OFFSETS
+    )
+    assert all(text.get_fontsize() == 20 for text in texts)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        list(MATERIALS),
+        pd.Index(MATERIALS),
+        pd.Series(MATERIALS),
+        np.array(MATERIALS),
+        np.array(MATERIALS, dtype=object),
+    ],
+    ids=["list", "pandas-index", "pandas-series", "numpy-str", "numpy-object"],
+)
+@pytest.mark.parametrize("auto_latex_notation", [True, False])
+def test_vertex_labels_accept_ordered_iterables(
+    ax, labels, auto_latex_notation
+):
+    part = _vertex_labels(
+        ax, labels=labels, auto_latex_notation=auto_latex_notation
+    )
+
+    # str subclasses such as numpy.str_ are kept as the built-in str.
+    _assert_labels_stored(part, MATERIALS)
+    expected = MATERIAL_LABELS if auto_latex_notation else MATERIALS
+    assert _tick_layout(part.artists) == _expected_vertex_label_layout(
+        expected
+    )
+    assert _same_objects(ax.texts, part.artists)
+
+
+def test_vertex_labels_accept_a_generator_consumed_once(ax):
+    part = _vertex_labels(ax, (material for material in MATERIALS))
+    _assert_labels_stored(part, MATERIALS)
+
+    # Redrawing uses the stored labels, not the exhausted generator.
+    texts = part.update(fontsize=14)
+    assert [text.get_text() for text in texts] == list(MATERIAL_LABELS)
+
+
+def test_vertex_labels_keep_a_copy_of_the_labels(ax):
+    labels = ["A", "B", "C"]
+    part = _vertex_labels(ax, labels)
+    # Changing the given list afterwards does not change the part.
+    labels[1] = "X"
+    _assert_labels_stored(part, ("A", "B", "C"))
+    texts = part.update(fontsize=14)
+    assert [text.get_text() for text in texts] == ["A", "B", "C"]
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        (1, 2.5, None),
+        (b"A", ["B"], np.float64(0.5)),
+        pd.Index([1, 2, 3]),
+        ("Li2O", None, ""),
+    ],
+    ids=["numbers-and-none", "other-objects", "pandas-index-int", "str"],
+)
+def test_vertex_labels_show_any_object_without_auto_latex_notation(ax, labels):
+    # ternary-diagram v3 passes the materials to ``Axes.text`` as they are,
+    # which shows ``str(label)``, or "" for None.
+    expected = tuple(
+        matplotlib.text.Text(0, 0, label).get_text() for label in labels
+    )
+    part = _vertex_labels(ax, labels, auto_latex_notation=False)
+
+    _assert_labels_stored(part, expected)
+    assert _tick_layout(part.artists) == _expected_vertex_label_layout(
+        expected
+    )
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("Li2O", 1, "TiO2"),
+        (None, "B", "C"),
+        ("A", "B", b"C"),
+        ("A", "B", ["C"]),
+        ("A", "B", float("nan")),
+        pd.Index([1, 2, 3]),
+        np.array(["A", None, "C"], dtype=object),
+    ],
+    ids=[
+        "int",
+        "none",
+        "bytes",
+        "list",
+        "nan",
+        "pandas-index-int",
+        "numpy-object-none",
+    ],
+)
+def test_vertex_labels_reject_non_str_labels_with_auto_latex_notation(
+    ax, labels
+):
+    part = _vertex_labels(ax, ("A", "B", "C"))
+    before = _snapshot(ax, part)
+    non_str = next(label for label in labels if not isinstance(label, str))
+    with pytest.raises(ValueError) as expected:
+        get_label(non_str)
+
+    with pytest.raises(ValueError) as excinfo:
+        part.update(labels=labels, fontsize=20)
+    # The same error as ``get_label``, as in ternary-diagram v3.
+    assert type(excinfo.value) is ValueError
+    assert str(excinfo.value) == str(expected.value)
+    _assert_unchanged(ax, part, before)
+
+    with pytest.raises(ValueError, match=str(expected.value)):
+        _vertex_labels(ax, labels)
+    assert _same_objects(ax.texts, before["children"])
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("A", "B"),
+        ("A", "B", "C", "D"),
+        (),
+        np.array(["A", "B"]),
+        pd.Index(["A", "B", "C", "D"]),
+    ],
+    ids=["tuple-2", "tuple-4", "empty", "numpy-2", "pandas-index-4"],
+)
+@pytest.mark.parametrize("auto_latex_notation", [True, False])
+def test_vertex_labels_reject_wrong_number_of_labels(
+    ax, labels, auto_latex_notation
+):
+    part = _vertex_labels(ax, auto_latex_notation=auto_latex_notation)
+    before = _snapshot(ax, part)
+    with pytest.raises(
+        ValueError, match="`labels` must have 3 items, one label per vertex"
+    ):
+        part.update(labels=labels, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        "ABC",
+        np.str_("ABC"),
+        b"ABC",
+        3,
+        3.0,
+        {"A", "B", "C"},
+        frozenset({"A", "B", "C"}),
+        {"A": 0, "B": 1, "C": 2},
+        np.array("ABC"),
+    ],
+    ids=[
+        "str",
+        "numpy-str",
+        "bytes",
+        "int",
+        "float",
+        "set",
+        "frozenset",
+        "dict",
+        "numpy-0d",
+    ],
+)
+@pytest.mark.parametrize("auto_latex_notation", [True, False])
+def test_vertex_labels_reject_non_sequence_labels(
+    ax, labels, auto_latex_notation
+):
+    part = _vertex_labels(ax, auto_latex_notation=auto_latex_notation)
+    before = _snapshot(ax, part)
+    # The same kinds of containers as the axis titles; the message names
+    # the accepted types.
+    with pytest.raises(
+        TypeError,
+        match=(
+            "`labels` must be a sequence of 3 labels such as a list, a "
+            "tuple, a numpy array or a pandas Index"
+        ),
+    ):
+        part.update(labels=labels, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+def test_vertex_labels_reject_0d_array_from_the_iteration_error(ax):
+    part = _vertex_labels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(
+        TypeError, match="`labels` must be a sequence .* iterating over"
+    ) as excinfo:
+        part.update(labels=np.array("ABC"))
+    # The error of numpy is kept as the cause.
+    assert isinstance(excinfo.value.__cause__, TypeError)
+    _assert_unchanged(ax, part, before)
+
+
+def test_vertex_labels_reject_a_generator_of_wrong_length(ax):
+    part = _vertex_labels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(ValueError, match="`labels` must have 3 items"):
+        part.update(labels=(label for label in ("A", "B")))
+    _assert_unchanged(ax, part, before)
+
+
+_OFFSETS_COUNT = "`offsets` must have 3 items, one offset per vertex"
+_OFFSETS_TYPE = (
+    "`offsets` must be a sequence of 3 offsets \\(dx, dy\\) such as a list, "
+    "a tuple or a numpy array of shape \\(3, 2\\)"
+)
+
+
+@pytest.mark.parametrize(
+    ("offsets", "error", "match"),
+    [
+        (((0, 0.02), (0, -0.05)), ValueError, _OFFSETS_COUNT),
+        (((0, 0.02),) * 4, ValueError, _OFFSETS_COUNT),
+        ((), ValueError, _OFFSETS_COUNT),
+        (np.zeros((2, 2)), ValueError, _OFFSETS_COUNT),
+        (np.zeros((3, 3)), ValueError, r"`offsets\[0\]` must have 2 items"),
+        (
+            ((0, 0.02), (0, -0.05, 0), (0, -0.05)),
+            ValueError,
+            r"`offsets\[1\]` must have 2 items, dx and dy",
+        ),
+        (
+            ((0, 0.02), (0, -0.05), (0,)),
+            ValueError,
+            r"`offsets\[2\]` must have 2 items, dx and dy",
+        ),
+        ("abc", TypeError, _OFFSETS_TYPE),
+        (0.1, TypeError, _OFFSETS_TYPE),
+        ({"a": (0, 0), "b": (0, 0), "c": (0, 0)}, TypeError, _OFFSETS_TYPE),
+        ({(0, 0), (1, 1), (2, 2)}, TypeError, _OFFSETS_TYPE),
+        (np.array(0.1), TypeError, "iterating over"),
+        ((0.1, 0.2, 0.3), TypeError, r"`offsets\[0\]` must be a pair"),
+        (np.zeros(3), TypeError, r"`offsets\[0\]` must be a pair"),
+        (
+            ((0, 0.02), "ab", (0, -0.05)),
+            TypeError,
+            r"`offsets\[1\]` must be a pair",
+        ),
+        (
+            ((0, 0.02), {"dx": 0, "dy": 0}, (0, -0.05)),
+            TypeError,
+            r"`offsets\[1\]` must be a pair",
+        ),
+        (
+            ((0, 0.02), (0, "-0.05"), (0, -0.05)),
+            TypeError,
+            r"`offsets\[1\]\[1\]` must be a real number",
+        ),
+        (
+            ((True, 0.02), (0, -0.05), (0, -0.05)),
+            TypeError,
+            r"`offsets\[0\]\[0\]` must be a real number",
+        ),
+        (
+            ((0, 0.02), (0, -0.05), (np.bool_(False), -0.05)),
+            TypeError,
+            r"`offsets\[2\]\[0\]` must be a real number",
+        ),
+        (
+            ((0, None), (0, -0.05), (0, -0.05)),
+            TypeError,
+            r"`offsets\[0\]\[1\]` must be a real number",
+        ),
+        (
+            ((0, 0.02), (0, 1j), (0, -0.05)),
+            TypeError,
+            r"`offsets\[1\]\[1\]` must be a real number",
+        ),
+        (
+            ((0, float("nan")), (0, -0.05), (0, -0.05)),
+            ValueError,
+            r"`offsets\[0\]\[1\]` must be a finite real number",
+        ),
+        (
+            ((0, 0.02), (float("inf"), -0.05), (0, -0.05)),
+            ValueError,
+            r"`offsets\[1\]\[0\]` must be a finite real number",
+        ),
+        (
+            ((0, 0.02), (0, -0.05), (0, -float("inf"))),
+            ValueError,
+            r"`offsets\[2\]\[1\]` must be a finite real number",
+        ),
+        (
+            ((0, 0.02), (0, -0.05), (0, 10**400)),
+            ValueError,
+            r"`offsets\[2\]\[1\]` must be a finite real number",
+        ),
+        (
+            np.array([[0, 0.02], [0, np.nan], [0, -0.05]]),
+            ValueError,
+            r"`offsets\[1\]\[1\]` must be a finite real number",
+        ),
+    ],
+    ids=[
+        "count-2",
+        "count-4",
+        "empty",
+        "numpy-2x2",
+        "numpy-3x3",
+        "pair-of-3",
+        "pair-of-1",
+        "str",
+        "float",
+        "dict",
+        "set",
+        "numpy-0d",
+        "flat-floats",
+        "numpy-flat",
+        "pair-str",
+        "pair-dict",
+        "value-str",
+        "value-bool",
+        "value-numpy-bool",
+        "value-none",
+        "value-complex",
+        "value-nan",
+        "value-inf",
+        "value-minus-inf",
+        "value-huge-int",
+        "numpy-nan",
+    ],
+)
+def test_vertex_labels_reject_invalid_offsets(ax, offsets, error, match):
+    part = _vertex_labels(ax)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match=match):
+        part.update(offsets=offsets, fontsize=20)
+    _assert_unchanged(ax, part, before)
+
+
+VERTEX_LABEL_INVALID_OPTIONS = [
+    ({"labels": ("A", "B")}, ValueError, "`labels` must have 3 items"),
+    ({"labels": "ABC"}, TypeError, "`labels` must be a sequence"),
+    ({"labels": ("A", 1, "C")}, ValueError, "The `compound_name` must be"),
+    (
+        {"offsets": ((0, 0.02), (0, -0.05))},
+        ValueError,
+        "`offsets` must have 3 items",
+    ),
+    ({"offsets": "abc"}, TypeError, "`offsets` must be a sequence"),
+    (
+        {"offsets": ((0, 0.02), (0, "x"), (0, 0))},
+        TypeError,
+        "must be a real number",
+    ),
+    (
+        {"offsets": ((0, 0.02), (0, float("nan")), (0, 0))},
+        ValueError,
+        "must be a finite real number",
+    ),
+]
+VERTEX_LABEL_INVALID_OPTION_IDS = [
+    "labels-count",
+    "labels-type",
+    "labels-item",
+    "offsets-count",
+    "offsets-type",
+    "offsets-item-type",
+    "offsets-item-value",
+]
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "match"),
+    VERTEX_LABEL_INVALID_OPTIONS,
+    ids=VERTEX_LABEL_INVALID_OPTION_IDS,
+)
+def test_vertex_labels_validate_options_while_invisible(
+    ax, kwargs, error, match
+):
+    # Nothing is drawn, so only the validation step can catch these.
+    part = _vertex_labels(ax, visible=False)
+    before = _snapshot(ax, part)
+    with pytest.raises(error, match=match):
+        part.update(**kwargs)
+    _assert_unchanged(ax, part, before)
+    with pytest.raises(error, match=match):
+        _VertexLabels(
+            ax,
+            auto_latex_notation=True,
+            visible=False,
+            **{"labels": MATERIALS, **kwargs},
+        )
+    assert list(ax.texts) == []
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "error", "match"),
+    VERTEX_LABEL_INVALID_OPTIONS,
+    ids=VERTEX_LABEL_INVALID_OPTION_IDS,
+)
+def test_vertex_labels_invalid_options_at_construction_leave_nothing(
+    ax, kwargs, error, match
+):
+    with pytest.raises(error, match=match):
+        _VertexLabels(
+            ax, auto_latex_notation=True, **{"labels": MATERIALS, **kwargs}
+        )
     assert list(ax.texts) == []

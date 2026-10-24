@@ -20,7 +20,8 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Iterable, Mapping, Sequence, Set
-from math import sqrt
+from math import isfinite, sqrt
+from numbers import Real
 from typing import Any, ClassVar, NamedTuple, Union, cast
 
 import matplotlib.artist
@@ -35,6 +36,7 @@ from ternary_diagram.utils import (
     get_axis_label_position,
     get_edge_points,
     get_grid_segments,
+    get_label,
     get_tick_formatter,
     get_tick_values,
 )
@@ -92,6 +94,25 @@ DEFAULT_AXIS_LABEL_PAD = 0.15
 DEFAULT_AXIS_LABEL_FONTSIZE = 12
 DEFAULT_AXIS_LABEL_HORIZONTALALIGNMENT = "center"
 DEFAULT_AXIS_LABEL_VERTICALALIGNMENT = "center"
+
+# Defaults of the vertex labels (``_VertexLabels``), the same as
+# ternary-diagram v3. The labels themselves have no default: they are the
+# materials given to ``TernaryDiagram``.
+DEFAULT_VERTEX_LABEL_FONTSIZE = 16
+# Offsets of the labels from the top, bottom left and bottom right vertices,
+# where each edge has length 1.
+DEFAULT_VERTEX_LABEL_OFFSETS: tuple[tuple[float, float], ...] = (
+    (0.0, 0.02),
+    (0.0, -0.05),
+    (0.0, -0.05),
+)
+# Alignments of the labels of the same vertices, with canonical names. The
+# style of the part overrides them on every vertex.
+DEFAULT_VERTEX_LABEL_STYLES: tuple[dict[str, Any], ...] = (
+    {"horizontalalignment": "center", "verticalalignment": "bottom"},
+    {"horizontalalignment": "right", "verticalalignment": "top"},
+    {"horizontalalignment": "left", "verticalalignment": "top"},
+)
 
 
 class _LineSpec(NamedTuple):
@@ -208,6 +229,103 @@ def _normalize_style(
         dict(style),
         _alias_mapping(artist_class),  # type: ignore[arg-type, unused-ignore]
     )
+
+
+def _ordered_items(
+    value: object, count: int, name: str, accepted: str, each: str
+) -> tuple[Any, ...]:
+    """Turn an ordered iterable of `count` items into a tuple.
+
+    Shared by the options that take one item per component, per vertex or
+    per coordinate, so that they accept the same kinds of containers: any
+    ordered iterable, such as a list, a tuple, a numpy array, a pandas Index
+    or Series, or a generator, which is consumed once. The items themselves
+    are not checked.
+
+    Parameters
+    ----------
+    value : object
+        The value given to the option.
+    count : int
+        Number of items that `value` must have.
+    name : str
+        Name of the option in the messages, such as ``labels``.
+    accepted : str
+        Description of the accepted values in the messages of TypeError,
+        completing "`name` must be ...".
+    each : str
+        Meaning of the items in the message of ValueError, completing
+        "`name` must have `count` items, ...", such as "one title per
+        component".
+
+    Returns
+    -------
+    tuple[Any, ...]
+        The `count` items of `value`, in order.
+
+    Raises
+    ------
+    TypeError
+        If `value` is a str, bytes, a mapping, a set or not iterable, or if
+        iterating over it fails with a TypeError (such as a 0-d numpy array,
+        whose error is kept as the cause).
+    ValueError
+        If `value` does not have `count` items.
+    """
+    if isinstance(value, (str, bytes, Mapping, Set)) or not isinstance(
+        value, Iterable
+    ):
+        raise TypeError(f"`{name}` must be {accepted}, but got {value!r}.")
+    try:
+        items = tuple(value)
+    except TypeError as error:
+        raise TypeError(
+            f"`{name}` must be {accepted}, but iterating over {value!r} "
+            f"failed: {error}"
+        ) from error
+    if len(items) != count:
+        raise ValueError(
+            f"`{name}` must have {count} items, {each}, but got "
+            f"{len(items)}: {value!r}."
+        )
+    return items
+
+
+def _finite_real(value: object, name: str) -> float:
+    """Check that `value` is a finite real number, with the rules of ``pad``.
+
+    Parameters
+    ----------
+    value : object
+        The value to check.
+    name : str
+        Name of the value in the messages.
+
+    Returns
+    -------
+    float
+        `value` as a built-in float.
+
+    Raises
+    ------
+    TypeError
+        If `value` is not a real number (``bool`` and ``numpy.bool_`` are
+        rejected).
+    ValueError
+        If `value` is not finite, including an int too large for a float.
+    """
+    if isinstance(value, bool) or not isinstance(value, Real):
+        raise TypeError(f"`{name}` must be a real number, but got {value!r}.")
+    try:
+        number = float(value)
+    except OverflowError:
+        # An int or a Fraction too large for a float
+        number = float("inf")
+    if not isfinite(number):
+        raise ValueError(
+            f"`{name}` must be a finite real number, but got {value!r}."
+        )
+    return number
 
 
 class _SkeletonPart(ABC):
@@ -714,29 +832,15 @@ class _AxisLabels(_SkeletonPart):
         TypeError, ValueError
             As described in `_validate`.
         """
-        accepted = (
+        items = _ordered_items(
+            labels,
+            3,
+            "labels",
             "a sequence of 3 titles (str or None) such as a list, a tuple, "
             "a numpy array or a pandas Index, not a str, bytes, mapping or "
-            "set"
+            "set",
+            "one title per component",
         )
-        if isinstance(labels, (str, bytes, Mapping, Set)) or not isinstance(
-            labels, Iterable
-        ):
-            raise TypeError(
-                f"`labels` must be {accepted}, but got {labels!r}."
-            )
-        try:
-            items = tuple(labels)
-        except TypeError as error:
-            raise TypeError(
-                f"`labels` must be {accepted}, but iterating over "
-                f"{labels!r} failed: {error}"
-            ) from error
-        if len(items) != 3:
-            raise ValueError(
-                f"`labels` must have 3 items, one title per component, but "
-                f"got {len(items)}: {labels!r}."
-            )
         for index, item in enumerate(items):
             if item is not None and not isinstance(item, str):
                 raise TypeError(
@@ -755,5 +859,188 @@ class _AxisLabels(_SkeletonPart):
             x, y, rotation = get_axis_label_position(component, options["pad"])
             specs.append(
                 _TextSpec(x, y, label, {"rotation": rotation, **style})
+            )
+        return specs
+
+
+class _VertexLabels(_SkeletonPart):
+    """The vertex labels: the materials at the 3 vertices of the triangle.
+
+    The options are ``visible``; ``labels``, the labels of the top, bottom
+    left and bottom right vertices, which are the materials given to
+    ``TernaryDiagram`` at construction; and ``offsets``, the offsets
+    ``(dx, dy)`` of the labels from their vertices, where each edge has
+    length 1.
+
+    Whether the labels are turned into chemical formulas by ``get_label``
+    (``auto_latex_notation``) is fixed at construction and also applies to
+    the labels given later. Each label is drawn at its vertex moved by its
+    offset, with the alignments of the vertex
+    (`DEFAULT_VERTEX_LABEL_STYLES`) overridden by the style of the part, so
+    a property given by the user applies to the labels of every vertex. The
+    zorder is left to matplotlib, as in ternary-diagram v3.
+    """
+
+    OPTION_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "visible": True,
+        # Given at construction; None given later keeps the labels.
+        "labels": None,
+        "offsets": DEFAULT_VERTEX_LABEL_OFFSETS,
+    }
+    STYLE_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "fontsize": DEFAULT_VERTEX_LABEL_FONTSIZE,
+    }
+    ARTIST_CLASS: ClassVar[type[matplotlib.artist.Artist]] = (
+        matplotlib.text.Text
+    )
+
+    def __init__(
+        self,
+        ax: matplotlib.axes.Axes,
+        *,
+        auto_latex_notation: bool,
+        labels: Sequence[Any],
+        **initial: Any,
+    ) -> None:
+        """Draw the labels once with the initial settings.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes
+            Axes to draw on.
+        auto_latex_notation : bool
+            Whether to turn the labels into chemical formulas with
+            ``get_label``, now and on every later change. Only its truth
+            value is used, as in ternary-diagram v3.
+        labels : Sequence[Any]
+            Labels of the top, bottom left and bottom right vertices: the
+            first 3 materials. See `_validate` for the accepted values.
+        **initial
+            Other initial options and properties, as accepted by `update`.
+
+        Raises
+        ------
+        TypeError, ValueError, AttributeError
+            Raised by `update` for invalid initial settings. Nothing is left
+            on `ax` in that case.
+        """
+        # Set before the first update, which validates the labels with it.
+        self._auto_latex_notation = bool(auto_latex_notation)
+        super().__init__(ax, labels=labels, **initial)
+
+    def _validate(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Validate ``labels`` and ``offsets``.
+
+        ``labels`` may be any ordered iterable of 3 labels, with the same
+        rules as the titles of ``_AxisLabels``. With ``auto_latex_notation``,
+        each label must be a str, which ``get_label`` checks before any spec
+        is computed, as in ternary-diagram v3. Without it, any object is
+        shown as matplotlib shows it: ``str(label)``, or ``""`` for None.
+
+        ``offsets`` may be any ordered iterable of 3 pairs ``(dx, dy)`` of
+        finite real numbers, such as a tuple of tuples or a numpy array of
+        shape ``(3, 2)``.
+
+        Returns
+        -------
+        dict[str, Any]
+            A new dict of the options, with ``labels`` converted to a tuple
+            of 3 built-in str (before the conversion to chemical formulas)
+            and ``offsets`` to a tuple of 3 pairs of built-in float, so that
+            later changes to the given objects have no effect.
+
+        Raises
+        ------
+        TypeError
+            If ``labels`` or ``offsets`` or a pair of ``offsets`` is a str,
+            bytes, a mapping, a set or not iterable, if iterating over it
+            fails with a TypeError, or if a value of ``offsets`` is not a
+            real number (``bool`` is rejected).
+        ValueError
+            If ``labels`` or ``offsets`` does not have 3 items, if a pair of
+            ``offsets`` does not have 2 items, if a value of ``offsets`` is
+            not finite, or, with ``auto_latex_notation``, if a label is not
+            a str (raised by ``get_label``).
+        """
+        return {
+            **options,
+            "labels": self._labels(options["labels"]),
+            "offsets": self._offsets(options["offsets"]),
+        }
+
+    def _labels(self, labels: object) -> tuple[str, ...]:
+        """Turn ``labels`` into a tuple of 3 built-in str.
+
+        Raises
+        ------
+        TypeError, ValueError
+            As described in `_validate`.
+        """
+        items = _ordered_items(
+            labels,
+            3,
+            "labels",
+            "a sequence of 3 labels such as a list, a tuple, a numpy array "
+            "or a pandas Index, not a str, bytes, mapping or set",
+            "one label per vertex",
+        )
+        if self._auto_latex_notation:
+            for item in items:
+                # The ValueError of ternary-diagram v3 for a non-str label.
+                get_label(item)
+            return tuple(str(item) for item in items)
+        # The text that ``Axes.text`` shows for any object.
+        return tuple("" if item is None else str(item) for item in items)
+
+    @staticmethod
+    def _offsets(offsets: object) -> tuple[tuple[float, float], ...]:
+        """Turn ``offsets`` into a tuple of 3 pairs of built-in float.
+
+        Raises
+        ------
+        TypeError, ValueError
+            As described in `_validate`.
+        """
+        pairs = _ordered_items(
+            offsets,
+            3,
+            "offsets",
+            "a sequence of 3 offsets (dx, dy) such as a list, a tuple or a "
+            "numpy array of shape (3, 2), not a str, bytes, mapping or set",
+            "one offset per vertex",
+        )
+        converted: list[tuple[float, float]] = []
+        for index, pair in enumerate(pairs):
+            dx, dy = _ordered_items(
+                pair,
+                2,
+                f"offsets[{index}]",
+                "a pair (dx, dy) of real numbers such as a tuple, a list or "
+                "a numpy array, not a str, bytes, mapping or set",
+                "dx and dy",
+            )
+            converted.append(
+                (
+                    _finite_real(dx, f"offsets[{index}][0]"),
+                    _finite_real(dy, f"offsets[{index}][1]"),
+                )
+            )
+        return tuple(converted)
+
+    def _specs(
+        self, options: dict[str, Any], style: dict[str, Any]
+    ) -> list[Spec]:
+        # The top, bottom left and bottom right vertices, as for _Border.
+        vertices = ((0.5, ROOT3_OVER_2), (0.0, 0.0), (1.0, 0.0))
+        specs: list[Spec] = []
+        for label, (x, y), (dx, dy), vertex_style in zip(
+            options["labels"],
+            vertices,
+            options["offsets"],
+            DEFAULT_VERTEX_LABEL_STYLES,
+        ):
+            text = get_label(label) if self._auto_latex_notation else label
+            specs.append(
+                _TextSpec(x + dx, y + dy, text, {**vertex_style, **style})
             )
         return specs
