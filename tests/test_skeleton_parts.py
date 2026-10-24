@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import typing
+from collections import Counter
 from typing import Any
 
 import matplotlib
@@ -10,15 +11,30 @@ import matplotlib.lines
 import matplotlib.text
 import numpy as np
 import pytest
+from _skeleton_expected import (
+    BORDER_COLOR,
+    BORDER_LINEWIDTH,
+    GRID_COLOR,
+    GRID_LINEWIDTH,
+    LINE_ZORDER,
+    LINESTYLE,
+    ROOT3_OVER_2,
+    expected_border_lines,
+    expected_grid_lines,
+    line_key,
+)
 from matplotlib.colors import to_rgba
 
 from ternary_diagram import _skeleton
 from ternary_diagram._skeleton import (
     Spec,
+    _Border,
+    _Grid,
     _LineSpec,
     _SkeletonPart,
     _TextSpec,
 )
+from ternary_diagram.utils import get_grid_segments, get_tick_values
 
 # ---------------------------------------------------------------------------
 # _SkeletonPart: minimal parts used only by these tests
@@ -584,3 +600,327 @@ def test_part_uses_fallback_normalization(ax, monkeypatch):
     assert all(
         to_rgba(line.get_color()) == to_rgba("red") for line in part.artists
     )
+
+
+# ---------------------------------------------------------------------------
+# Line parts: helpers
+# ---------------------------------------------------------------------------
+
+
+def _line_data(lines) -> list[tuple[list[float], list[float]]]:
+    """The (xdata, ydata) of each line as lists, in the order of `lines`."""
+    return [
+        (
+            [float(x) for x in line.get_xdata()],
+            [float(y) for y in line.get_ydata()],
+        )
+        for line in lines
+    ]
+
+
+def _assert_line_style(lines, *, color, linewidth, linestyle, zorder):
+    assert lines
+    for line in lines:
+        assert to_rgba(line.get_color()) == to_rgba(color)
+        assert line.get_linewidth() == linewidth
+        assert line.get_linestyle() == linestyle
+        assert line.get_zorder() == zorder
+
+
+def test_line_part_annotations_are_not_evaluated():
+    for func in (_Border._specs, _Grid._validate, _Grid._specs):
+        annotations = func.__annotations__
+        assert annotations
+        assert all(isinstance(value, str) for value in annotations.values())
+
+
+@pytest.mark.parametrize("part_class", [_Border, _Grid])
+def test_line_parts_draw_line2d_only(ax, part_class):
+    part = part_class(ax, zorder=LINE_ZORDER)
+    assert part.ARTIST_CLASS is matplotlib.lines.Line2D
+    assert part.artists
+    assert all(isinstance(a, matplotlib.lines.Line2D) for a in part.artists)
+    assert list(ax.texts) == []
+
+
+@pytest.mark.parametrize("part_class", [_Border, _Grid])
+def test_line_parts_do_not_advance_color_cycle(ax, part_class):
+    part_class(ax, zorder=LINE_ZORDER)
+    (line,) = ax.plot([0, 1], [0, 1])
+    assert to_rgba(line.get_color()) == to_rgba("C0")
+
+
+# ---------------------------------------------------------------------------
+# _Border
+# ---------------------------------------------------------------------------
+
+
+def test_border_defaults():
+    assert _Border.OPTION_DEFAULTS == {"visible": True}
+    assert _Border.STYLE_DEFAULTS == {
+        "color": BORDER_COLOR,
+        "linewidth": BORDER_LINEWIDTH,
+        "linestyle": LINESTYLE,
+    }
+    assert _skeleton.DEFAULT_BORDER_COLOR == BORDER_COLOR
+    assert _skeleton.DEFAULT_BORDER_LINEWIDTH == BORDER_LINEWIDTH
+    assert _skeleton.DEFAULT_BORDER_LINESTYLE == LINESTYLE
+
+
+def test_border_default_lines_match_v3(ax):
+    lines = _Border(ax, zorder=LINE_ZORDER).artists
+    assert _same_objects(ax.lines, lines)
+    # The bottom, left and right edges, in this order.
+    assert [line_key(line) for line in lines] == expected_border_lines()
+
+
+def test_border_lines_have_v3_data(ax):
+    lines = _Border(ax, zorder=LINE_ZORDER).artists
+    assert _line_data(lines) == [
+        ([0.0, 1.0], [0.0, 0.0]),
+        ([0.0, 0.5], [0.0, ROOT3_OVER_2]),
+        ([1.0, 0.5], [0.0, ROOT3_OVER_2]),
+    ]
+
+
+def test_border_uses_zorder_given_at_construction(ax):
+    border = _Border(ax, zorder=7)
+    assert all(line.get_zorder() == 7 for line in border.artists)
+    # Redrawing keeps the zorder given at construction.
+    assert all(line.get_zorder() == 7 for line in border.update(color="red"))
+
+
+def test_border_user_zorder_overrides_default(ax):
+    border = _Border(ax, zorder=LINE_ZORDER)
+    assert all(line.get_zorder() == 4 for line in border.update(zorder=4))
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"linestyle": "--", "linewidth": 1, "color": "red"},
+        {"ls": "--", "lw": 1, "c": "red"},
+    ],
+    ids=["canonical", "aliases"],
+)
+def test_border_style_applies_to_all_edges(ax, kwargs):
+    border = _Border(ax, zorder=LINE_ZORDER)
+    lines = border.update(**kwargs)
+    assert len(lines) == 3
+    assert _same_objects(ax.lines, lines)
+    _assert_line_style(
+        lines, color="red", linewidth=1, linestyle="--", zorder=LINE_ZORDER
+    )
+    # Only the style changed, not the edges.
+    assert [line_key(line).segment for line in lines] == [
+        key.segment for key in expected_border_lines()
+    ]
+
+
+def test_border_style_at_construction(ax):
+    lines = _Border(ax, zorder=LINE_ZORDER, linestyle=":").artists
+    _assert_line_style(
+        lines,
+        color=BORDER_COLOR,
+        linewidth=BORDER_LINEWIDTH,
+        linestyle=":",
+        zorder=LINE_ZORDER,
+    )
+
+
+def test_border_invisible_at_construction_draws_nothing(ax):
+    border = _Border(ax, zorder=LINE_ZORDER, visible=False)
+    assert border.artists == []
+    assert list(ax.lines) == []
+
+
+def test_border_invisible_removes_lines_and_visible_restores_them(ax):
+    border = _Border(ax, zorder=LINE_ZORDER)
+    border.update(color="red")
+    old = border.artists
+    assert border.update(visible=False) == []
+    assert border.artists == []
+    assert list(ax.lines) == []
+    assert all(line.axes is None for line in old)
+
+    lines = border.update(visible=True)
+    assert len(lines) == 3
+    assert all(to_rgba(line.get_color()) == to_rgba("red") for line in lines)
+
+
+# ---------------------------------------------------------------------------
+# _Grid
+# ---------------------------------------------------------------------------
+
+
+def _expected_grid_data(step: float) -> list[tuple[list[float], list[float]]]:
+    """(xdata, ydata) of the grid lines given by the geometry functions.
+
+    The lines of the components 0, 1 and 2 follow in turn, each with its
+    values in ascending order.
+    """
+    values = get_tick_values(step)
+    segments = [get_grid_segments(values, k) for k in range(3)]
+    return [
+        (xdata, ydata)
+        for xs, ys in segments
+        for xdata, ydata in zip(xs.tolist(), ys.tolist())
+    ]
+
+
+def test_grid_defaults():
+    assert _Grid.OPTION_DEFAULTS == {"visible": True, "step": 0.1}
+    assert _Grid.STYLE_DEFAULTS == {
+        "color": GRID_COLOR,
+        "linewidth": GRID_LINEWIDTH,
+    }
+    assert _skeleton.DEFAULT_GRID_STEP == 0.1
+    assert _skeleton.DEFAULT_GRID_COLOR == GRID_COLOR
+    assert _skeleton.DEFAULT_GRID_LINEWIDTH == GRID_LINEWIDTH
+
+
+def test_grid_default_lines_match_v3(ax):
+    lines = _Grid(ax, zorder=LINE_ZORDER).artists
+    assert len(lines) == 27
+    assert _same_objects(ax.lines, lines)
+    # The order within the grid is not the one of v3: compare as multisets.
+    assert Counter(map(line_key, lines)) == Counter(expected_grid_lines())
+
+
+@pytest.mark.parametrize("step", [0.1, 0.05, 0.25, 0.3, 0.5])
+def test_grid_lines_come_from_geometry_functions(ax, step):
+    lines = _Grid(ax, zorder=LINE_ZORDER, step=step).artists
+    assert _line_data(lines) == _expected_grid_data(step)
+
+
+def test_grid_step_005_draws_57_lines(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER)
+    old = grid.artists
+    lines = grid.update(step=0.05)
+
+    assert len(lines) == 57
+    assert _same_objects(ax.lines, lines)
+    assert all(line.axes is None for line in old)
+    # 19 iso-composition lines of the top component are horizontal.
+    segments = [line_key(line).segment for line in lines]
+    assert sum(start[1] == end[1] for start, end in segments) == 19
+    # The lines at 10% steps are among them, each exactly once.
+    keys = Counter(map(line_key, lines))
+    assert all(keys[key] == 1 for key in expected_grid_lines())
+    _assert_line_style(
+        lines,
+        color=GRID_COLOR,
+        linewidth=GRID_LINEWIDTH,
+        linestyle=LINESTYLE,
+        zorder=LINE_ZORDER,
+    )
+
+
+def test_grid_step_at_construction(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER, step=0.05)
+    assert len(grid.artists) == 57
+    assert len(ax.lines) == 57
+
+
+def test_grid_step_one_draws_no_lines(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER, step=1)
+    assert grid.artists == []
+    assert list(ax.lines) == []
+
+
+def test_grid_uses_zorder_given_at_construction(ax):
+    grid = _Grid(ax, zorder=7)
+    assert all(line.get_zorder() == 7 for line in grid.artists)
+    # Redrawing with another step keeps the zorder given at construction.
+    assert all(line.get_zorder() == 7 for line in grid.update(step=0.05))
+
+
+def test_grid_user_zorder_overrides_default(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER)
+    assert all(line.get_zorder() == 5 for line in grid.update(zorder=5))
+
+
+def test_grid_style_applies_to_all_lines(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER)
+    lines = grid.update(color="red", linewidth=1.5, linestyle="--")
+    assert len(lines) == 27
+    _assert_line_style(
+        lines, color="red", linewidth=1.5, linestyle="--", zorder=LINE_ZORDER
+    )
+    # Only the style changed, not the lines.
+    assert Counter(line_key(line).segment for line in lines) == Counter(
+        key.segment for key in expected_grid_lines()
+    )
+
+
+def test_grid_keeps_step_when_only_style_changes(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER)
+    grid.update(step=0.05)
+    lines = grid.update(color="red")
+    assert len(lines) == 57
+    assert all(to_rgba(line.get_color()) == to_rgba("red") for line in lines)
+
+
+def test_grid_keeps_style_when_only_step_changes(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER, lw=2, color="blue")
+    lines = grid.update(step=0.25)
+    assert len(lines) == 9
+    _assert_line_style(
+        lines, color="blue", linewidth=2, linestyle="-", zorder=LINE_ZORDER
+    )
+
+
+def test_grid_invisible_at_construction_draws_nothing(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER, visible=False)
+    assert grid.artists == []
+    assert list(ax.lines) == []
+
+
+def test_grid_invisible_removes_lines_and_visible_restores_them(ax):
+    grid = _Grid(ax, zorder=LINE_ZORDER, step=0.05)
+    old = grid.artists
+    assert grid.update(visible=False) == []
+    assert grid.artists == []
+    assert list(ax.lines) == []
+    assert all(line.axes is None for line in old)
+
+    # The step given before hiding the grid is used again.
+    assert len(grid.update(visible=True)) == 57
+
+
+@pytest.mark.parametrize(
+    ("step", "error"),
+    [
+        (0, ValueError),
+        (-0.1, ValueError),
+        (1.5, ValueError),
+        (float("nan"), ValueError),
+        (float("inf"), ValueError),
+        ("0.1", TypeError),
+        (True, TypeError),
+    ],
+    ids=repr,
+)
+def test_grid_rejects_invalid_step(ax, step, error):
+    grid = _Grid(ax, zorder=LINE_ZORDER)
+    before = _snapshot(ax, grid)
+    with pytest.raises(error, match="`step`"):
+        grid.update(step=step, color="red")
+    _assert_unchanged(ax, grid, before)
+
+
+def test_grid_rejects_invalid_step_while_invisible(ax):
+    # Nothing is drawn, so only the validation step can catch it.
+    grid = _Grid(ax, zorder=LINE_ZORDER, visible=False)
+    before = _snapshot(ax, grid)
+    with pytest.raises(ValueError, match="`step` must satisfy 0 < step <= 1"):
+        grid.update(step=0)
+    _assert_unchanged(ax, grid, before)
+    with pytest.raises(ValueError, match="`step` must satisfy 0 < step <= 1"):
+        _Grid(ax, zorder=LINE_ZORDER, visible=False, step=0)
+
+
+def test_grid_invalid_step_at_construction_leaves_nothing(ax):
+    with pytest.raises(ValueError, match="`step` must satisfy 0 < step <= 1"):
+        _Grid(ax, zorder=LINE_ZORDER, step=0)
+    assert list(ax.lines) == []

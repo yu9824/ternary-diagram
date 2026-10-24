@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from math import sqrt
 from typing import Any, ClassVar, NamedTuple, Union, cast
 
 import matplotlib.artist
@@ -29,9 +30,27 @@ import matplotlib.text
 from matplotlib import cbook
 from matplotlib.artist import ArtistInspector
 
-from ternary_diagram.utils import check_bool
+from ternary_diagram.utils import (
+    check_bool,
+    get_grid_segments,
+    get_tick_values,
+)
 
 __all__ = ("Spec",)
+
+# Height of the triangle whose edges have length 1.
+ROOT3_OVER_2 = sqrt(3.0) / 2.0
+
+# Defaults of the border (``_Border``), the same as ternary-diagram v3.
+DEFAULT_BORDER_COLOR = "black"
+DEFAULT_BORDER_LINEWIDTH = 2
+DEFAULT_BORDER_LINESTYLE = "-"
+
+# Defaults of the grid (``_Grid``), the same as ternary-diagram v3. The
+# linestyle is left to matplotlib, as v3 does not set it.
+DEFAULT_GRID_STEP = 0.1
+DEFAULT_GRID_COLOR = "gray"
+DEFAULT_GRID_LINEWIDTH = 0.5
 
 
 class _LineSpec(NamedTuple):
@@ -409,3 +428,80 @@ class _SkeletonPart(ABC):
             f"A spec must be _LineSpec or _TextSpec, but got "
             f"{type(spec).__name__}."
         )
+
+
+class _Border(_SkeletonPart):
+    """The border of the triangle: its 3 edges.
+
+    The edges are drawn in the order bottom, left, right with the same data
+    as ternary-diagram v3. The only option is ``visible``. The zorder given
+    at construction is the default zorder of the lines.
+    """
+
+    OPTION_DEFAULTS: ClassVar[dict[str, Any]] = {"visible": True}
+    STYLE_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "color": DEFAULT_BORDER_COLOR,
+        "linewidth": DEFAULT_BORDER_LINEWIDTH,
+        "linestyle": DEFAULT_BORDER_LINESTYLE,
+    }
+    ARTIST_CLASS: ClassVar[type[matplotlib.artist.Artist]] = (
+        matplotlib.lines.Line2D
+    )
+
+    def _specs(
+        self, options: dict[str, Any], style: dict[str, Any]
+    ) -> list[Spec]:
+        edges = (
+            ([0.0, 1.0], [0.0, 0.0]),  # bottom
+            ([0.0, 0.5], [0.0, ROOT3_OVER_2]),  # left
+            ([1.0, 0.5], [0.0, ROOT3_OVER_2]),  # right
+        )
+        return [_LineSpec(xdata, ydata, dict(style)) for xdata, ydata in edges]
+
+
+class _Grid(_SkeletonPart):
+    """The grid: iso-composition lines of the 3 components.
+
+    The options are ``visible`` and ``step``, the interval of the lines as
+    a fraction in ``(0, 1]``. The lines are drawn at the values returned by
+    ``get_tick_values(step)``, between the end points returned by
+    ``get_grid_segments``, for the components 0, 1 and 2 in turn. The step
+    is independent of the interval of the tick labels. The zorder given at
+    construction is the default zorder of the lines.
+    """
+
+    OPTION_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "visible": True,
+        "step": DEFAULT_GRID_STEP,
+    }
+    STYLE_DEFAULTS: ClassVar[dict[str, Any]] = {
+        "color": DEFAULT_GRID_COLOR,
+        "linewidth": DEFAULT_GRID_LINEWIDTH,
+    }
+    ARTIST_CLASS: ClassVar[type[matplotlib.artist.Artist]] = (
+        matplotlib.lines.Line2D
+    )
+
+    def _validate(self, options: dict[str, Any]) -> dict[str, Any]:
+        """Validate ``step`` with ``get_tick_values``.
+
+        Raises
+        ------
+        TypeError
+            If ``step`` is not a real number (``bool`` is rejected).
+        ValueError
+            If ``step`` is not finite or not in ``(0, 1]``.
+        """
+        get_tick_values(options["step"])
+        return options
+
+    def _specs(
+        self, options: dict[str, Any], style: dict[str, Any]
+    ) -> list[Spec]:
+        values = get_tick_values(options["step"])
+        specs: list[Spec] = []
+        for component in range(3):
+            xs, ys = get_grid_segments(values, component)
+            for xdata, ydata in zip(xs.tolist(), ys.tolist()):
+                specs.append(_LineSpec(xdata, ydata, dict(style)))
+        return specs
