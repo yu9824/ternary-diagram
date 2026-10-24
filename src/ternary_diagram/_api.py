@@ -29,7 +29,19 @@ else:
     from matplotlib.tri.tricontour import TriContourSet
 from numpy.typing import ArrayLike
 
-from ternary_diagram._post_draw import PostDrawContext
+from ternary_diagram._deprecation import warn_external
+from ternary_diagram._post_draw import (
+    COLORBAR_WARNING_KEY,
+    LAYOUT_WARNING_KEY,
+    ColorbarAction,
+    LayoutAction,
+    PostDrawContext,
+    colorbar_warning_message,
+    decide_colorbar,
+    decide_layout,
+    get_layout_state,
+    layout_warning_message,
+)
 from ternary_diagram.utils import (
     check_1d_vector,
     check_2d_vector,
@@ -323,7 +335,8 @@ class TernaryDiagram:
             z_min=z_min,
             z_max=z_max,
             annotations=annotations,
-            flag_cbar=flag_cbar,
+            colorbar=bool(flag_cbar),
+            post_draw_context=self.__post_draw_context,
             **kwargs,
         )
         self._append_x_y(plotter)
@@ -389,7 +402,8 @@ class TernaryDiagram:
             z_min=z_min,
             z_max=z_max,
             fill=fill,
-            flag_cbar=flag_cbar,
+            colorbar=bool(flag_cbar),
+            post_draw_context=self.__post_draw_context,
             **kwargs,
         )
         self._append_x_y(plotter)
@@ -423,7 +437,12 @@ class TernaryDiagram:
             lines.
         """  # noqa: E501
 
-        plotter = _LinePlotter(vector=vector, ax=self.ax, **kwargs)
+        plotter = _LinePlotter(
+            vector=vector,
+            ax=self.ax,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
         self._append_x_y(plotter)
         return plotter.collection_
 
@@ -456,7 +475,13 @@ class TernaryDiagram:
         matplotlib.text.Annotation
             An annotation.
         """  # noqa: E501
-        plotter = _AnnotatePlotter(text, vector, ax=self.ax, **kwargs)
+        plotter = _AnnotatePlotter(
+            text,
+            vector,
+            ax=self.ax,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
         self._append_x_y(plotter)
         return plotter.collection_
 
@@ -547,6 +572,8 @@ class _BasePlotter:
         z: Optional[ArrayLike] = None,
         z_min: Optional[Number] = None,
         z_max: Optional[Number] = None,
+        *,
+        post_draw_context: PostDrawContext,
         **kwargs,
     ):
         """
@@ -568,9 +595,14 @@ class _BasePlotter:
 
         z_max : Optional[Number], optional
             , by default None
+
+        post_draw_context : PostDrawContext
+            State of the processing after drawing, shared by all the plots
+            of the ternary diagram. ``_post_draw`` reads and updates it.
         """
         self.vector: np.ndarray = check_2d_vector(vector)
         self.ax: matplotlib.axes.Axes = check_ax(ax)
+        self.__post_draw_context = post_draw_context
         self.kwargs: dict = kwargs
         self.z = (
             np.asarray(z).ravel() if z is not None else None
@@ -591,9 +623,10 @@ class _BasePlotter:
         """
         set default params
 
-        Examples
-        --------------
-        >>> self._set_default_params(zorder=2)
+        Each keyword argument is stored in ``self.kwargs`` only when the
+        user has not specified it, so the user's value always takes
+        precedence. For example, passing ``zorder=2`` sets ``zorder`` to 2
+        unless the user passed ``zorder``.
         """
         for k, v in kwargs.items():
             if k not in self.kwargs:
@@ -603,9 +636,11 @@ class _BasePlotter:
         """
         merge the matplotlib name `alias` in kwargs into `name`
 
-        Examples
-        --------------
-        >>> z_min = self._merge_alias(self.z_min, "z_min", "vmin")
+        `alias` is removed from ``self.kwargs``. Its value is returned when
+        only `alias` is specified, and `value` is returned otherwise. For
+        example, passing ``self.z_min``, ``"z_min"`` and ``"vmin"`` gives
+        the lower limit of the color scale from either ``z_min`` or
+        ``vmin``.
 
         Raises
         ------
@@ -717,6 +752,66 @@ class _BasePlotter:
             **kwargs,
         )
 
+    def _post_draw(
+        self,
+        *,
+        mappable: Optional[matplotlib.cm.ScalarMappable] = None,
+        colorbar: Optional[bool] = None,
+    ) -> Optional[matplotlib.colorbar.Colorbar]:
+        """Run the processing after drawing, in one place for all plotters.
+
+        Every plotter calls this exactly once, at the end of ``__init__``.
+        In order, it decides whether to add a colorbar and adds and
+        registers it, warns about the colorbar, decides whether to adjust
+        the figure layout and adjusts it, and warns about the layout. Each
+        warning is issued only when the decision asks for it and only the
+        first time for its reason in the ternary diagram. Exceptions and
+        warnings from matplotlib are not caught.
+
+        Parameters
+        ----------
+        mappable : Optional[matplotlib.cm.ScalarMappable], optional
+            The plot colored by values, which a colorbar describes. None
+            for a plot that is not colored by values, which never gets a
+            colorbar, by default None
+        colorbar : Optional[bool], optional
+            Whether the user asked to add a colorbar. None means that it
+            was not specified, by default None
+
+        Returns
+        -------
+        Optional[matplotlib.colorbar.Colorbar]
+            The colorbar added and registered to the ternary diagram, or
+            None when no colorbar is added.
+        """
+        context = self.__post_draw_context
+
+        colorbar_action = decide_colorbar(
+            colorbar,
+            has_mappable=mappable is not None,
+            has_existing=context.has_colorbar(),
+        )
+        cbar = None
+        if colorbar_action is not ColorbarAction.SKIP:
+            cbar = self.colorbar(mappable, ax=self.ax)
+            context.register_colorbar(cbar)
+        if colorbar_action is ColorbarAction.ADD_AND_WARN and (
+            context.first_time(COLORBAR_WARNING_KEY)
+        ):
+            warn_external(colorbar_warning_message(self.name))
+
+        layout_action = decide_layout(
+            context.tight_layout, get_layout_state(self.fig)
+        )
+        if layout_action is not LayoutAction.SKIP:
+            self.fig.tight_layout()
+        if layout_action is LayoutAction.APPLY_AND_WARN and (
+            context.first_time(LAYOUT_WARNING_KEY)
+        ):
+            warn_external(layout_warning_message())
+
+        return cbar
+
 
 class _ScatterPlotter(_BasePlotter):
     def __init__(
@@ -727,11 +822,19 @@ class _ScatterPlotter(_BasePlotter):
         z_min=None,
         z_max=None,
         annotations=None,
-        flag_cbar: bool = True,
+        colorbar: Optional[bool] = None,
+        *,
+        post_draw_context: PostDrawContext,
         **kwargs,
     ):
         super().__init__(
-            vector=vector, ax=ax, z=z, z_min=z_min, z_max=z_max, **kwargs
+            vector=vector,
+            ax=ax,
+            z=z,
+            z_min=z_min,
+            z_max=z_max,
+            post_draw_context=post_draw_context,
+            **kwargs,
         )
 
         # default options
@@ -758,7 +861,8 @@ class _ScatterPlotter(_BasePlotter):
 
         # when z is None
         if self.z is None:
-            flag_cbar = False
+            # not colored by values, so no colorbar
+            mappable = None
             # To change color by each point
             self.collection_ = self.ax.scatter(self.x_, self.y_, **self.kwargs)
             # for i_data in range(len(self.x_)):
@@ -779,9 +883,8 @@ class _ScatterPlotter(_BasePlotter):
                 vmax=self._merge_alias(self.z_max, "z_max", "vmax"),
                 **self.kwargs,
             )
-            if flag_cbar:
-                self.colorbar(self.collection_, ax=self.ax)
-        self.fig.tight_layout()
+            mappable = self.collection_
+        self._post_draw(mappable=mappable, colorbar=colorbar)
 
     @property
     def name(self):
@@ -797,11 +900,19 @@ class _ContourPlotter(_BasePlotter):
         z_min=None,
         z_max=None,
         fill: bool = True,
-        flag_cbar: bool = True,
+        colorbar: Optional[bool] = None,
+        *,
+        post_draw_context: PostDrawContext,
         **kwargs,
     ):
         super().__init__(
-            vector, ax=ax, z=z, z_min=z_min, z_max=z_max, **kwargs
+            vector,
+            ax=ax,
+            z=z,
+            z_min=z_min,
+            z_max=z_max,
+            post_draw_context=post_draw_context,
+            **kwargs,
         )
         if self.z is None:
             raise ValueError("`z` is required to draw a contour map.")
@@ -838,9 +949,7 @@ class _ContourPlotter(_BasePlotter):
                 **self.kwargs,
             )
 
-        if flag_cbar:
-            self.colorbar(mappable=self.collection_, ax=self.ax)
-        self.fig.tight_layout()
+        self._post_draw(mappable=self.collection_, colorbar=colorbar)
 
     def _auto_levels(self) -> np.ndarray:
         """levels spanning from `z_min` (or min of z) to `z_max` (or max of z)"""
@@ -870,9 +979,22 @@ class _ContourPlotter(_BasePlotter):
 
 
 class _LinePlotter(_BasePlotter):
-    def __init__(self, vector, ax=None, **kwargs):
+    def __init__(
+        self,
+        vector,
+        ax=None,
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs,
+    ):
         super().__init__(
-            vector, ax=ax, z=None, z_min=None, z_max=None, **kwargs
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
         )
 
         # default options
@@ -884,7 +1006,7 @@ class _LinePlotter(_BasePlotter):
         self.collection_: List[matplotlib.lines.Line2D] = self.ax.plot(
             self.x_, self.y_, **self.kwargs
         )
-        self.fig.tight_layout()
+        self._post_draw()
 
     @property
     def name(self):
@@ -892,10 +1014,24 @@ class _LinePlotter(_BasePlotter):
 
 
 class _AnnotatePlotter(_BasePlotter):
-    def __init__(self, text, vector, ax=None, **kwargs):
+    def __init__(
+        self,
+        text,
+        vector,
+        ax=None,
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs,
+    ):
         vector = check_1d_vector(vector, scale=False)
         super().__init__(
-            vector, ax=ax, z=None, z_min=None, z_max=None, **kwargs
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
         )
 
         if "xytext" not in kwargs:
@@ -913,7 +1049,7 @@ class _AnnotatePlotter(_BasePlotter):
             text=text, xy=(self.x_[0], self.y_[0]), **kwargs
         )
 
-        self.fig.tight_layout()
+        self._post_draw()
 
     @property
     def name(self):

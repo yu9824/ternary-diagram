@@ -68,7 +68,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram.__init__`（`tight_layout` 引数、その検証と `PostDrawContext` の作成、docstring の `tight_layout` の Parameters の項目のみ）、`TernaryDiagram.colorbar`（作成したカラーバーの登録のみ）_
   - _Requirements: 1.1, 1.6, 4.1, 6.1, 7.4, 8.2_
 
-- [ ] 3.2 描画後処理の共通入口を作り、既存の 4 つの Plotter を移行する
+- [x] 3.2 描画後処理の共通入口を作り、既存の 4 つの Plotter を移行する
   - Plotter の基底に、三角図ごとの状態を必須のキーワード専用引数として受け取る口と、描画後処理を 1 回で実行する入口を追加する。実行順は「カラーバーの判定と追加・登録 → カラーバーの警告 → レイアウトの判定と調整 → レイアウトの警告」で、警告は決定表が求め、かつ三角図ごとに初めての理由のときだけ 1.1 の `warn_external` で出す。追加したカラーバーを返す
   - 4 つの Plotter はそれぞれ状態を明示的に受けて基底へ渡し（`**kwargs` に紛れ込ませない）、個別の `tight_layout` 呼び出しとカラーバー追加を共通入口の 1 回の呼び出しに置き換える。散布図と等高線の Plotter の `flag_cbar` 引数は `colorbar` に改める。散布図は `z` があるときだけ色付けしたオブジェクトを渡し、等高線は常に渡し、線と注釈は渡さない
   - TernaryDiagram の 4 つの描画メソッドから状態を Plotter に渡す。この段階では `scatter`／`contour` の公開引数は `flag_cbar` のままとし、その値を明示的なカラーバー指定として Plotter に渡す（従来どおり、毎回追加する挙動を保つ）
@@ -136,3 +136,4 @@
 - 共通 doctest ランナー（`tests/test_doctests.py`）は公開 API を規則で自動収集する。`TernaryDiagram` に公開メソッドを足すとその Examples も実行されるので、例は import の行から始め、FutureWarning を出さない書き方にする。private なメソッドに `>>>` を書いても収集はされないが、tech.md に従って書かない
 - `PostDrawContext` は design のコード例（`@dataclass(frozen=True)`）と違い `eq=False` にした。三角図ごとの状態なので同一性で比べ、`hash()` もできるようにするため（2.3 のレビューでの判断）
 - 描画を伴うテストは、共通 fixture `td` を使うか `tight_layout` を明示する。既定値そのものを確かめるテストは fixture に頼らず、その場で `tight_layout` を省略して作る（4.1 で fixture が `tight_layout=True` になるため。3.1 のレビューでの指摘）
+- 4.3 で足すこと: 決定表が警告を求めない呼び出しでは `first_time` のキーを消費しないこと（既存ありで `colorbar=True` → `colorbar=None` の順に描くと、2 回目で警告が出る）を固定するテスト（3.2 のレビューでの提案）
