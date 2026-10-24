@@ -258,10 +258,19 @@ def test_scatter_with_z_on_subfigure_adds_colorbar():
 # --- colorbar ---------------------------------------------------------------
 
 
-def test_scatter_without_z_adds_no_colorbar(td):
+@pytest.mark.parametrize(
+    "kwargs",
+    [{}, {"colorbar": True}, {"colorbar": False}],
+    ids=["omitted", "true", "false"],
+)
+def test_scatter_without_z_adds_no_colorbar(td, kwargs):
     n_axes = len(td.fig.axes)
 
-    collection = td.scatter(VECTOR)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        # Even `colorbar=True` adds none: the points are not colored by
+        # values.
+        collection = td.scatter(VECTOR, **kwargs)
 
     assert len(td.fig.axes) == n_axes
     assert collection.colorbar is None
@@ -270,12 +279,19 @@ def test_scatter_without_z_adds_no_colorbar(td):
 
 @pytest.mark.parametrize("method", ["scatter", "contour"])
 def test_added_colorbar_is_referable_and_registered(td, method):
+    axes_before = list(td.fig.axes)
     n_axes = len(td.fig.axes)
 
-    mappable = getattr(td, method)(VECTOR, z=Z)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        # The first colorbar of the diagram is added without any warning.
+        mappable = getattr(td, method)(VECTOR, z=Z)
 
     assert len(td.fig.axes) == n_axes + 1
     assert isinstance(mappable.colorbar, Colorbar)
+    # The returned object refers to the colorbar that was added.
+    added_axes = [a for a in td.fig.axes if a not in axes_before]
+    assert added_axes == [mappable.colorbar.ax]
     assert _post_draw_context(td).has_colorbar()
 
 
@@ -579,3 +595,311 @@ def test_colorbar_and_flag_cbar_parameter_entries(method):
     assert "4.0.0" in flag_text
     assert "ValueError" in flag_text
     assert "by default" not in flag_text
+
+
+# --- colorbar: diagrams that already have a colorbar ------------------------
+
+# One call of each plotting method colored by `z`. Each lambda stays on one
+# line, the line of the plotting call, so that a warning located at the call
+# is located at the first line of the lambda.
+COLORED_DRAWS = {
+    "scatter": lambda td, **kwargs: td.scatter(VECTOR, z=Z, **kwargs),
+    "contour": lambda td, **kwargs: td.contour(VECTOR, z=Z, **kwargs),
+}
+
+
+def _assert_located_at_call(warning, draw) -> None:
+    """Assert that `warning` points to the plotting call in `draw`."""
+    assert warning.filename == __file__
+    assert warning.lineno == draw.__code__.co_firstlineno
+
+
+@pytest.mark.parametrize("third", COLORED_METHODS)
+def test_default_duplicate_colorbar_is_added_with_one_future_warning(
+    tight_td, third
+):
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        tight_td.contour(VECTOR, z=Z)
+    with pytest.warns(
+        FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method="scatter")
+    ) as record:
+        scatter = COLORED_DRAWS["scatter"](tight_td)
+
+    # Two colorbars, as in v3.x, and one warning located at the call.
+    assert len(tight_td.fig.axes) == n_axes + 2
+    assert isinstance(scatter.colorbar, Colorbar)
+    assert len(record) == 1, _messages(record)
+    _assert_located_at_call(record[0], COLORED_DRAWS["scatter"])
+    assert "4.0.0" in str(record[0].message)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        mappable = COLORED_DRAWS[third](tight_td)
+
+    # The third plot adds a colorbar again, without another warning.
+    assert len(tight_td.fig.axes) == n_axes + 3
+    assert isinstance(mappable.colorbar, Colorbar)
+
+
+def test_duplicate_colorbar_warning_is_issued_once_per_diagram():
+    _, axes = plt.subplots(1, 2)
+    diagrams = [
+        TernaryDiagram(MATERIALS, ax=ax, tight_layout=True) for ax in axes
+    ]
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        for td in diagrams:
+            for method in ["contour", "scatter", "scatter"]:
+                COLORED_DRAWS[method](td)
+
+    assert len(record) == len(diagrams), _messages(record)
+    assert all(_is_duplicate_colorbar_warning(w) for w in record)
+
+
+@pytest.mark.parametrize("explicit", [True, False])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_explicit_colorbar_does_not_use_up_the_duplicate_warning(
+    tight_td, method, explicit
+):
+    draw = COLORED_DRAWS[method]
+    tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        draw(tight_td, colorbar=explicit)
+    # The explicit `colorbar` issued no warning, so the first plot with the
+    # default still warns.
+    with pytest.warns(
+        FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method=method)
+    ) as record:
+        draw(tight_td)
+
+    assert len(tight_td.fig.axes) == n_axes + explicit + 1
+    assert len(record) == 1, _messages(record)
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_made_with_colorbar_method_counts(tight_td, method):
+    tight_td.colorbar(tight_td.scatter(VECTOR, z=Z, colorbar=False))
+    n_axes = len(tight_td.fig.axes)
+
+    with pytest.warns(
+        FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method=method)
+    ) as record:
+        mappable = COLORED_DRAWS[method](tight_td)
+
+    assert len(tight_td.fig.axes) == n_axes + 1
+    assert isinstance(mappable.colorbar, Colorbar)
+    assert len(record) == 1, _messages(record)
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_made_with_fig_colorbar_is_not_counted(tight_td, method):
+    existing = tight_td.scatter(VECTOR, z=Z, colorbar=False)
+    tight_td.fig.colorbar(existing, ax=tight_td.ax)
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        mappable = COLORED_DRAWS[method](tight_td)
+
+    # Added as the first colorbar of the diagram, without a warning.
+    assert len(tight_td.fig.axes) == n_axes + 1
+    assert isinstance(mappable.colorbar, Colorbar)
+
+
+@pytest.mark.parametrize("made_with", ["plotting", "colorbar_method"])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_removed_colorbar_is_not_counted(tight_td, method, made_with):
+    if made_with == "plotting":
+        cbar = tight_td.contour(VECTOR, z=Z).colorbar
+    else:
+        cbar = tight_td.colorbar(tight_td.scatter(VECTOR, z=Z, colorbar=False))
+    cbar.remove()
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        mappable = COLORED_DRAWS[method](tight_td)
+
+    assert len(tight_td.fig.axes) == n_axes + 1
+    assert isinstance(mappable.colorbar, Colorbar)
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_left_after_removing_another_counts(tight_td, method):
+    removed = tight_td.contour(VECTOR, z=Z).colorbar
+    tight_td.scatter(VECTOR, z=Z, colorbar=True)
+    removed.remove()
+
+    with pytest.warns(
+        FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method=method)
+    ) as record:
+        COLORED_DRAWS[method](tight_td)
+
+    assert len(record) == 1, _messages(record)
+
+
+@pytest.mark.parametrize("colorbar", [None, True])
+def test_scatter_without_z_adds_no_colorbar_to_diagram_with_one(
+    tight_td, colorbar
+):
+    tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        collection = tight_td.scatter(VECTOR, colorbar=colorbar)
+
+    assert len(tight_td.fig.axes) == n_axes
+    assert collection.colorbar is None
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_rename_and_duplicate_warnings_point_to_the_plotting_call(
+    tight_td, method
+):
+    draw = COLORED_DRAWS[method]
+    tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
+
+    with pytest.warns(FutureWarning) as record:
+        draw(tight_td)
+        draw(tight_td, flag_cbar=True)
+
+    assert len(record) == 2, _messages(record)
+    duplicate, rename = record
+    assert _is_duplicate_colorbar_warning(duplicate)
+    assert RENAME_MATCH.format(method=method) in str(rename.message)
+    _assert_located_at_call(duplicate, draw)
+    _assert_located_at_call(rename, draw)
+
+
+# --- colorbar: defaults on a figure without a layout engine -----------------
+
+# Keyword arguments of the colorbar that v3.2.1 added after plotting, which
+# are the defaults of `TernaryDiagram.colorbar`.
+V3_COLORBAR_KWARGS = {
+    "shrink": 0.8,
+    "format": "%.1f",
+    "label": "",
+    "orientation": "vertical",
+    "location": "right",
+}
+
+
+def test_defaults_add_a_colorbar_for_each_plot_colored_by_values():
+    fig, ax = plt.subplots()
+    # `tight_layout` is omitted on purpose: this checks the defaults.
+    td = TernaryDiagram(MATERIALS, ax=ax)
+    n_axes = len(fig.axes)
+    methods = ["contour", "scatter", "scatter", "contour"]
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        for n_colorbars, method in enumerate(methods, start=1):
+            mappable = COLORED_DRAWS[method](td)
+            # As in v3.2.1, each plot colored by values adds a colorbar.
+            assert len(fig.axes) == n_axes + n_colorbars
+            assert isinstance(mappable.colorbar, Colorbar)
+        # The plots not colored by values add none.
+        td.scatter(VECTOR)
+        td.plot(VECTOR)
+
+    assert len(fig.axes) == n_axes + len(methods)
+    # Each default that changes in 4.0.0 warns once for the diagram.
+    assert len(record) == 2, _messages(record)
+    assert sum(_is_layout_future_warning(w) for w in record) == 1
+    assert sum(_is_duplicate_colorbar_warning(w) for w in record) == 1
+
+
+def _layout_of(fig) -> tuple:
+    """Margins and the position of every Axes, colorbars included."""
+    return _subplotpars(fig), [a.get_position().bounds for a in fig.axes]
+
+
+def _layout_of_contour_processed_directly(colorbar_first: bool) -> tuple:
+    """Layout of a contour whose colorbar and layout are left to the user.
+
+    The diagram neither adds the colorbar nor adjusts the layout itself:
+    ``fig.colorbar`` and ``fig.tight_layout`` are called here directly, in
+    the order that `colorbar_first` tells.
+    """
+    fig, ax = plt.subplots()
+    td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=False)
+    contour = td.contour(VECTOR, z=Z, colorbar=False)
+    steps = [
+        lambda: fig.colorbar(contour, ax=ax, **V3_COLORBAR_KWARGS),
+        fig.tight_layout,
+    ]
+    for step in steps if colorbar_first else reversed(steps):
+        step()
+    return _layout_of(fig)
+
+
+def test_default_margins_are_those_of_colorbar_then_tight_layout():
+    fig, ax = plt.subplots()
+    # `tight_layout` is omitted on purpose: this checks the defaults.
+    td = TernaryDiagram(MATERIALS, ax=ax)
+
+    with pytest.warns(FutureWarning, match=LAYOUT_WARNING_MATCH):
+        td.contour(VECTOR, z=Z)
+
+    # The same margins and colorbar position as v3.2.1, which added the
+    # colorbar first and then called `Figure.tight_layout()`.
+    layout = _layout_of(fig)
+    assert layout == _layout_of_contour_processed_directly(True)
+    # The other order gives another layout, so the order is checked above.
+    assert layout != _layout_of_contour_processed_directly(False)
+
+
+# --- flag_cbar with None, as its value or as `colorbar` ----------------------
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_flag_cbar_none_adds_no_colorbar_as_before(tight_td, method):
+    draw = COLORED_DRAWS[method]
+    n_axes = len(tight_td.fig.axes)
+
+    with pytest.warns(
+        FutureWarning, match=RENAME_MATCH.format(method=method)
+    ) as record:
+        mappable = draw(tight_td, flag_cbar=None)
+
+    # `flag_cbar` is interpreted as true or false, and None is false.
+    assert len(tight_td.fig.axes) == n_axes
+    assert mappable.colorbar is None
+    assert len(record) == 1, _messages(record)
+    _assert_located_at_call(record[0], draw)
+
+
+@pytest.mark.parametrize("positional", [False, True])
+@pytest.mark.parametrize(
+    ("flag_cbar", "added"), [(True, True), (False, False)]
+)
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_none_with_flag_cbar_lets_flag_cbar_decide(
+    tight_td, method, flag_cbar, added, positional
+):
+    n_axes = len(tight_td.fig.axes)
+
+    # None means that `colorbar` is not specified, so no ValueError.
+    with pytest.warns(
+        FutureWarning, match=RENAME_MATCH.format(method=method)
+    ) as record:
+        if positional:
+            mappable = _draw_with_positional_colorbar(
+                tight_td, method, None, flag_cbar=flag_cbar
+            )
+        else:
+            mappable = getattr(tight_td, method)(
+                VECTOR, z=Z, colorbar=None, flag_cbar=flag_cbar
+            )
+
+    assert len(tight_td.fig.axes) == n_axes + added
+    assert (mappable.colorbar is not None) is added
+    assert len(record) == 1, _messages(record)

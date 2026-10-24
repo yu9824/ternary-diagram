@@ -109,7 +109,7 @@
   - _Boundary: `tests/test_side_effects.py: レイアウトの結合テスト`（新規ファイルの該当部分）_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.6, 6.3, 6.4, 6.5, 6.7, 6.8, 7.1_
 
-- [ ] 4.3 カラーバーと `flag_cbar` の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 4.3 カラーバーと `flag_cbar` の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `contour(z)` だけならカラーバー 1 本・警告なしで、戻り値からそのカラーバーを参照できることを確認する
   - 既定のまま `contour(z)` → `scatter(z)` でカラーバーが 2 本になり FutureWarning が 1 回出ること、3 回目の描画でも警告が増えないこと、`colorbar=True` なら 2 本・警告なし、`colorbar=False` なら増えないことを確認する
   - 手動の `colorbar()` の後は警告が出ること、`fig.colorbar` で直接作ったカラーバーは数えないこと、カラーバーを削除した後は警告が出ないこと、`z` なしの `scatter` は `colorbar=True` でも追加しないことを確認する
