@@ -2,12 +2,18 @@
 from typing import Tuple  # isort: skip
 
 from math import sqrt
-from typing import Optional
+from numbers import Real
+from typing import Callable, Optional, Union
 
 import matplotlib.axes
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import ArrayLike
+
+#: Format of the tick labels accepted by :func:`get_tick_formatter`: a name
+#: (``"percent"`` or ``"fraction"``), a format string or a callable that
+#: takes a value in [0, 1] and returns its label.
+TickFormat = Union[str, Callable[[float], str]]
 
 
 def check_ax(ax: Optional[matplotlib.axes.Axes]) -> matplotlib.axes.Axes:
@@ -275,6 +281,155 @@ def get_label(compound_name: str) -> str:
             i = j
         i += 1
     return "".join(lst_compound_name)
+
+
+def get_tick_values(step: float, endpoints: bool = False) -> np.ndarray:
+    """Return the values of the ticks or the grid lines for an interval.
+
+    The values are the multiples of `step` in the open interval (0, 1) in
+    ascending order, rounded to 12 decimal places to suppress
+    floating-point errors.
+
+    Parameters
+    ----------
+    step : float
+        Interval between the values as a fraction in the range
+        ``0 < step <= 1``. ``bool`` is not accepted.
+    endpoints : bool, optional
+        Whether to add 0 and 1 at both ends, by default False
+
+    Returns
+    -------
+    numpy.ndarray
+        One-dimensional array of the values as floats in ascending order.
+        It is empty when `step` is 1 and `endpoints` is False.
+
+    Raises
+    ------
+    TypeError
+        If `step` is not a real number (``bool`` is rejected), or if
+        `endpoints` is neither True nor False.
+    ValueError
+        If `step` is not finite or not in the range ``0 < step <= 1``.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_tick_values
+    >>> get_tick_values(0.25).tolist()
+    [0.25, 0.5, 0.75]
+    >>> get_tick_values(0.1).tolist()
+    [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    >>> len(get_tick_values(0.05))
+    19
+    >>> get_tick_values(0.25, endpoints=True).tolist()
+    [0.0, 0.25, 0.5, 0.75, 1.0]
+    >>> get_tick_values(1).tolist()
+    []
+    >>> get_tick_values(0)
+    Traceback (most recent call last):
+        ...
+    ValueError: `step` must satisfy 0 < step <= 1, but got 0.
+    """
+    if isinstance(step, (bool, np.bool_)) or not isinstance(step, Real):
+        raise TypeError(f"`step` must be a real number, but got {step!r}.")
+    # Also rejects nan and +-inf without converting huge ints to float.
+    if not (0 < step <= 1):
+        raise ValueError(
+            f"`step` must satisfy 0 < step <= 1, but got {step!r}."
+        )
+    with_endpoints = check_bool(endpoints, "endpoints")
+
+    step = float(step)
+    # One extra multiple so that the last one below 1 is never missed.
+    n_multiples = int(np.ceil(1.0 / step)) + 1
+    multiples = np.round(np.arange(1, n_multiples + 1) * step, 12)
+    values = multiples[(multiples > 0.0) & (multiples < 1.0)]
+    if with_endpoints:
+        return np.concatenate(([0.0], values, [1.0]))
+    return values
+
+
+def get_tick_formatter(fmt: TickFormat) -> Callable[[float], str]:
+    """Return a function that turns a tick value into its label.
+
+    Parameters
+    ----------
+    fmt : str or callable
+        Format of the labels. The values given to the returned function
+        are fractions in [0, 1]. One of:
+
+        - ``"percent"``: the value as a percentage without unnecessary
+          digits (0.1 -> ``"10"``, 0.025 -> ``"2.5"``, 1 -> ``"100"``).
+        - ``"fraction"``: the value as a fraction (0.1 -> ``"0.1"``).
+        - Any other str: a format string applied to the fraction.
+          %-style (``"%.2f"``) is tried first, and {}-style
+          (``"{:.0%}"``, ``"{x:.1f}"``) is used if it fails.
+        - A callable that takes the fraction as a float. Its return value
+          is converted with ``str``, and its exceptions propagate when the
+          returned function is called.
+
+    Returns
+    -------
+    callable
+        Function that takes a value and returns its label as a str.
+
+    Raises
+    ------
+    TypeError
+        If `fmt` is neither a str nor a callable.
+    ValueError
+        If `fmt` is a str that is neither ``"percent"`` nor
+        ``"fraction"`` and either contains neither ``%`` nor ``{`` or
+        cannot format the trial value 0.5 in either style.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_tick_formatter
+    >>> percent = get_tick_formatter("percent")
+    >>> [percent(value) for value in (0.1, 0.025, 1.0)]
+    ['10', '2.5', '100']
+    >>> get_tick_formatter("fraction")(0.1)
+    '0.1'
+    >>> get_tick_formatter("%.2f")(0.1)
+    '0.10'
+    >>> get_tick_formatter("{:.0%}")(0.1)
+    '10%'
+    >>> get_tick_formatter("{x:.1f}")(0.1)
+    '0.1'
+    >>> get_tick_formatter(lambda value: f"{value * 100:.1f}%")(0.1)
+    '10.0%'
+    """
+    if callable(fmt):
+        func = fmt
+        return lambda value: str(func(float(value)))
+    if not isinstance(fmt, str):
+        raise TypeError(f"`fmt` must be a str or a callable, but got {fmt!r}.")
+    if fmt == "percent":
+        return lambda value: format(round(float(value) * 100, 10), "g")
+    if fmt == "fraction":
+        return lambda value: format(round(float(value), 12), "g")
+
+    accepted = (
+        "'percent', 'fraction', a %-style or {}-style format string "
+        "(e.g. '%.2f', '{:.0%}', '{x:.1f}') or a callable"
+    )
+    if "%" not in fmt and "{" not in fmt:
+        raise ValueError(f"`fmt` must be {accepted}, but got {fmt!r}.")
+    probe = 0.5
+    try:
+        fmt % probe
+    except (TypeError, ValueError):
+        pass
+    else:
+        return lambda value: fmt % float(value)
+    try:
+        fmt.format(probe, x=probe)
+    except (TypeError, ValueError, KeyError, IndexError, AttributeError) as e:
+        raise ValueError(
+            f"`fmt` {fmt!r} cannot format the value {probe} as a %-style "
+            f"or {{}}-style format string. `fmt` must be {accepted}."
+        ) from e
+    return lambda value: fmt.format(float(value), x=float(value))
 
 
 if __name__ == "__main__":
