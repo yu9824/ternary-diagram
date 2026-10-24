@@ -1,10 +1,22 @@
 import inspect
+from collections import Counter
 from math import sqrt
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from _skeleton_expected import (
+    box_aspect,
+    expected_border_lines,
+    expected_grid_lines,
+    expected_tick_label_texts,
+    expected_vertex_label_texts,
+    expected_view_limits,
+    line_key,
+    text_key,
+)
 from matplotlib.colorbar import Colorbar
+from matplotlib.colors import to_rgba
 
 from ternary_diagram import TernaryDiagram
 
@@ -208,3 +220,81 @@ def test_each_diagram_has_its_own_post_draw_context():
     assert _post_draw_context(left) is not _post_draw_context(right)
     assert _post_draw_context(left).has_colorbar()
     assert not _post_draw_context(right).has_colorbar()
+
+
+# Characterization of the default skeleton drawn by v3. The expected values
+# come from `tests/_skeleton_expected.py`, computed from the v3 formulas.
+LATEX_MATERIALS = ("Li$_{2}$O", "La$_{2}$O$_{3}$", "TiO$_{2}$")
+
+
+def test_default_skeleton_lines_match_v3(td):
+    expected = expected_grid_lines() + expected_border_lines()
+
+    assert len(td.ax.lines) == 30
+    assert Counter(map(line_key, td.ax.lines)) == Counter(expected)
+
+
+def test_default_skeleton_texts_match_v3(td):
+    expected = (
+        expected_vertex_label_texts(LATEX_MATERIALS)
+        + expected_tick_label_texts()
+    )
+
+    assert len(td.ax.texts) == 30
+    assert Counter(map(text_key, td.ax.texts)) == Counter(expected)
+
+
+def test_default_skeleton_has_no_axis_titles(td):
+    labels = set(LATEX_MATERIALS) | {f"{i}0" for i in range(1, 10)}
+
+    assert {text.get_text() for text in td.ax.texts} == labels
+    assert td.ax.get_xlabel() == ""
+    assert td.ax.get_ylabel() == ""
+
+
+def test_default_skeleton_adds_grid_before_border(td):
+    # The parts are told apart by geometry only, so that this test checks
+    # the order and nothing else.
+    grid = {key.segment for key in expected_grid_lines()}
+    border = {key.segment for key in expected_border_lines()}
+    keys = [line_key(line).segment for line in td.ax.lines]
+    assert all(key in grid or key in border for key in keys)
+
+    grid_indices = [i for i, key in enumerate(keys) if key in grid]
+    border_indices = [i for i, key in enumerate(keys) if key in border]
+
+    assert len(grid_indices) == 27
+    assert len(border_indices) == 3
+    assert max(grid_indices) < min(border_indices)
+
+
+def test_default_skeleton_adds_vertex_labels_before_tick_labels(td):
+    def where(key):
+        return key.text, key.position
+
+    vertex = set(map(where, expected_vertex_label_texts(LATEX_MATERIALS)))
+    tick = set(map(where, expected_tick_label_texts()))
+    keys = [where(text_key(text)) for text in td.ax.texts]
+    assert all(key in vertex or key in tick for key in keys)
+
+    vertex_indices = [i for i, key in enumerate(keys) if key in vertex]
+    tick_indices = [i for i, key in enumerate(keys) if key in tick]
+
+    assert len(vertex_indices) == 3
+    assert len(tick_indices) == 27
+    assert max(vertex_indices) < min(tick_indices)
+
+
+def test_default_skeleton_view_limits_after_draw(td):
+    expected_xlim, expected_ylim = expected_view_limits(box_aspect(td.ax))
+
+    td.fig.canvas.draw()
+
+    assert td.ax.get_xlim() == pytest.approx(expected_xlim, abs=1e-9)
+    assert td.ax.get_ylim() == pytest.approx(expected_ylim, abs=1e-9)
+
+
+def test_default_skeleton_does_not_advance_color_cycle(td):
+    (line,) = td.ax.plot([0.0, 1.0], [0.0, 1.0])
+
+    assert to_rgba(line.get_color()) == to_rgba("C0")

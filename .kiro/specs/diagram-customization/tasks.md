@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 現行の土台の見た目を特性テストで固定する
+- [x] 1. 現行の土台の見た目を特性テストで固定する
   - 着手の前提として、`plot-side-effects` がマージ済みのブランチから始める（roadmap の Implementation Order）。`utils.check_bool`、`tight_layout=True` で作る `td` fixture、共通 doctest ランナー `tests/test_doctests.py`、CHANGELOG の `Unreleased` の見出しの組がそろっていることを確かめる
   - リファクタの前に、何も指定せずに作った三角図の土台を、v3 の描画式から計算した期待値と比べるテストを追加する
   - 線 30 本について、外枠 3 本とグリッド 27 本の線分（向きを区別しない端点の組）、色・線幅・線種・重なり順の値を比べる
@@ -131,3 +131,10 @@
   - テスト全体が通り、ruff と mypy が新しい警告やエラーを出さない
   - _Boundary: 確認のみ（リポジトリのファイルを変更しない。失敗したら原因のタスクの Boundary の中で直す）_
   - _Requirements: 1.1, 1.3, 12.4_
+
+## Implementation Notes
+
+- 検証コマンドは `PYTHONPATH=src` 付きで実行する（パッケージは未インストール）。lint は `ruff check src tests`（`ruff check .` は example ノートブックの既存の F401 で落ちる。範囲外）。テスト一式は `-W error::FutureWarning` でも通る状態を保つ
+- 既定の土台の期待値は `tests/_skeleton_expected.py`（v3 の描画式から独立に計算。`LineKey` / `TextKey`、`line_key` / `text_key`、`expected_*`、`expected_view_limits`）。部品と集約の単体テスト（3.x）はこれを使い回す。`TextKey` には文字の色も含めた（1 のレビューでの提案）
+- `_skeleton_expected` は pytest 既定の prepend import モードで `from _skeleton_expected import ...` として読み込む（`tests/__init__.py` はない）
+- グリッド内・目盛りラベル内の描画順は固定していない（design の `_Grid` は成分ごとの順で描き、v3 の順と違うため）。部品間の順（グリッド → 外枠、頂点ラベル → 目盛りラベル）は固定している
