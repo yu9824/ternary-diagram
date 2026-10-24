@@ -99,7 +99,7 @@
   - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py / tests/test_plot.py / tests/test_annotate.py`（`flag_cbar=False` の置き換えと、fixture を使わずに三角図を作るテストへのレイアウト設定の明示、同じ三角図に `colorbar` 未指定で `z` 付きの描画を 2 回以上するテストへの `colorbar=True` の明示（従来どおり毎回追加する経路を保つ）のみ）_
   - _Requirements: 7.2, 7.4_
 
-- [ ] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `scatter`・`contour`・`plot`・`annotate` でパラメータ化し、既定・エンジンなしでは余白（サブプロットのパラメータ）が変わり FutureWarning が 1 回だけ出ること、2 回目の描画でも調整が続き警告は増えないことを確認する
   - `tight_layout=True` では調整されて警告なし、`tight_layout=False` では余白もエンジンも変わらず警告なしであることを、警告をエラーとして扱う状態で確認する
   - `layout="constrained"` の図ではエンジンが変わらず警告が 1 つも出ないこと、subfigure 上の Axes では `scatter(z=...)` と `plot` がエラーなく完了することを確認する
@@ -140,3 +140,4 @@
 - 4.3 で足すこと: 決定表が警告を求めない呼び出しでは `first_time` のキーを消費しないこと（既存ありで `colorbar=True` → `colorbar=None` の順に描くと、2 回目で警告が出る）を固定するテスト（3.2 のレビューでの提案）
 - 4.3 で足すこと: `flag_cbar=None` でカラーバーを追加しないこと（従来の意味。`_resolve_colorbar_arg` の `bool()` を外すと壊れる）、`colorbar=None` を明示して `flag_cbar` を渡しても ValueError にならないこと（design どおり、`None` は未指定）を固定するテスト（3.3 のレビューでの提案）
 - 4.1 では design「Testing Strategy > 後方互換」に挙げた置き換え（`flag_cbar` → `colorbar`、レイアウト設定の明示）に加え、同じ三角図に `z` 付きで 2 回描く `test_defaults_can_be_overridden` の 2 回目に `colorbar=True` を明示した（従来どおり毎回追加する経路を保つため。assert は不変）
+- 4.3 で足すこと: 要件 7.1「余白が導入前と同じ」を固定する比較。既定のまま `contour(z)` を描いた後の subplotpars が、matplotlib で直接「カラーバー追加 → `tight_layout()`」の順に処理した図と一致すること（`_post_draw` の処理順を入れ替えると余白が変わるが、4.2 のテストでは検出できない。4.2 のレビューでの提案）

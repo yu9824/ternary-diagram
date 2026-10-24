@@ -38,13 +38,31 @@ DRAWS = [
 ]
 
 
+# Essentials of the warning messages, checked with `match=` instead of the
+# full text. The lookaheads let the layout pattern ignore their order.
+LAYOUT_WARNING_MATCH = r"(?s)(?=.*4\.0\.0)(?=.*`tight_layout=True`)"
+DUPLICATE_COLORBAR_MATCH = "`{method}` added another colorbar"
+
+
 def _subplotpars(fig) -> dict:
     return {name: getattr(fig.subplotpars, name) for name in SUBPLOT_PARAMS}
+
+
+def _reset_subplotpars(fig, params: dict) -> None:
+    """Restore the margins, so that the next plot shows if it adjusts them."""
+    fig.subplots_adjust(**params)
+    assert _subplotpars(fig) == params
 
 
 def _is_layout_future_warning(warning) -> bool:
     return issubclass(warning.category, FutureWarning) and (
         "tight_layout" in str(warning.message)
+    )
+
+
+def _is_duplicate_colorbar_warning(warning) -> bool:
+    return issubclass(warning.category, FutureWarning) and (
+        "added another colorbar" in str(warning.message)
     )
 
 
@@ -66,22 +84,28 @@ def test_default_layout_is_tightened_with_one_future_warning(draw):
     # `tight_layout` is omitted on purpose: this checks the default.
     td = TernaryDiagram(MATERIALS, ax=ax)
 
+    with pytest.warns(FutureWarning, match=LAYOUT_WARNING_MATCH) as record:
+        draw(td)
+
+    assert _subplotpars(fig) != default
+    # The layout warning is the only warning of the first plot, and it is
+    # located in this file, which called the plotting method.
+    assert len(record) == 1, _messages(record)
+    assert _is_layout_future_warning(record[0])
+    assert record[0].filename == __file__
+
+    _reset_subplotpars(fig, default)
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter("always")
         draw(td)
-        tightened = _subplotpars(fig)
-        fig.subplots_adjust(**default)
-        draw(td)
 
-    assert tightened != default
-    # The second plot adjusts the layout again, without another warning.
+    # The second plot adjusts the layout again, without another layout
+    # warning. Only `scatter_z` and `contour` warn, about their duplicate
+    # colorbar, which has its own reason.
     assert _subplotpars(fig) != default
-    layout_warnings = [w for w in record if _is_layout_future_warning(w)]
-    assert len(layout_warnings) == 1, _messages(record)
-    assert layout_warnings[0].filename == __file__
-    message = str(layout_warnings[0].message)
-    assert "4.0.0" in message
-    assert "tight_layout=True" in message
+    assert [
+        w for w in record if not _is_duplicate_colorbar_warning(w)
+    ] == [], _messages(record)
 
 
 def test_layout_future_warning_is_issued_once_per_diagram():
@@ -92,11 +116,15 @@ def test_layout_future_warning_is_issued_once_per_diagram():
     with warnings.catch_warnings(record=True) as record:
         warnings.simplefilter("always")
         for td in diagrams:
+            # All the plotting methods share the setting of the diagram.
             td.plot(VECTOR)
             td.scatter(VECTOR)
+            td.contour(VECTOR, z=Z)
+            td.annotate("A", VECTOR[0])
 
     layout_warnings = [w for w in record if _is_layout_future_warning(w)]
     assert len(layout_warnings) == len(diagrams), _messages(record)
+    assert len(record) == len(diagrams), _messages(record)
 
 
 @pytest.mark.parametrize("draw", DRAWS)
@@ -109,6 +137,21 @@ def test_tight_layout_true_tightens_without_warnings(draw):
         warnings.simplefilter("error")
         draw(td)
 
+    assert _subplotpars(fig) != default
+
+    _reset_subplotpars(fig, default)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        # The duplicate colorbar of `scatter_z` and `contour` is not about
+        # the layout.
+        warnings.filterwarnings(
+            "ignore",
+            message=".*added another colorbar",
+            category=FutureWarning,
+        )
+        draw(td)
+
+    # Every plot adjusts the layout, not only the first one.
     assert _subplotpars(fig) != default
 
 
@@ -160,8 +203,9 @@ def test_constrained_layout_contour_and_scatter_with_colorbars_complete():
     # `tight_layout` is omitted on purpose: this checks the default.
     td = TernaryDiagram(MATERIALS, ax=ax)
 
-    with warnings.catch_warnings(record=True) as record:
-        warnings.simplefilter("always")
+    with pytest.warns(
+        FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method="scatter")
+    ) as record:
         contour = td.contour(VECTOR, z=Z)
         scatter = td.scatter(VECTOR, z=Z)
 
@@ -169,6 +213,10 @@ def test_constrained_layout_contour_and_scatter_with_colorbars_complete():
     assert fig.get_layout_engine() is engine
     assert isinstance(contour.colorbar, Colorbar)
     assert isinstance(scatter.colorbar, Colorbar)
+    # The duplicate colorbar warning is the only warning.
+    assert len(record) == 1, _messages(record)
+    assert _is_duplicate_colorbar_warning(record[0])
+    assert record[0].filename == __file__
     # Neither the layout FutureWarning nor matplotlib's warning that the
     # figure layout has changed.
     assert not [w for w in record if "layout" in str(w.message)], _messages(
@@ -177,7 +225,7 @@ def test_constrained_layout_contour_and_scatter_with_colorbars_complete():
 
 
 @requires_layout_engine
-@pytest.mark.parametrize("tight_layout", [None, True])
+@pytest.mark.parametrize("tight_layout", [None, True, False])
 @pytest.mark.parametrize("draw", DRAWS)
 def test_drawing_on_subfigure_leaves_layout_untouched(draw, tight_layout):
     fig = plt.figure()
