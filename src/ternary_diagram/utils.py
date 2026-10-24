@@ -102,6 +102,96 @@ def check_1d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
         raise ValueError("`vector`'s length must be 3.")
 
 
+def check_optional_bool(value: object, name: str) -> Optional[bool]:
+    """Check that a value is None, True or False.
+
+    Parameters
+    ----------
+    value : object
+        The value passed to the argument being checked. ``None``, ``bool``
+        and ``numpy.bool_`` are accepted.
+    name : str
+        The name of the argument being checked, shown in the error message.
+
+    Returns
+    -------
+    bool or None
+        ``None`` if `value` is ``None``, otherwise `value` converted to
+        the built-in ``bool``.
+
+    Raises
+    ------
+    TypeError
+        If `value` is neither ``None``, ``bool`` nor ``numpy.bool_``.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import check_optional_bool
+    >>> import numpy as np
+    >>> print(check_optional_bool(None, "tight_layout"))
+    None
+    >>> check_optional_bool(False, "tight_layout")
+    False
+    >>> check_optional_bool(np.bool_(True), "tight_layout")
+    True
+    >>> check_optional_bool(1, "tight_layout")
+    Traceback (most recent call last):
+        ...
+    TypeError: `tight_layout` must be None, True or False, but got 1.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    raise TypeError(
+        f"`{name}` must be None, True or False, but got {value!r}."
+    )
+
+
+def check_bool(value: object, name: str) -> bool:
+    """Check that a value is True or False.
+
+    Parameters
+    ----------
+    value : object
+        The value passed to the argument being checked. Only ``bool`` and
+        ``numpy.bool_`` are accepted.
+    name : str
+        The name of the argument being checked, shown in the error message.
+
+    Returns
+    -------
+    bool
+        `value` converted to the built-in ``bool``.
+
+    Raises
+    ------
+    TypeError
+        If `value` is neither ``bool`` nor ``numpy.bool_``, including
+        ``None``, ``0``, ``1`` and strings.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import check_bool
+    >>> import numpy as np
+    >>> check_bool(True, "visible")
+    True
+    >>> check_bool(np.bool_(False), "visible")
+    False
+    >>> check_bool(None, "visible")
+    Traceback (most recent call last):
+        ...
+    TypeError: `visible` must be True or False, but got None.
+    >>> check_bool("yes", "visible")
+    Traceback (most recent call last):
+        ...
+    TypeError: `visible` must be True or False, but got 'yes'.
+    """
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    raise TypeError(f"`{name}` must be True or False, but got {value!r}.")
+
+
 def three2two(vector: ArrayLike) -> Tuple[np.ndarray, np.ndarray]:
     """
     Converted 3D proportions to 2D in order to generate a triangular diagram.

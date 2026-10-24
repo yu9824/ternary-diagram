@@ -1,7 +1,7 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 共通の警告の入口、入力検証、doctest ランナー
-- [ ] 1.1 (P) 利用者向けの警告の共通の入口と、非推奨・既定値変更の文面ヘルパーを作る
+- [x] 1. 基盤: 共通の警告の入口、入力検証、doctest ランナー
+- [x] 1.1 (P) 利用者向けの警告の共通の入口と、非推奨・既定値変更の文面ヘルパーを作る
   - `warn_external(message, category=FutureWarning)` を、パッケージ全体で利用者向けの警告を出す唯一の入口にする。種類は `category` で選べる（既定は FutureWarning、UserWarning なども可）
   - 警告の発生位置を、呼び出し経路の深さにかかわらず、パッケージ外で最初に見つかる呼び出し元（利用者のコードの行）にする
   - 既定値変更の警告文を「今起きたこと → 変更予定のバージョン（4.0.0）と変更後の挙動 → 今の挙動を保つ書き方 → 新しい挙動を先取りする書き方」の順で組み立てる。構成要素が空なら開発者向けに `ValueError` にする
@@ -13,7 +13,7 @@
   - _Boundary: `src/ternary_diagram/_deprecation.py`（新規、全体）、`tests/test_deprecation.py`（新規、全体）_
   - _Requirements: 5.3, 5.4, 6.6, 6.7, 6.9_
 
-- [ ] 1.2 (P) 真偽値の入力検証関数を 2 つ追加する
+- [x] 1.2 (P) 真偽値の入力検証関数を 2 つ追加する
   - `check_optional_bool(value, name)`: `None` はそのまま、`bool` と `numpy.bool_` は `bool` に揃えて返す。それ以外（`1`、`"yes"` など）は、引数名と受け取った値を示すメッセージ付きの `TypeError` にする
   - `check_bool(value, name)`: `check_optional_bool` の隣に置き、`bool` と `numpy.bool_` だけを受けて `bool` を返す。`None`・`0`／`1`・文字列などは `` `{name}` must be True or False, but got ... `` の `TypeError` にする。本 spec では使わず、`diagram-customization` が `visible`・`endpoints` の検証に使う（`region-plots` の `text(auto_latex_notation=None)` と `heatmaps` の `colorbar` は `None` を受け付けるので `check_optional_bool` を使う）
   - どちらも docstring に doctest 形式の Examples（受け付ける値と `TypeError` になる値）を持たせる。各例は `>>> from ternary_diagram.utils import check_optional_bool`（`check_bool`）の import の行から始め、`numpy.bool_` を渡す例では `>>> import numpy as np` も置いて、その docstring だけで実行できるようにする。図を作らず、ファイルも書き出さない。Parameters の `value`・`name` にはそれぞれ意味を書く文を置く（tech.md「Docstring Examples」）
@@ -22,7 +22,7 @@
   - _Boundary: `src/ternary_diagram/utils.py: check_optional_bool, check_bool`（追加のみ。既存の関数は変えない）、`tests/test_utils.py: check_optional_bool / check_bool のテスト`（追加のみ）_
   - _Requirements: 1.6, 3.7, 9.1, 9.2_
 
-- [ ] 1.3 公開 API の使用例を実行する共通 doctest ランナーを作る
+- [x] 1.3 公開 API の使用例を実行する共通 doctest ランナーを作る
   - 対象を公開 API に限って収集する: `ternary_diagram.__all__` の `TernaryDiagram`（クラスの docstring、`__init__`、名前が `_` で始まらないメソッドとプロパティ）と、公開モジュール（名前が `_` で始まらないサブモジュール。現時点では `utils`、後続の spec が足すものも自動で対象）で定義された公開の関数とクラス。private なモジュールと、`_` で始まるメソッド（`__init__` を除く）は収集しない
   - `>>>` の例を持つ docstring ごとに 1 つのテストにパラメータ化し、作業ディレクトリを一時ディレクトリに移し、FutureWarning をエラーとして扱い、option flags `ELLIPSIS | NORMALIZE_WHITESPACE` で実行する。名前空間はその docstring のモジュールの globals で、名前を足さない。失敗時は失敗した例と差分をメッセージに含める
   - 既存の `TernaryDiagram.__init__` の Examples 節（`user-guide-docs` が書き直す）の 1 件だけを `xfail(strict=True)` にし、理由に「`user-guide-docs` が書き直したら一覧から外す」と書く。Examples 節そのものには手を加えない
@@ -31,8 +31,8 @@
   - _Boundary: `tests/test_doctests.py`（新規、全体）_
   - _Requirements: 9.2, 9.3, 9.4_
 
-- [ ] 2. コア: 描画後処理の方針（判定と状態）
-- [ ] 2.1 図のレイアウト状態を判定する
+- [x] 2. コア: 描画後処理の方針（判定と状態）
+- [x] 2.1 図のレイアウト状態を判定する
   - top-level の図でないもの（subfigure）を「対象外」と判定する
   - matplotlib 3.6 以上では、レイアウトエンジンなし、またはライブラリ自身の tight 調整の後に残るプレースホルダーのエンジンを「エンジンなし」、それ以外（constrained・compressed・tight・rcParams 由来）を「エンジンあり」と判定する
   - 3.6 未満では constrained layout と tight layout の有効状態から判定する。バージョンの判定はモジュール冒頭の定数で行う
@@ -41,7 +41,7 @@
   - _Boundary: `src/ternary_diagram/_post_draw.py: _HAS_LAYOUT_ENGINE, LayoutState, get_layout_state`（新規ファイルの該当部分）、`tests/test_post_draw.py: get_layout_state のテスト`_
   - _Requirements: 2.1, 2.3, 2.4, 2.5_
 
-- [ ] 2.2 レイアウトとカラーバーの決定表と、既定値変更の警告文を実装する
+- [x] 2.2 レイアウトとカラーバーの決定表と、既定値変更の警告文を実装する
   - レイアウト: 設定（未指定・真・偽）× 図の状態（エンジンなし・あり・対象外）から「何もしない／調整する／調整して警告」を決める。未指定かつエンジンなしだけが「調整して警告」
   - カラーバー: 指定（未指定・真・偽）× 値で色付けした描画か × 既存のカラーバーの有無から「追加しない／追加する／追加して警告」を決める。未指定かつ既存ありだけが「追加して警告」
   - どちらも図を変更しない純粋な関数にし、v4.0.0 では未指定の行だけを変えれば済む形にする
@@ -50,7 +50,7 @@
   - _Boundary: `src/ternary_diagram/_post_draw.py: LayoutAction, ColorbarAction, decide_layout, decide_colorbar, layout_warning_message, colorbar_warning_message, LAYOUT_WARNING_KEY, COLORBAR_WARNING_KEY`、`tests/test_post_draw.py: 決定表と警告文のテスト`_
   - _Requirements: 1.2, 1.3, 1.4, 3.2, 3.3, 3.4, 4.2, 6.3, 6.4, 6.5, 6.6_
 
-- [ ] 2.3 三角図ごとの描画後処理の状態を実装する
+- [x] 2.3 三角図ごとの描画後処理の状態を実装する
   - 作成時に受け取ったレイアウト設定を保持し、作成後は変えられないようにする
   - この三角図を通じて作成したカラーバーを登録し、「削除されていないものが 1 本以上あるか」を答えられるようにする（削除済みは、カラーバーの元のオブジェクトがそのカラーバーを指していないことで判定する）
   - 理由ごとのキーを初めて受け取ったときだけ真を返し、2 回目以降は偽を返す
@@ -58,8 +58,8 @@
   - _Boundary: `src/ternary_diagram/_post_draw.py: PostDrawContext`、`tests/test_post_draw.py: PostDrawContext のテスト`_
   - _Requirements: 1.1, 4.1, 4.3, 6.8_
 
-- [ ] 3. 統合: TernaryDiagram と Plotter への組み込み
-- [ ] 3.1 TernaryDiagram の作成時にレイアウト設定を受け付け、三角図ごとの状態を用意する
+- [x] 3. 統合: TernaryDiagram と Plotter への組み込み
+- [x] 3.1 TernaryDiagram の作成時にレイアウト設定を受け付け、三角図ごとの状態を用意する
   - キーワード専用の `tight_layout`（未指定・真・偽）を `*` の直後に追加する。最終シグネチャは roadmap「横断の取り決め」の `(materials, ax=None, auto_latex_notation=True, *, tight_layout=None, border_kw=None, grid_kw=None, tick_kw=None, axis_label_kw=None, vertex_label_kw=None)` で、本 spec は `tight_layout` だけを足す（`*_kw` は後からマージする `diagram-customization` が `tight_layout` の後ろに足す）
   - 検証の順 `ax` → `materials` → `tight_layout` → `*_kw` に合わせ、`check_ax(ax)` の直後、Axes に触れる前に 1.2 の `check_optional_bool` で `tight_layout` を検証して三角図ごとの状態を作る（`materials` の検証は `diagram-customization` が `check_ax` との間に入れる）。土台の描画コードには手を加えない
   - 手動の `colorbar()` で作ったカラーバーを三角図ごとの状態に登録する。`colorbar()` の引数・既定値・戻り値・docstring は変えない（メソッドの docstring は `user-guide-docs` の担当）
@@ -68,7 +68,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram.__init__`（`tight_layout` 引数、その検証と `PostDrawContext` の作成、docstring の `tight_layout` の Parameters の項目のみ）、`TernaryDiagram.colorbar`（作成したカラーバーの登録のみ）_
   - _Requirements: 1.1, 1.6, 4.1, 6.1, 7.4, 8.2_
 
-- [ ] 3.2 描画後処理の共通入口を作り、既存の 4 つの Plotter を移行する
+- [x] 3.2 描画後処理の共通入口を作り、既存の 4 つの Plotter を移行する
   - Plotter の基底に、三角図ごとの状態を必須のキーワード専用引数として受け取る口と、描画後処理を 1 回で実行する入口を追加する。実行順は「カラーバーの判定と追加・登録 → カラーバーの警告 → レイアウトの判定と調整 → レイアウトの警告」で、警告は決定表が求め、かつ三角図ごとに初めての理由のときだけ 1.1 の `warn_external` で出す。追加したカラーバーを返す
   - 4 つの Plotter はそれぞれ状態を明示的に受けて基底へ渡し（`**kwargs` に紛れ込ませない）、個別の `tight_layout` 呼び出しとカラーバー追加を共通入口の 1 回の呼び出しに置き換える。散布図と等高線の Plotter の `flag_cbar` 引数は `colorbar` に改める。散布図は `z` があるときだけ色付けしたオブジェクトを渡し、等高線は常に渡し、線と注釈は渡さない
   - TernaryDiagram の 4 つの描画メソッドから状態を Plotter に渡す。この段階では `scatter`／`contour` の公開引数は `flag_cbar` のままとし、その値を明示的なカラーバー指定として Plotter に渡す（従来どおり、毎回追加する挙動を保つ）
@@ -79,7 +79,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: _BasePlotter.__init__`（`post_draw_context` 引数のみ）、`_BasePlotter._post_draw`（新規）、`_BasePlotter._set_default_params / _merge_alias`（docstring の `>>>` 行の書き換えのみ）、`_ScatterPlotter / _ContourPlotter / _LinePlotter / _AnnotatePlotter.__init__`（`post_draw_context` の受け渡し、描画後処理の `_post_draw` への置き換え、`flag_cbar` → `colorbar` の改名のみ）、`TernaryDiagram.scatter / contour / plot / annotate`（Plotter への `post_draw_context` の受け渡しのみ）_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.4, 2.6, 3.5, 3.6, 6.3, 6.8, 7.1, 7.2, 9.4_
 
-- [ ] 3.3 `scatter`／`contour` に `colorbar` 引数を追加し、`flag_cbar` を非推奨の別名にする
+- [x] 3.3 `scatter`／`contour` に `colorbar` 引数を追加し、`flag_cbar` を非推奨の別名にする
   - `colorbar`（未指定・真・偽）を従来の `flag_cbar` と同じ 6 番目の位置引数として置き、位置引数で書かれた既存の呼び出しを同じ意味で受ける
   - `flag_cbar` はキーワード引数から取り出し、1.1 のヘルパーで解決する。`flag_cbar` が使われた場合は従来どおり真偽で解釈して明示的な指定として扱い（既定値変更の警告の対象にしない）、改名の FutureWarning を出す。`colorbar` と同時に指定されたら `ValueError`
   - `colorbar` は 1.2 の `check_optional_bool` で厳密に検証する。6 番目の位置引数に `0`／`1` を渡していた呼び出しは `TypeError` になる（非互換として受け入れ、4.4 で CHANGELOG の Breaking changes に記載する）
@@ -88,16 +88,18 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram.scatter / contour`（`colorbar` 引数、`flag_cbar` の解決、docstring の `colorbar`・`flag_cbar` の Parameters の項目のみ）、`_resolve_colorbar_arg`（新規）_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.7, 4.2, 4.4, 5.1, 5.2, 5.3, 5.4, 6.2, 6.5, 7.3, 8.2_
 
-- [ ] 4. 検証と変更履歴
-- [ ] 4.1 既存のテストを新しい引数へ移行し、FutureWarning が出ない状態にする
+- [x] 4. 検証と変更履歴
+- [x] 4.1 既存のテストを新しい引数へ移行し、FutureWarning が出ない状態にする
   - 共通 fixture の三角図はレイアウト設定（従来と同じ `tight_layout=True`）を明示し、既存テストが同じ処理経路を通りつつ警告を出さないようにする
   - 既存テストの `flag_cbar=False` を `colorbar=False` に置き換え、example の CSV を読むテストもレイアウト設定を明示する
+  - 同じ三角図に `colorbar` 未指定で `z` 付きの描画を 2 回以上するテスト（`test_contour.py::test_defaults_can_be_overridden`）は、2 回目以降に `colorbar=True` を明示する（4.1 の実装中に判明した境界の不足を補う）
   - 置き換え以外の assert は変えない
   - 完了時: 既存のテスト一式を FutureWarning をエラーとして扱う設定（`-W error::FutureWarning`）で実行しても通る（共通 doctest ランナーの `__init__` の 1 件は xfail のまま）
-  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py`（`flag_cbar=False` の置き換えと、example を読むテストのレイアウト設定の明示のみ）_
+  - fixture を使わずに三角図を作って描画する既存テスト（`test_multiple_diagrams_in_one_figure`、`test_uses_current_axes_by_default` など）にも、同じくレイアウト設定（`tight_layout=True`）を明示する（3.1 のレビューで判明した境界の不足を補う）
+  - _Boundary: `tests/conftest.py: td fixture`、`tests/test_scatter.py / tests/test_contour.py / tests/test_ternary_diagram.py / tests/test_plot.py / tests/test_annotate.py`（`flag_cbar=False` の置き換えと、fixture を使わずに三角図を作るテストへのレイアウト設定の明示、同じ三角図に `colorbar` 未指定で `z` 付きの描画を 2 回以上するテストへの `colorbar=True` の明示（従来どおり毎回追加する経路を保つ）のみ）_
   - _Requirements: 7.2, 7.4_
 
-- [ ] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 4.2 レイアウトの挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `scatter`・`contour`・`plot`・`annotate` でパラメータ化し、既定・エンジンなしでは余白（サブプロットのパラメータ）が変わり FutureWarning が 1 回だけ出ること、2 回目の描画でも調整が続き警告は増えないことを確認する
   - `tight_layout=True` では調整されて警告なし、`tight_layout=False` では余白もエンジンも変わらず警告なしであることを、警告をエラーとして扱う状態で確認する
   - `layout="constrained"` の図ではエンジンが変わらず警告が 1 つも出ないこと、subfigure 上の Axes では `scatter(z=...)` と `plot` がエラーなく完了することを確認する
@@ -107,7 +109,7 @@
   - _Boundary: `tests/test_side_effects.py: レイアウトの結合テスト`（新規ファイルの該当部分）_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.3, 2.4, 2.6, 6.3, 6.4, 6.5, 6.7, 6.8, 7.1_
 
-- [ ] 4.3 カラーバーと `flag_cbar` の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 4.3 カラーバーと `flag_cbar` の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `contour(z)` だけならカラーバー 1 本・警告なしで、戻り値からそのカラーバーを参照できることを確認する
   - 既定のまま `contour(z)` → `scatter(z)` でカラーバーが 2 本になり FutureWarning が 1 回出ること、3 回目の描画でも警告が増えないこと、`colorbar=True` なら 2 本・警告なし、`colorbar=False` なら増えないことを確認する
   - 手動の `colorbar()` の後は警告が出ること、`fig.colorbar` で直接作ったカラーバーは数えないこと、カラーバーを削除した後は警告が出ないこと、`z` なしの `scatter` は `colorbar=True` でも追加しないことを確認する
@@ -118,7 +120,7 @@
   - _Boundary: `tests/test_side_effects.py: カラーバーと flag_cbar の結合テスト`（新規ファイルの該当部分）_
   - _Requirements: 3.2, 3.3, 3.4, 3.5, 3.6, 3.7, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 6.5, 6.7, 6.8, 7.1, 7.3_
 
-- [ ] 4.4 (P) CHANGELOG の Unreleased の見出しをそろえ、変更点を追記する
+- [x] 4.4 (P) CHANGELOG の Unreleased の見出しをそろえ、変更点を追記する
   - Unreleased の見出しを Breaking changes / New features / Deprecations / Bug fixes / Other changes（英語、この順）の組にそろえる。今ある Breaking changes / Bug fixes / Other changes とその項目はそのまま残し、New features と Deprecations を足す。後続の spec は該当する見出しに追記する
   - Breaking changes（既存の項目の後に追記）: `scatter`／`contour` の 6 番目の位置引数（旧 `flag_cbar`、新 `colorbar`）に `0`／`1` など真偽値以外を渡すと `TypeError` になったこと。`None`／`True`／`False` を渡すか、キーワードの `flag_cbar`（従来どおり真偽で解釈、非推奨）を使うよう案内する
   - New features: `TernaryDiagram(tight_layout=...)` と `scatter`／`contour` の `colorbar=...`
@@ -128,3 +130,17 @@
   - 完了時: CHANGELOG の Unreleased に 5 つの見出しがこの順で並び、本 spec の項目が上記の見出しにあり、既存の項目の書式（英語、箇条書き）に揃っている
   - _Boundary: `CHANGELOG.md: Unreleased の見出しの組と本 spec の項目`（既存の項目と過去のバージョンの節は変えない）_
   - _Requirements: 6.1, 6.2, 7.3, 8.1_
+
+## Implementation Notes
+
+- 検証コマンドは `PYTHONPATH=src` 付きで実行する（パッケージは未インストール）。lint は `ruff check src tests`（`ruff check .` は example ノートブックの既存の F401 で落ちる。範囲外）
+- 共通 doctest ランナー（`tests/test_doctests.py`）は公開 API を規則で自動収集する。`TernaryDiagram` に公開メソッドを足すとその Examples も実行されるので、例は import の行から始め、FutureWarning を出さない書き方にする。private なメソッドに `>>>` を書いても収集はされないが、tech.md に従って書かない
+- `PostDrawContext` は design のコード例（`@dataclass(frozen=True)`）と違い `eq=False` にした。三角図ごとの状態なので同一性で比べ、`hash()` もできるようにするため（2.3 のレビューでの判断）
+- 描画を伴うテストは、共通 fixture `td` を使うか `tight_layout` を明示する。既定値そのものを確かめるテストは fixture に頼らず、その場で `tight_layout` を省略して作る（4.1 で fixture が `tight_layout=True` になるため。3.1 のレビューでの指摘）
+- 4.3 で足すこと: 決定表が警告を求めない呼び出しでは `first_time` のキーを消費しないこと（既存ありで `colorbar=True` → `colorbar=None` の順に描くと、2 回目で警告が出る）を固定するテスト（3.2 のレビューでの提案）
+- 4.3 で足すこと: `flag_cbar=None` でカラーバーを追加しないこと（従来の意味。`_resolve_colorbar_arg` の `bool()` を外すと壊れる）、`colorbar=None` を明示して `flag_cbar` を渡しても ValueError にならないこと（design どおり、`None` は未指定）を固定するテスト（3.3 のレビューでの提案）
+- 4.1 では design「Testing Strategy > 後方互換」に挙げた置き換え（`flag_cbar` → `colorbar`、レイアウト設定の明示）に加え、同じ三角図に `z` 付きで 2 回描く `test_defaults_can_be_overridden` の 2 回目に `colorbar=True` を明示した（従来どおり毎回追加する経路を保つため。assert は不変）
+- 4.3 で足すこと: 要件 7.1「余白が導入前と同じ」を固定する比較。既定のまま `contour(z)` を描いた後の subplotpars が、matplotlib で直接「カラーバー追加 → `tight_layout()`」の順に処理した図と一致すること（`_post_draw` の処理順を入れ替えると余白が変わるが、4.2 のテストでは検出できない。4.2 のレビューでの提案）
+- 要件 7.3 と design「Migration Strategy」は「6 番目の位置引数の厳密化が唯一の非互換」としているが、実際には位置引数の `None` の意味も変わった（旧: `if flag_cbar:` でカラーバーなし → 新: 未指定として扱い、値で色付けした描画なら追加）。実装は要件 3.1・3.7（`None` は未指定）どおり。CHANGELOG の Breaking changes には記載した。spec の文言を直すかはユーザーの判断待ち（4.4 のレビューでの指摘）
+- 既知の制限（validate-impl で確認）: `PostDrawContext.has_colorbar` は design どおり `cb.mappable.colorbar is cb` で生死を判定するので、登録済みのカラーバーと同じ mappable に利用者が `fig.colorbar` で別のカラーバーを足すと、登録済みのものが「削除済み」と判定される。v3.x では本数は変わらず、重複の FutureWarning が出ないだけ
+- validate-impl の残り（軽微）: `TernaryDiagram.__init__` の `tight_layout` の docstring 項目を固定するテストはない（`colorbar`／`flag_cbar` の項目にはある）。user-guide-docs の docstring 整理のときに足すとよい

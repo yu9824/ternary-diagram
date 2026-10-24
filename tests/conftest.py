@@ -36,7 +36,7 @@ def ax():
 
 @pytest.fixture
 def td(ax) -> TernaryDiagram:
-    return TernaryDiagram(MATERIALS, ax=ax)
+    return TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
 
 
 @pytest.fixture
