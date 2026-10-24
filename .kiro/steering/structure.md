@@ -9,12 +9,12 @@
 ### Package Source
 **Location**: `src/ternary_diagram/`
 **Purpose**: ライブラリ本体。`__init__.py` はメタデータ（`__version__` など）と公開 API の re-export だけを持つ
-**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`
+**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
 
 ### Tests
 **Location**: `tests/`
-**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI）。共通 fixture は `conftest.py` に置く
-**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`
+**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`
 
 ### Examples
 **Location**: `example/<use_case>/`
@@ -67,15 +67,18 @@ from ternary_diagram.utils import check_2d_vector, three2two
 
 ### Plotter パターン（描画種別を追加するとき）
 
-`TernaryDiagram` の描画メソッドは、対応する `_BasePlotter` サブクラスを生成し、座標を記録して、matplotlib のオブジェクトを返すだけにする。
+`TernaryDiagram` の描画メソッドは、対応する `_BasePlotter` サブクラスを生成し、座標を記録して、matplotlib のオブジェクトを返すだけにする。描画後のレイアウト調整とカラーバーの追加は Plotter が直接行わず、`__init__` の最後で `self._post_draw(...)` をちょうど 1 回呼んで任せる（既存のレイアウトエンジンの尊重、カラーバーの重複判定、FutureWarning の 1 回化はそこで行う）。
 
 ```python
 class _NewPlotter(_BasePlotter):
-    def __init__(self, vector, ax=None, **kwargs):
-        super().__init__(vector, ax=ax, **kwargs)  # 検証・正規化・3D→2D 変換
+    def __init__(self, vector, ax=None, *, post_draw_context, **kwargs):
+        super().__init__(  # 検証・正規化・3D→2D 変換
+            vector, ax=ax, post_draw_context=post_draw_context, **kwargs
+        )
         self._set_default_params(zorder=DEFAULT_ZORDER_PLOTS)  # ユーザー指定が優先
         self.collection_ = self.ax.some_mpl_func(self.x_, self.y_, **self.kwargs)
-        self.fig.tight_layout()
+        # 値で色付けした描画なら mappable と colorbar（None/True/False）を渡す
+        self._post_draw()
 
     @property
     def name(self):
@@ -84,7 +87,12 @@ class _NewPlotter(_BasePlotter):
 
 # TernaryDiagram 側
 def new(self, vector: ArrayLike, **kwargs):
-    plotter = _NewPlotter(vector=vector, ax=self.ax, **kwargs)
+    plotter = _NewPlotter(
+        vector=vector,
+        ax=self.ax,
+        post_draw_context=self.__post_draw_context,  # 三角図ごとの状態
+        **kwargs,
+    )
     self._append_x_y(plotter)  # plotter.name ごとに x_ / y_ を記録
     return plotter.collection_  # matplotlib のネイティブオブジェクト
 ```
@@ -95,7 +103,7 @@ def new(self, vector: ArrayLike, **kwargs):
 - `vector` は shape `(n, 3)` の ArrayLike。1 点だけを受ける API（`annotate`）は `check_1d_vector` で `(1, 3)` に揃える
 - 3 成分から 2 次元座標への変換は `utils.three2two` に一元化する
 - `ax` を受け取る処理はすべて `check_ax` を通す。未指定なら `plt.gca()`
-- `z`（物性値）を伴う描画は `flag_cbar=True` のとき colorbar を自動で付け、共通実装の `_BasePlotter.colorbar` を使う
+- 値で色付けした描画は `colorbar=None|True|False` を受け、真偽値は `utils.check_optional_bool` / `check_bool` で厳密に検証する（`0`/`1` は `TypeError`）。カラーバーの追加は `_post_draw` が決定表で判断する
 - 内部で matplotlib に渡す引数とユーザーの kwargs が衝突しうるときは、`_merge_alias` で別名を統合するか、`self.kwargs.pop(...)` でユーザー指定を取り出して優先する。kwargs をそのまま `**self.kwargs` で重ねて渡さない
 
 ### Comments
@@ -106,3 +114,4 @@ def new(self, vector: ArrayLike, **kwargs):
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
 
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
+_updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
