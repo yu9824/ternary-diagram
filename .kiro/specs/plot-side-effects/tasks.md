@@ -58,7 +58,7 @@
   - _Boundary: `src/ternary_diagram/_post_draw.py: PostDrawContext`、`tests/test_post_draw.py: PostDrawContext のテスト`_
   - _Requirements: 1.1, 4.1, 4.3, 6.8_
 
-- [ ] 3. 統合: TernaryDiagram と Plotter への組み込み
+- [x] 3. 統合: TernaryDiagram と Plotter への組み込み
 - [x] 3.1 TernaryDiagram の作成時にレイアウト設定を受け付け、三角図ごとの状態を用意する
   - キーワード専用の `tight_layout`（未指定・真・偽）を `*` の直後に追加する。最終シグネチャは roadmap「横断の取り決め」の `(materials, ax=None, auto_latex_notation=True, *, tight_layout=None, border_kw=None, grid_kw=None, tick_kw=None, axis_label_kw=None, vertex_label_kw=None)` で、本 spec は `tight_layout` だけを足す（`*_kw` は後からマージする `diagram-customization` が `tight_layout` の後ろに足す）
   - 検証の順 `ax` → `materials` → `tight_layout` → `*_kw` に合わせ、`check_ax(ax)` の直後、Axes に触れる前に 1.2 の `check_optional_bool` で `tight_layout` を検証して三角図ごとの状態を作る（`materials` の検証は `diagram-customization` が `check_ax` との間に入れる）。土台の描画コードには手を加えない
@@ -79,7 +79,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: _BasePlotter.__init__`（`post_draw_context` 引数のみ）、`_BasePlotter._post_draw`（新規）、`_BasePlotter._set_default_params / _merge_alias`（docstring の `>>>` 行の書き換えのみ）、`_ScatterPlotter / _ContourPlotter / _LinePlotter / _AnnotatePlotter.__init__`（`post_draw_context` の受け渡し、描画後処理の `_post_draw` への置き換え、`flag_cbar` → `colorbar` の改名のみ）、`TernaryDiagram.scatter / contour / plot / annotate`（Plotter への `post_draw_context` の受け渡しのみ）_
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 2.1, 2.2, 2.4, 2.6, 3.5, 3.6, 6.3, 6.8, 7.1, 7.2, 9.4_
 
-- [ ] 3.3 `scatter`／`contour` に `colorbar` 引数を追加し、`flag_cbar` を非推奨の別名にする
+- [x] 3.3 `scatter`／`contour` に `colorbar` 引数を追加し、`flag_cbar` を非推奨の別名にする
   - `colorbar`（未指定・真・偽）を従来の `flag_cbar` と同じ 6 番目の位置引数として置き、位置引数で書かれた既存の呼び出しを同じ意味で受ける
   - `flag_cbar` はキーワード引数から取り出し、1.1 のヘルパーで解決する。`flag_cbar` が使われた場合は従来どおり真偽で解釈して明示的な指定として扱い（既定値変更の警告の対象にしない）、改名の FutureWarning を出す。`colorbar` と同時に指定されたら `ValueError`
   - `colorbar` は 1.2 の `check_optional_bool` で厳密に検証する。6 番目の位置引数に `0`／`1` を渡していた呼び出しは `TypeError` になる（非互換として受け入れ、4.4 で CHANGELOG の Breaking changes に記載する）
@@ -137,3 +137,4 @@
 - `PostDrawContext` は design のコード例（`@dataclass(frozen=True)`）と違い `eq=False` にした。三角図ごとの状態なので同一性で比べ、`hash()` もできるようにするため（2.3 のレビューでの判断）
 - 描画を伴うテストは、共通 fixture `td` を使うか `tight_layout` を明示する。既定値そのものを確かめるテストは fixture に頼らず、その場で `tight_layout` を省略して作る（4.1 で fixture が `tight_layout=True` になるため。3.1 のレビューでの指摘）
 - 4.3 で足すこと: 決定表が警告を求めない呼び出しでは `first_time` のキーを消費しないこと（既存ありで `colorbar=True` → `colorbar=None` の順に描くと、2 回目で警告が出る）を固定するテスト（3.2 のレビューでの提案）
+- 4.3 で足すこと: `flag_cbar=None` でカラーバーを追加しないこと（従来の意味。`_resolve_colorbar_arg` の `bool()` を外すと壊れる）、`colorbar=None` を明示して `flag_cbar` を渡しても ValueError にならないこと（design どおり、`None` は未指定）を固定するテスト（3.3 のレビューでの提案）

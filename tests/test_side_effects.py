@@ -10,6 +10,7 @@ import inspect
 import warnings
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 from matplotlib.colorbar import Colorbar
 
@@ -313,3 +314,220 @@ def test_private_docstrings_in_api_have_no_doctest_examples():
     assert [
         name for name, doc in docstrings.items() if doc and ">>>" in doc
     ] == []
+
+
+# --- `colorbar` argument and the deprecated `flag_cbar` alias ---------------
+
+COLORED_METHODS = ["scatter", "contour"]
+# Positional arguments between `z` and `colorbar`: `z_min`, `z_max`, then
+# `annotations` for scatter and `fill` for contour.
+BEFORE_COLORBAR = {
+    "scatter": (None, None, None),
+    "contour": (None, None, True),
+}
+RENAME_MATCH = "`flag_cbar` of `{method}` was renamed to `colorbar`"
+COLORBAR_TYPE_ERROR = "`colorbar` must be None, True or False, but got"
+BOTH_VALUE_ERROR = "`flag_cbar` and `colorbar` cannot be specified at the same"
+
+
+@pytest.fixture
+def tight_td(ax) -> TernaryDiagram:
+    # `tight_layout` is explicit so that no layout FutureWarning is issued.
+    return TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
+
+
+def _draw_with_positional_colorbar(td, method, value, **kwargs):
+    """Call `method` of `td` with `value` as the sixth positional argument."""
+    return getattr(td, method)(
+        VECTOR, Z, *BEFORE_COLORBAR[method], value, **kwargs
+    )
+
+
+def _parameter_entries(func) -> dict:
+    """Map each name in the Parameters section to its type line and text."""
+    lines = inspect.cleandoc(func.__doc__).splitlines()
+    # Skip the header and its underline.
+    start = lines.index("Parameters") + 2
+    entries = {}
+    name = None
+    for line in lines[start:]:
+        if line and not line.startswith(" "):
+            if " : " not in line:
+                break  # the next section
+            name = line.split(" : ")[0]
+            entries[name] = (line, [])
+        elif name is not None and line.strip():
+            entries[name][1].append(line.strip())
+    return {
+        key: (head, " ".join(text)) for key, (head, text) in entries.items()
+    }
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_takes_the_sixth_position_formerly_of_flag_cbar(method):
+    parameters = list(
+        inspect.signature(getattr(TernaryDiagram, method)).parameters.values()
+    )
+
+    # `self` comes first, so the sixth argument is at index 6.
+    assert parameters[6].name == "colorbar"
+    assert parameters[6].kind is inspect.Parameter.POSITIONAL_OR_KEYWORD
+    assert parameters[6].default is None
+    assert "flag_cbar" not in [p.name for p in parameters]
+
+
+@pytest.mark.parametrize("value", [False, np.bool_(False)])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_false_adds_no_colorbar(tight_td, method, value):
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        mappable = getattr(tight_td, method)(VECTOR, z=Z, colorbar=value)
+
+    assert len(tight_td.fig.axes) == n_axes
+    assert mappable.colorbar is None
+    assert not _post_draw_context(tight_td).has_colorbar()
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "added", "n_warnings"),
+    [
+        pytest.param({"colorbar": True}, True, 0, id="true"),
+        pytest.param({}, True, 1, id="omitted"),
+        pytest.param({"colorbar": False}, False, 0, id="false"),
+    ],
+)
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_value_reaches_the_plotter(
+    tight_td, method, kwargs, added, n_warnings
+):
+    tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        mappable = getattr(tight_td, method)(VECTOR, z=Z, **kwargs)
+
+    assert len(tight_td.fig.axes) == n_axes + added
+    assert (mappable.colorbar is not None) is added
+    # Only the omitted `colorbar` warns about the duplicate colorbar.
+    assert len(record) == n_warnings, _messages(record)
+    assert all("added another colorbar" in str(w.message) for w in record)
+
+
+@pytest.mark.parametrize("value", [1, 0, "yes"])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_non_bool_colorbar_raises_type_error(tight_td, method, value):
+    with pytest.raises(TypeError, match=COLORBAR_TYPE_ERROR):
+        getattr(tight_td, method)(VECTOR, z=Z, colorbar=value)
+
+
+@pytest.mark.parametrize(("value", "added"), [(True, True), (False, False)])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_sixth_positional_bool_keeps_its_meaning(
+    tight_td, method, value, added
+):
+    n_axes = len(tight_td.fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        mappable = _draw_with_positional_colorbar(tight_td, method, value)
+
+    assert len(tight_td.fig.axes) == n_axes + added
+    assert (mappable.colorbar is not None) is added
+
+
+@pytest.mark.parametrize("value", [1, 0])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_sixth_positional_non_bool_raises_type_error(tight_td, method, value):
+    n_children = len(tight_td.ax.get_children())
+
+    with pytest.raises(TypeError, match=COLORBAR_TYPE_ERROR):
+        _draw_with_positional_colorbar(tight_td, method, value)
+
+    # The value is checked before anything is drawn.
+    assert len(tight_td.ax.get_children()) == n_children
+
+
+@pytest.mark.parametrize(
+    ("flag_cbar", "added"),
+    [(True, True), (False, False), (1, True), (0, False)],
+)
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_flag_cbar_keeps_its_meaning_with_a_rename_warning(
+    tight_td, method, flag_cbar, added
+):
+    n_axes = len(tight_td.fig.axes)
+
+    with pytest.warns(
+        FutureWarning, match=RENAME_MATCH.format(method=method)
+    ) as record:
+        mappable = getattr(tight_td, method)(VECTOR, z=Z, flag_cbar=flag_cbar)
+
+    assert len(tight_td.fig.axes) == n_axes + added
+    assert (mappable.colorbar is not None) is added
+    assert len(record) == 1, _messages(record)
+    assert record[0].filename == __file__
+    assert "4.0.0" in str(record[0].message)
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_flag_cbar_is_explicit_and_skips_the_duplicate_warning(
+    tight_td, method
+):
+    tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
+    n_axes = len(tight_td.fig.axes)
+
+    with pytest.warns(FutureWarning) as record:
+        getattr(tight_td, method)(VECTOR, z=Z, flag_cbar=True)
+
+    assert len(tight_td.fig.axes) == n_axes + 1
+    # The rename warning only, without the duplicate colorbar warning.
+    assert len(record) == 1, _messages(record)
+    assert RENAME_MATCH.format(method=method) in str(record[0].message)
+
+
+@pytest.mark.parametrize(
+    ("flag_cbar", "colorbar"), [(True, False), (False, True), (False, False)]
+)
+@pytest.mark.parametrize("positional", [False, True])
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_flag_cbar_with_colorbar_raises_value_error(
+    tight_td, method, positional, flag_cbar, colorbar
+):
+    n_children = len(tight_td.ax.get_children())
+
+    with pytest.raises(ValueError, match=BOTH_VALUE_ERROR):
+        if positional:
+            _draw_with_positional_colorbar(
+                tight_td, method, colorbar, flag_cbar=flag_cbar
+            )
+        else:
+            getattr(tight_td, method)(
+                VECTOR, z=Z, colorbar=colorbar, flag_cbar=flag_cbar
+            )
+
+    # The arguments are resolved before anything is drawn.
+    assert len(tight_td.ax.get_children()) == n_children
+
+
+@pytest.mark.parametrize("method", COLORED_METHODS)
+def test_colorbar_and_flag_cbar_parameter_entries(method):
+    entries = _parameter_entries(getattr(TernaryDiagram, method))
+    names = list(entries)
+
+    assert names[names.index("colorbar") + 1] == "flag_cbar"
+    colorbar_head, colorbar_text = entries["colorbar"]
+    assert colorbar_head == "colorbar : bool or None, optional"
+    assert colorbar_text.startswith("Whether to add a colorbar automatically")
+    assert colorbar_text.endswith(", by default None")
+    assert "4.0.0" in colorbar_text
+    # The colorbars added directly with matplotlib are not counted.
+    assert "fig.colorbar" in colorbar_text
+    flag_head, flag_text = entries["flag_cbar"]
+    assert flag_head == "flag_cbar : bool, optional"
+    assert flag_text.startswith("Deprecated alias of `colorbar`")
+    assert "4.0.0" in flag_text
+    assert "ValueError" in flag_text
+    assert "by default" not in flag_text

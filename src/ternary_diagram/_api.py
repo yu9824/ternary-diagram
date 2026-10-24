@@ -29,7 +29,11 @@ else:
     from matplotlib.tri.tricontour import TriContourSet
 from numpy.typing import ArrayLike
 
-from ternary_diagram._deprecation import warn_external
+from ternary_diagram._deprecation import (
+    UNSET,
+    resolve_renamed_parameter,
+    warn_external,
+)
 from ternary_diagram._post_draw import (
     COLORBAR_WARNING_KEY,
     LAYOUT_WARNING_KEY,
@@ -57,6 +61,54 @@ DEFAULT_ZORDER_CONTOUR = 0
 DEFAULT_ZORDER_GRIDS = 1
 DEFAULT_ZORDER_PLOTS = 2
 DEFAULT_ZORDER_SCATTER = 3
+
+
+def _resolve_colorbar_arg(
+    func: str, colorbar: Optional[bool], kwargs: dict
+) -> Optional[bool]:
+    """Remove `flag_cbar` from `kwargs` and return the colorbar request.
+
+    `flag_cbar` is the deprecated name of `colorbar`. When it is passed, it
+    is interpreted as true or false as before and counts as an explicit
+    request, after a FutureWarning about the rename. Otherwise `colorbar`
+    is checked strictly.
+
+    Parameters
+    ----------
+    func : str
+        Name of the plotting method, shown in the messages.
+    colorbar : Optional[bool]
+        Value passed as `colorbar`. None means that it was not specified.
+    kwargs : dict
+        Keyword arguments of the plotting method. `flag_cbar` is removed
+        from it when present.
+
+    Returns
+    -------
+    Optional[bool]
+        ``bool(flag_cbar)`` when `flag_cbar` is passed, otherwise
+        `colorbar` as the built-in ``bool``, or None when it was not
+        specified.
+
+    Raises
+    ------
+    ValueError
+        When both `flag_cbar` and `colorbar` are specified.
+    TypeError
+        When `colorbar` is neither None, True nor False.
+    """
+    flag_cbar = kwargs.pop("flag_cbar", UNSET)
+    resolved = resolve_renamed_parameter(
+        func=func,
+        old="flag_cbar",
+        new="colorbar",
+        old_value=flag_cbar,
+        new_value=colorbar,
+    )
+    if flag_cbar is not UNSET:
+        # interpreted as before, as an explicit request
+        return bool(resolved)
+    return check_optional_bool(colorbar, "colorbar")
 
 
 class TernaryDiagram:
@@ -279,7 +331,7 @@ class TernaryDiagram:
         z_min: Optional[Number] = None,
         z_max: Optional[Number] = None,
         annotations: Optional[List[str]] = None,
-        flag_cbar: bool = True,
+        colorbar: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
         """
@@ -313,8 +365,25 @@ class TernaryDiagram:
             instance annotations, by default None
             if None, nothing is annotated.
 
+        colorbar : bool or None, optional
+            Whether to add a colorbar automatically when the points are
+            colored by `z`. ``True`` adds one and ``False`` adds none;
+            without `z`, no colorbar is added whatever the value. ``None``
+            keeps the v3.x behavior: it adds one, and when the diagram
+            already has a colorbar, it also emits a FutureWarning once per
+            diagram. In ternary-diagram 4.0.0, ``None`` will add none to a
+            diagram that already has a colorbar. The colorbars counted are
+            those added through this TernaryDiagram (automatically or with
+            its ``colorbar()`` method) and not removed; colorbars added
+            directly with matplotlib, such as with ``fig.colorbar``, are not
+            counted, by default None
+
         flag_cbar : bool, optional
-            instance colorbar or not, by default True
+            Deprecated alias of `colorbar`, interpreted as true or false as
+            before. Passing it emits a FutureWarning; it will be removed in
+            ternary-diagram 4.0.0, so pass `colorbar` instead. Passing it
+            together with `colorbar` raises a ValueError. When it is
+            omitted, `colorbar` decides.
 
         kwargs : parameter of `matplotlib.pyplot.scatter`, optional
             For example, `marker='x'`, `facecolor='blue'` etc.
@@ -328,6 +397,7 @@ class TernaryDiagram:
             A collection of scatter points.
         """  # noqa: E501
 
+        colorbar = _resolve_colorbar_arg("scatter", colorbar, kwargs)
         plotter = _ScatterPlotter(
             vector=vector,
             ax=self.ax,
@@ -335,7 +405,7 @@ class TernaryDiagram:
             z_min=z_min,
             z_max=z_max,
             annotations=annotations,
-            colorbar=bool(flag_cbar),
+            colorbar=colorbar,
             post_draw_context=self.__post_draw_context,
             **kwargs,
         )
@@ -349,7 +419,7 @@ class TernaryDiagram:
         z_min: Optional[Number] = None,
         z_max: Optional[Number] = None,
         fill: bool = True,
-        flag_cbar: bool = True,
+        colorbar: Optional[bool] = None,
         **kwargs,
     ) -> TriContourSet:
         """
@@ -383,6 +453,25 @@ class TernaryDiagram:
             Upper limit of the automatic levels. If None, the maximum of `z`.
             , by default None
 
+        colorbar : bool or None, optional
+            Whether to add a colorbar automatically for the contours
+            colored by `z`. ``True`` adds one and ``False`` adds none.
+            ``None`` keeps the v3.x behavior: it adds one, and when the
+            diagram already has a colorbar, it also emits a FutureWarning
+            once per diagram. In ternary-diagram 4.0.0, ``None`` will add
+            none to a diagram that already has a colorbar. The colorbars
+            counted are those added through this TernaryDiagram
+            (automatically or with its ``colorbar()`` method) and not
+            removed; colorbars added directly with matplotlib, such as with
+            ``fig.colorbar``, are not counted, by default None
+
+        flag_cbar : bool, optional
+            Deprecated alias of `colorbar`, interpreted as true or false as
+            before. Passing it emits a FutureWarning; it will be removed in
+            ternary-diagram 4.0.0, so pass `colorbar` instead. Passing it
+            together with `colorbar` raises a ValueError. When it is
+            omitted, `colorbar` decides.
+
         kwargs : parameter of `matplotlib.pyplot.contour`, optional
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html.
 
@@ -395,6 +484,7 @@ class TernaryDiagram:
             A collection of contour lines.
         """  # noqa: E501
 
+        colorbar = _resolve_colorbar_arg("contour", colorbar, kwargs)
         plotter = _ContourPlotter(
             vector=vector,
             ax=self.ax,
@@ -402,7 +492,7 @@ class TernaryDiagram:
             z_min=z_min,
             z_max=z_max,
             fill=fill,
-            colorbar=bool(flag_cbar),
+            colorbar=colorbar,
             post_draw_context=self.__post_draw_context,
             **kwargs,
         )
