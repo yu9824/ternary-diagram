@@ -80,7 +80,7 @@
   - _Boundary: `src/ternary_diagram/_skeleton.py: _Skeleton, PartName`, `tests/test_skeleton_parts.py`（`_Skeleton` のテストの追加だけ）_
   - _Requirements: 1.1, 1.2, 2.1, 2.8, 9.2, 9.4, 10.8_
 
-- [ ] 4. 三角図の公開 API へ統合する
+- [x] 4. 三角図の公開 API へ統合する
 - [x] 4.1 作成時の部品ごとの指定を受け付け、土台の描画を集約へ委譲する
   - `__init__` のシグネチャを roadmap の最終形 `(materials, ax=None, auto_latex_notation=True, *, tight_layout=None, border_kw=None, grid_kw=None, tick_kw=None, axis_label_kw=None, vertex_label_kw=None)` に一致させる。`plot-side-effects` が足した `tight_layout` の後ろに 5 つの部品ごとの指定を足し、キーワード専用マーカーは 1 つだけにする。それぞれを作成後の変更と同じ意味で集約へ渡す
   - 検証は Axes の設定や土台の描画より前に、`ax` → `materials` → `tight_layout` → 部品ごとの指定の順で行う。`materials` の検証は `check_ax` と `tight_layout` の検証の間に入れ（3 要素未満なら 3 つ必要であることを示すエラー。4 要素以上は先頭 3 要素を使う現行の挙動を保つ）、部品ごとの指定の検証（項目名と値の対応でなければ種類のエラー、頂点ラベルの指定にラベルの文字列があれば materials と衝突することを示すエラー）は `tight_layout` の検証の後に入れる。`tight_layout` の検証と扱いには手を入れない
@@ -96,7 +96,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram.set_border, set_grid, set_ticks, set_axis_labels, set_vertex_labels` と `border_lines_, grid_lines_, tick_labels_, axis_labels_, vertex_labels_` プロパティ, `tests/test_skeleton.py`（新規: 戻り値と取り出し口のテスト）_
   - _Requirements: 2.1, 2.2, 2.3, 3.1, 3.2, 3.4, 3.5_
 
-- [ ] 4.3 公開 API の docstring を仕上げ、変更履歴に記載する
+- [x] 4.3 公開 API の docstring を仕上げ、変更履歴に記載する
   - `__init__` の docstring には、`tight_layout` の項目の後ろに 5 つの部品ごとの指定の Parameters の項目だけを英語の NumPy スタイルで足す。各項目は、どの部品の設定か、作成直後に対応する変更メソッドを呼ぶのと同じであること、受け付ける項目は対応する変更メソッドを参照すること、None なら既定の見た目であることを書いた文の後に `, by default None` を添える（`, by default None` だけの項目にしない。design の「Docstring Parameters」）。Examples 節は `user-guide-docs` が持つので変更しない
   - 5 つの変更メソッドの Parameters は、名前付きの項目ごとに意味・受け付ける値・None なら直前の設定を引き継ぐこと・作成時の初期値を書いた文の後に `, by default None` を添え、matplotlib のプロパティ（`**kwargs`）には全図形に適用され直前の値を引き継ぐことを書く（`, by default` は付けない）
   - 5 つの変更メソッドと取り出し口の docstring に、意味・戻り値と、tech.md の「Docstring Examples」に従う Examples を書く。Examples は docstring ごとに `>>> import matplotlib.pyplot as plt` と `>>> from ternary_diagram import TernaryDiagram` の行から始めてその docstring だけで実行できるようにし（`_api.py` は `plt` を import していない）、`fig, ax = plt.subplots(layout="constrained")` と `ax=ax` で三角図を作ってから、変更メソッドの呼び出しと、対応する作成時の指定（`border_kw` → `set_border`、`grid_kw` → `set_grid`、`tick_kw` → `set_ticks`、`axis_label_kw` → `set_axis_labels`、`vertex_label_kw` → `set_vertex_labels`）で同じ結果になる例を示し、作成時の指定がその変更メソッドの呼び出しと同じ意味であることを本文に書く。ファイルは書き出さず、artist の repr は出力しない
@@ -153,3 +153,5 @@
 - 4.1 の時点で mypy の基準は 7 件（yikit-dev / qchemdb311 とも、すべて `_api.py` の既存の行）に下がった（旧描画コードの削除による）。以後はこの 7 件を基準にする
 - 既定の図の画素比較（4.1 のレビューより）: 変更前後で、グリッドの交点の 57〜111 画素に輝度 ±1/255 の差が出る。`_Grid` が成分ごとの順でグリッド線を描く（v3 は値ごとに 3 方向を交互に描いていた）ためで、部品の並び・表示範囲・線のスタイルは同じ。目視では区別できない。5.3 の目視確認ではこの差を許容範囲として扱う（厳密な画素一致が必要なら `_Grid` の描画順を v3 に合わせる design 判断が要る）
 - 5.1 で必ず入れること（4.2 のレビューより）: 作成時の `*_kw` と作成後の `set_*` の同値性のパラメータ化に、名前付きの項目 `fmt`（tick）・`pad`（axis_label）・`offsets`（vertex_label）を含める。4.2 のテストは個数しか見ておらず、`set_*` がこれらを部品に渡し忘れても検出できない
+- 5.3 / user-guide-docs で確認すること（4.3 のレビューより）: `endpoints=True` の既定の大きさの図で、左下の頂点の "100" と "0" の近接（docstring に記載済み）に加え、上の頂点で 2 番目の成分の値 0 の目盛りラベル "0" が頂点ラベルに重なる。spec の範囲外として今は直していない
+- Sphinx の既定 `autoclass_content="class"` では `__init__` の Parameters（`*_kw` の 5 項目を含む）が HTML に出ない。user-guide-docs が "both" に設定したときに表示を確認する（design の Revalidation Triggers）
