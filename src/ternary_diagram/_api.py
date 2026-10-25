@@ -7,9 +7,9 @@ from typing import Tuple, List  # isort: skip
 
 from abc import abstractmethod
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from numbers import Number
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import matplotlib
 import matplotlib.axes
@@ -48,6 +48,7 @@ from ternary_diagram._post_draw import (
 )
 from ternary_diagram._skeleton import _check_vertex_label_kw, _Skeleton
 from ternary_diagram.utils import (
+    TickFormat,
     check_1d_vector,
     check_2d_vector,
     check_ax,
@@ -271,6 +272,224 @@ class TernaryDiagram:
     def fig(self) -> matplotlib.figure.Figure:
         """Figure object"""
         return self.__fig
+
+    @property
+    def border_lines_(self) -> List[matplotlib.lines.Line2D]:
+        """Lines of the border drawn now.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the bottom, left and right edges, empty while the
+            border is hidden.
+        """
+        return cast(
+            List[matplotlib.lines.Line2D], self.__skeleton.artists("border")
+        )
+
+    @border_lines_.setter
+    def border_lines_(self, _lines):
+        raise AttributeError("border_lines_ is read-only")
+
+    @property
+    def grid_lines_(self) -> List[matplotlib.lines.Line2D]:
+        """Lines of the grid drawn now.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the lines of the components 1, 2 and 3 in this
+            order, each in ascending order of value, empty while the grid
+            is hidden.
+        """
+        return cast(
+            List[matplotlib.lines.Line2D], self.__skeleton.artists("grid")
+        )
+
+    @grid_lines_.setter
+    def grid_lines_(self, _lines):
+        raise AttributeError("grid_lines_ is read-only")
+
+    @property
+    def tick_labels_(self) -> List[matplotlib.text.Text]:
+        """Tick labels drawn now.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the tick labels in ascending order of value, each
+            value for the components 1, 2 and 3 in this order, empty while
+            the tick labels are hidden.
+        """
+        return cast(
+            List[matplotlib.text.Text], self.__skeleton.artists("ticks")
+        )
+
+    @tick_labels_.setter
+    def tick_labels_(self, _labels):
+        raise AttributeError("tick_labels_ is read-only")
+
+    @property
+    def axis_labels_(self) -> List[matplotlib.text.Text]:
+        """Axis titles drawn now.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the drawn axis titles in the order of the
+            components, without the components that have no title, empty
+            while the axis titles are hidden.
+        """
+        return cast(
+            List[matplotlib.text.Text], self.__skeleton.artists("axis_labels")
+        )
+
+    @axis_labels_.setter
+    def axis_labels_(self, _labels):
+        raise AttributeError("axis_labels_ is read-only")
+
+    @property
+    def vertex_labels_(self) -> List[matplotlib.text.Text]:
+        """Vertex labels drawn now.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the labels of the top, bottom left and bottom
+            right vertices, empty while the vertex labels are hidden.
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.artists("vertex_labels"),
+        )
+
+    @vertex_labels_.setter
+    def vertex_labels_(self, _labels):
+        raise AttributeError("vertex_labels_ is read-only")
+
+    def set_border(
+        self, visible: Optional[bool] = None, **kwargs: Any
+    ) -> List[matplotlib.lines.Line2D]:
+        """Redraw the border of the triangle with new settings.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the border lines drawn by this call, the same
+            lines as `border_lines_`. It is empty when the border is hidden.
+        """
+        return cast(
+            List[matplotlib.lines.Line2D],
+            self.__skeleton.update("border", visible=visible, **kwargs),
+        )
+
+    def set_grid(
+        self,
+        visible: Optional[bool] = None,
+        *,
+        step: Optional[float] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.lines.Line2D]:
+        """Redraw the grid with new settings.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the grid lines drawn by this call, the same lines
+            as `grid_lines_`. It is empty when the grid is hidden.
+        """
+        return cast(
+            List[matplotlib.lines.Line2D],
+            self.__skeleton.update(
+                "grid", visible=visible, step=step, **kwargs
+            ),
+        )
+
+    def set_ticks(
+        self,
+        visible: Optional[bool] = None,
+        *,
+        step: Optional[float] = None,
+        fmt: Optional[TickFormat] = None,
+        endpoints: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the tick labels with new settings.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the tick labels drawn by this call, the same
+            labels as `tick_labels_`. It is empty when the tick labels are
+            hidden.
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "ticks",
+                visible=visible,
+                step=step,
+                fmt=fmt,
+                endpoints=endpoints,
+                **kwargs,
+            ),
+        )
+
+    def set_axis_labels(
+        self,
+        labels: Optional[Sequence[Optional[str]]] = None,
+        *,
+        visible: Optional[bool] = None,
+        pad: Optional[float] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the axis titles with new settings.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the axis titles drawn by this call, the same
+            titles as `axis_labels_`. It is empty when the axis titles are
+            hidden or none is given.
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "axis_labels",
+                labels=labels,
+                visible=visible,
+                pad=pad,
+                **kwargs,
+            ),
+        )
+
+    def set_vertex_labels(
+        self,
+        labels: Optional[Sequence[str]] = None,
+        *,
+        visible: Optional[bool] = None,
+        offsets: Optional[Sequence[Tuple[float, float]]] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the vertex labels with new settings.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the vertex labels drawn by this call, the same
+            labels as `vertex_labels_`. It is empty when the vertex labels
+            are hidden.
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "vertex_labels",
+                labels=labels,
+                visible=visible,
+                offsets=offsets,
+                **kwargs,
+            ),
+        )
 
     def scatter(
         self,
