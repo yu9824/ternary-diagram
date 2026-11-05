@@ -17,7 +17,16 @@ import matplotlib.lines
 import matplotlib.pyplot as plt
 import matplotlib.text
 import pytest
-from _skeleton_expected import LineKey, TextKey, line_key, text_key
+from _skeleton_expected import (
+    LINE_ZORDER,
+    TEXT_ZORDER,
+    LineKey,
+    TextKey,
+    box_aspect,
+    expected_view_limits,
+    line_key,
+    text_key,
+)
 from matplotlib.colors import to_rgba
 
 from ternary_diagram import TernaryDiagram
@@ -870,3 +879,438 @@ def test_part_hidden_at_construction_draws_nothing(part):
             if not _contains(part_artists, artist)
         ]
         assert _keys(list(getattr(hidden.ax, container))) == _keys(expected)
+
+
+# --- stacking order ---------------------------------------------------------
+#
+# The border and grid lines keep the zorder 1 of ternary-diagram v3, above
+# the contour (0) and below the lines and points plotted by the user (2 and
+# 3); the labels keep matplotlib's default zorder 3 of ``Text``.
+
+
+def _default_zorder(part: Part) -> float:
+    if part.artist_class is matplotlib.lines.Line2D:
+        return LINE_ZORDER
+    return TEXT_ZORDER
+
+
+def _zorders(artists: list) -> list[float]:
+    return [artist.get_zorder() for artist in artists]
+
+
+@pytest.mark.parametrize("part", PART_PARAMS)
+def test_redrawn_part_keeps_the_default_zorder(titled_td, part):
+    change = getattr(titled_td, part.method)
+    zorder = _default_zorder(part)
+    initial = _zorders(getattr(titled_td, part.accessor))
+    assert initial == [zorder] * part.initial_count
+
+    changed = change(**part.change)
+    change(visible=False)
+    shown = change(visible=True)
+
+    assert _zorders(changed) == [zorder] * part.changed_count
+    assert _zorders(shown) == [zorder] * part.changed_count
+    assert _zorders(getattr(titled_td, part.accessor)) == _zorders(shown)
+
+
+@pytest.mark.parametrize("given", ["created", "changed"])
+@pytest.mark.parametrize("zorder", [5, 0.5])
+@pytest.mark.parametrize("part", PART_PARAMS)
+def test_user_zorder_wins_and_is_kept_on_redraws(part, zorder, given):
+    kw_name = KW_NAME_OF_METHOD[part.method]
+    if given == "created":
+        td = _diagram(
+            **{
+                **TITLED_KW,
+                kw_name: {**TITLED_KW.get(kw_name, {}), "zorder": zorder},
+            }
+        )
+    else:
+        td = _diagram(**TITLED_KW)
+        returned = getattr(td, part.method)(zorder=zorder)
+        assert _zorders(returned) == [zorder] * part.initial_count
+    change = getattr(td, part.method)
+    assert _zorders(getattr(td, part.accessor)) == [zorder] * (
+        part.initial_count
+    )
+
+    # Redraws that do not give `zorder` keep the one given by the user.
+    changed = change(**part.change)
+    change(visible=False)
+    shown = change(visible=True)
+
+    assert _zorders(changed) == [zorder] * part.changed_count
+    assert _zorders(shown) == [zorder] * part.changed_count
+    # The other parts keep their default zorder.
+    for other in PARTS:
+        if other is not part:
+            artists = getattr(td, other.accessor)
+            assert len(artists) == other.initial_count
+            assert _zorders(artists) == [_default_zorder(other)] * len(artists)
+
+
+# Changes of the border and the grid in different orders. The border must
+# end up after the grid in ``ax.lines``, so that it is drawn over the grid
+# lines that have the same zorder.
+BORDER_GRID_SEQUENCES = {
+    "grid": [("set_grid", {"step": 0.05})],
+    "border-then-grid": [
+        ("set_border", {"linewidth": 1}),
+        ("set_grid", {"step": 0.05}),
+    ],
+    "grid-then-border": [
+        ("set_grid", {"step": 0.05}),
+        ("set_border", {"linewidth": 1}),
+    ],
+    "grid-hidden-border-changed-grid-shown": [
+        ("set_grid", {"visible": False}),
+        ("set_border", {"linewidth": 1}),
+        ("set_grid", {"visible": True}),
+    ],
+    "border-hidden-grid-changed-border-shown": [
+        ("set_border", {"visible": False}),
+        ("set_grid", {"step": 0.05}),
+        ("set_border", {"visible": True}),
+    ],
+    "all-parts": [(part.method, part.change) for part in PARTS],
+    "all-parts-reversed": [
+        (part.method, part.change) for part in reversed(PARTS)
+    ],
+}
+
+
+@pytest.mark.parametrize(
+    "sequence",
+    [
+        pytest.param(sequence, id=name)
+        for name, sequence in BORDER_GRID_SEQUENCES.items()
+    ],
+)
+def test_border_is_drawn_over_the_grid_in_any_order_of_changes(td, sequence):
+    for method, kwargs in sequence:
+        getattr(td, method)(**kwargs)
+
+    lines = list(td.ax.lines)
+    border = td.border_lines_
+    grid = td.grid_lines_
+    assert len(border) == 3
+    assert len(grid) > 0
+    assert len(lines) == len(border) + len(grid)
+    assert set(_zorders(lines)) == {LINE_ZORDER}
+    assert _same_artists(lines[-len(border) :], border)
+
+
+# --- view limits ------------------------------------------------------------
+
+HIDDEN_LINE_PARTS = {
+    "border": ("set_border",),
+    "grid": ("set_grid",),
+    "border-and-grid": ("set_border", "set_grid"),
+}
+
+
+@pytest.mark.parametrize("when", ["created", "changed"])
+@pytest.mark.parametrize(
+    "methods",
+    [
+        pytest.param(methods, id=name)
+        for name, methods in HIDDEN_LINE_PARTS.items()
+    ],
+)
+def test_hidden_border_and_grid_keep_the_view_limits(methods, when):
+    default = _diagram()
+    if when == "created":
+        td = _diagram(
+            **{
+                KW_NAME_OF_METHOD[method]: {"visible": False}
+                for method in methods
+            }
+        )
+    else:
+        td = _diagram()
+        for method in methods:
+            assert getattr(td, method)(visible=False) == []
+    assert all(getattr(td, PART_OF_METHOD[m].accessor) == [] for m in methods)
+    expected_xlim, expected_ylim = expected_view_limits(box_aspect(td.ax))
+
+    default.fig.canvas.draw()
+    td.fig.canvas.draw()
+
+    assert td.ax.get_xlim() == pytest.approx(default.ax.get_xlim(), abs=1e-9)
+    assert td.ax.get_ylim() == pytest.approx(default.ax.get_ylim(), abs=1e-9)
+    assert td.ax.get_xlim() == pytest.approx(expected_xlim, abs=1e-9)
+    assert td.ax.get_ylim() == pytest.approx(expected_ylim, abs=1e-9)
+
+
+# --- layout -----------------------------------------------------------------
+
+
+def _layout(td: TernaryDiagram) -> tuple:
+    """Return the position of the Axes and the layout of its figure."""
+    params = td.fig.subplotpars
+    return (
+        td.ax.get_position().bounds,
+        td.ax.get_position(original=True).bounds,
+        (
+            params.left,
+            params.right,
+            params.bottom,
+            params.top,
+            params.wspace,
+            params.hspace,
+        ),
+        td.fig.get_layout_engine(),
+    )
+
+
+@pytest.mark.parametrize("hidden", [False, True], ids=["changed", "hidden"])
+@pytest.mark.parametrize(
+    "plotted", [False, True], ids=["skeleton-only", "after-scatter"]
+)
+def test_changes_of_all_parts_keep_the_layout(td, plotted, hidden):
+    if plotted:
+        # `tight_layout=True` of the fixture adjusts the layout here.
+        td.scatter(POINTS)
+    before = _layout(td)
+
+    for part in PARTS:
+        getattr(td, part.method)(
+            **({"visible": False} if hidden else part.change)
+        )
+        assert _layout(td) == before
+    # Showing the hidden parts again does not change it either.
+    for part in PARTS:
+        getattr(td, part.method)(visible=True)
+        assert _layout(td) == before
+
+
+# --- contour ----------------------------------------------------------------
+
+
+def _contour_state(contour: Any) -> tuple:
+    """Values of a contour set, through API common to matplotlib versions."""
+    return (
+        contour.filled,
+        list(contour.levels),
+        contour.get_cmap().name,
+        contour.norm.vmin,
+        contour.norm.vmax,
+    )
+
+
+def _collection_state(collection: matplotlib.collections.Collection) -> tuple:
+    return (
+        [path.vertices.tolist() for path in collection.get_paths()],
+        collection.get_facecolor().tolist(),
+        collection.get_edgecolor().tolist(),
+        collection.get_zorder(),
+        collection.get_alpha(),
+        collection.get_visible(),
+    )
+
+
+@pytest.mark.parametrize("hidden", [False, True], ids=["changed", "hidden"])
+@pytest.mark.parametrize("fill", [True, False], ids=["filled", "lines"])
+def test_changes_of_all_parts_leave_the_contour(td, df_contour, fill, hidden):
+    vector = df_contour.iloc[:, :3].to_numpy()
+    z = df_contour.iloc[:, 3].to_numpy()
+    contour = td.contour(vector, z=z, fill=fill)
+    (tie_line,) = td.plot([[0.2, 0.3, 0.5], [0.6, 0.2, 0.2]])
+    points = td.scatter(POINTS)
+    # The contour sets of matplotlib >= 3.8 are collections themselves,
+    # older ones hold one collection per level.
+    collections = list(td.ax.collections)
+    assert _contains(collections, points)
+    n_axes = len(td.fig.axes)
+    state = _contour_state(contour)
+    collection_states = [_collection_state(c) for c in collections]
+    line_state = _state(tie_line)
+
+    for part in PARTS:
+        getattr(td, part.method)(
+            **({"visible": False} if hidden else part.change)
+        )
+
+    assert _same_artists(list(td.ax.collections), collections)
+    assert all(collection.axes is td.ax for collection in collections)
+    assert _contour_state(contour) == state
+    assert [_collection_state(c) for c in collections] == collection_states
+    assert tie_line.axes is td.ax
+    assert _state(tie_line) == line_state
+    # The colorbar of the contour is kept.
+    assert len(td.fig.axes) == n_axes
+    # The redrawn lines stay above the contour and below the tie line and
+    # the points.
+    skeleton_lines = [*td.border_lines_, *td.grid_lines_]
+    assert len(skeleton_lines) == (0 if hidden else 3 + 57)
+    contour_zorder = max(
+        c.get_zorder() for c in collections if c is not points
+    )
+    for line in skeleton_lines:
+        assert contour_zorder < line.get_zorder() < tie_line.get_zorder()
+        assert line.get_zorder() < points.get_zorder()
+
+
+# --- errors and rollback ----------------------------------------------------
+
+
+def _raise_in_format(value: float) -> str:
+    raise RuntimeError("cannot format the tick label")
+
+
+# An invalid change of a part, the error and a pattern of its message.
+FAILED_CHANGES = {
+    "grid-step-zero": ("set_grid", {"step": 0}, ValueError, "0 < step <= 1"),
+    "ticks-step-over-one": (
+        "set_ticks",
+        {"step": 1.5},
+        ValueError,
+        "0 < step <= 1",
+    ),
+    "ticks-step-nan": (
+        "set_ticks",
+        {"step": float("nan")},
+        ValueError,
+        "0 < step <= 1",
+    ),
+    "ticks-unparsable-fmt": (
+        "set_ticks",
+        {"fmt": "abc"},
+        ValueError,
+        "`fmt` must be 'percent', 'fraction'",
+    ),
+    "ticks-raising-fmt": (
+        "set_ticks",
+        {"fmt": _raise_in_format},
+        RuntimeError,
+        "cannot format the tick label",
+    ),
+    **{
+        f"{part.accessor}-unknown-property": (
+            part.method,
+            {"colour": "red"},
+            AttributeError,
+            "unexpected keyword argument 'colour'",
+        )
+        for part in PARTS
+    },
+    # rejected by matplotlib while creating the artists
+    **{
+        f"{part.accessor}-invalid-color": (
+            part.method,
+            {"color": "not-a-color"},
+            ValueError,
+            "'not-a-color' is not a valid value for color",
+        )
+        for part in PARTS
+    },
+}
+
+
+@pytest.mark.parametrize(
+    ("method", "kwargs", "error", "match"),
+    [pytest.param(*case, id=name) for name, case in FAILED_CHANGES.items()],
+)
+def test_failed_change_keeps_the_parts_and_the_axes(
+    titled_td, method, kwargs, error, match
+):
+    part = PART_OF_METHOD[method]
+    # Settings other than the defaults, so that keeping them is visible.
+    getattr(titled_td, method)(**part.change)
+    before = {
+        other.accessor: getattr(titled_td, other.accessor) for other in PARTS
+    }
+    keys = {accessor: _keys(artists) for accessor, artists in before.items()}
+    lines = list(titled_td.ax.lines)
+    texts = list(titled_td.ax.texts)
+    n_children = len(titled_td.ax.get_children())
+
+    with pytest.raises(error, match=match):
+        getattr(titled_td, method)(**kwargs)
+
+    for other in PARTS:
+        after = getattr(titled_td, other.accessor)
+        assert _same_artists(after, before[other.accessor])
+        assert _keys(after) == keys[other.accessor]
+    assert _same_artists(list(titled_td.ax.lines), lines)
+    assert _same_artists(list(titled_td.ax.texts), texts)
+    assert len(titled_td.ax.get_children()) == n_children
+    # The settings are kept as well: a redraw without settings draws the
+    # part as before the failed change.
+    redrawn = getattr(titled_td, method)()
+    assert len(redrawn) == part.changed_count
+    assert _keys(redrawn) == keys[part.accessor]
+
+
+def test_raising_format_given_while_hidden_fails_when_shown(titled_td):
+    titled_td.set_ticks(visible=False)
+    # The format is called only when the tick labels are drawn.
+    assert titled_td.set_ticks(fmt=_raise_in_format) == []
+    texts = list(titled_td.ax.texts)
+
+    with pytest.raises(RuntimeError, match="cannot format the tick label"):
+        titled_td.set_ticks(visible=True)
+
+    # still hidden, with nothing added to the Axes
+    assert titled_td.tick_labels_ == []
+    assert _same_artists(list(titled_td.ax.texts), texts)
+    # `visible=True` of the failed change is not kept either.
+    assert titled_td.set_ticks() == []
+    shown = titled_td.set_ticks(visible=True, fmt="fraction")
+    assert len(shown) == 27
+    assert "0.1" in [text.get_text() for text in shown]
+
+
+# An invalid setting at construction. The tick labels and the axis titles
+# are drawn after the grid, the border and the vertex labels, so that these
+# must be removed again.
+FAILED_CONSTRUCTIONS = {
+    "tick-step-zero": ("tick_kw", {"step": 0}, ValueError, "0 < step <= 1"),
+    "tick-unparsable-fmt": (
+        "tick_kw",
+        {"fmt": "abc"},
+        ValueError,
+        "`fmt` must be 'percent', 'fraction'",
+    ),
+    "tick-raising-fmt": (
+        "tick_kw",
+        {"fmt": _raise_in_format},
+        RuntimeError,
+        "cannot format the tick label",
+    ),
+    "axis-label-unknown-property": (
+        "axis_label_kw",
+        {"labels": AXIS_LABELS, "colour": "red"},
+        AttributeError,
+        "unexpected keyword argument 'colour'",
+    ),
+    "axis-label-invalid-color": (
+        "axis_label_kw",
+        {"labels": AXIS_LABELS, "color": "not-a-color"},
+        ValueError,
+        "'not-a-color' is not a valid value for color",
+    ),
+}
+
+
+@pytest.mark.parametrize(
+    ("kw_name", "settings", "error", "match"),
+    [
+        pytest.param(*case, id=name)
+        for name, case in FAILED_CONSTRUCTIONS.items()
+    ],
+)
+def test_invalid_setting_at_construction_leaves_no_skeleton_artist(
+    ax, kw_name, settings, error, match
+):
+    (user_line,) = ax.plot([0.2, 0.8], [0.1, 0.5])
+    user_text = ax.text(0.5, 0.5, "user")
+
+    with pytest.raises(error, match=match):
+        TernaryDiagram(
+            MATERIALS, ax=ax, tight_layout=True, **{kw_name: settings}
+        )
+
+    assert _same_artists(list(ax.lines), [user_line])
+    assert _same_artists(list(ax.texts), [user_text])
