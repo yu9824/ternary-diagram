@@ -14,6 +14,12 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - `TernaryDiagram(tight_layout=...)` chooses whether the figure margins are adjusted with `Figure.tight_layout()` after each plotting call.
 - `scatter(colorbar=...)` and `contour(colorbar=...)` choose whether a colorbar is added automatically.
 - `ternary_diagram.utils` gains `check_optional_bool` and `check_bool`, public functions that validate optional and required boolean arguments.
+- The look of the 5 parts that `TernaryDiagram` draws (the border, the grid, the tick labels, the axis titles and the vertex labels) can be customized.
+  - At construction with `border_kw`, `grid_kw`, `tick_kw`, `axis_label_kw` and `vertex_label_kw`, and afterwards with `set_border`, `set_grid`, `set_ticks`, `set_axis_labels` and `set_vertex_labels`. Each `*_kw` is equivalent to calling the corresponding method right after construction.
+  - They take the items of each part (`visible`; `step` of the grid and the tick labels; `fmt` and `endpoints` of the tick labels; `labels` and `pad` of the axis titles; `labels` and `offsets` of the vertex labels, where `vertex_label_kw` takes only `offsets` because the labels come from `materials`) and matplotlib properties such as `color`, `linewidth` and `fontsize`. Settings not given keep their previous values.
+  - Axis titles along the edges can be drawn with `set_axis_labels([...])` or `axis_label_kw={"labels": [...]}`. None are drawn by default.
+- The read-only properties `border_lines_`, `grid_lines_`, `tick_labels_`, `axis_labels_` and `vertex_labels_` return the artists that each part draws, to adjust them one by one.
+- `ternary_diagram.utils` gains `get_tick_values`, `get_tick_formatter` (with the type alias `TickFormat`), `get_edge_points`, `get_grid_segments` and `get_axis_label_position`, which compute the placement and the format of the tick labels, the grid lines and the axis titles without a figure.
 
 ### Deprecations
 
@@ -29,6 +35,7 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - Plotting no longer replaces a layout engine already set on the figure (constrained, compressed, tight, and so on), and no longer makes matplotlib warn that the figure layout has changed to tight.
 - Plotting that adds a colorbar (for example `contour(z)`) on a figure created with `layout="constrained"` no longer raises `RuntimeError`.
 - Plotting on Axes of a subfigure no longer raises `AttributeError`.
+- `TernaryDiagram` raises `ValueError` instead of `IndexError` when `materials` has fewer than 3 items, and `TypeError` with a clear message when `materials` is not iterable.
 
 ### Other changes
 

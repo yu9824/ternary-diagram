@@ -1,13 +1,19 @@
 # deprecated in python>=3.9
 from typing import Tuple  # isort: skip
 
-from math import sqrt
-from typing import Optional
+from math import isfinite, sqrt
+from numbers import Integral, Real
+from typing import Callable, Optional, Union
 
 import matplotlib.axes
 import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import ArrayLike
+
+#: Format of the tick labels accepted by :func:`get_tick_formatter`: a name
+#: (``"percent"`` or ``"fraction"``), a format string or a callable that
+#: takes a value in [0, 1] and returns its label.
+TickFormat = Union[str, Callable[[float], str]]
 
 
 def check_ax(ax: Optional[matplotlib.axes.Axes]) -> matplotlib.axes.Axes:
@@ -275,6 +281,370 @@ def get_label(compound_name: str) -> str:
             i = j
         i += 1
     return "".join(lst_compound_name)
+
+
+def get_tick_values(step: float, endpoints: bool = False) -> np.ndarray:
+    """Return the values of the ticks or the grid lines for an interval.
+
+    The values are the multiples of `step` in the open interval (0, 1) in
+    ascending order, rounded to 12 decimal places to suppress
+    floating-point errors.
+
+    Parameters
+    ----------
+    step : float
+        Interval between the values as a fraction in the range
+        ``0 < step <= 1``. ``bool`` is not accepted.
+    endpoints : bool, optional
+        Whether to add 0 and 1 at both ends, by default False
+
+    Returns
+    -------
+    numpy.ndarray
+        One-dimensional array of the values as floats in ascending order.
+        It is empty when `step` is 1 and `endpoints` is False.
+
+    Raises
+    ------
+    TypeError
+        If `step` is not a real number (``bool`` is rejected), or if
+        `endpoints` is neither True nor False.
+    ValueError
+        If `step` is not finite or not in the range ``0 < step <= 1``.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_tick_values
+    >>> get_tick_values(0.25).tolist()
+    [0.25, 0.5, 0.75]
+    >>> get_tick_values(0.1).tolist()
+    [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    >>> len(get_tick_values(0.05))
+    19
+    >>> get_tick_values(0.25, endpoints=True).tolist()
+    [0.0, 0.25, 0.5, 0.75, 1.0]
+    >>> get_tick_values(1).tolist()
+    []
+    >>> get_tick_values(0)
+    Traceback (most recent call last):
+        ...
+    ValueError: `step` must satisfy 0 < step <= 1, but got 0.
+    """
+    if isinstance(step, (bool, np.bool_)) or not isinstance(step, Real):
+        raise TypeError(f"`step` must be a real number, but got {step!r}.")
+    # Also rejects nan and +-inf without converting huge ints to float.
+    if not (0 < step <= 1):
+        raise ValueError(
+            f"`step` must satisfy 0 < step <= 1, but got {step!r}."
+        )
+    with_endpoints = check_bool(endpoints, "endpoints")
+
+    step = float(step)
+    # One extra multiple so that the last one below 1 is never missed.
+    n_multiples = int(np.ceil(1.0 / step)) + 1
+    multiples = np.round(np.arange(1, n_multiples + 1) * step, 12)
+    values = multiples[(multiples > 0.0) & (multiples < 1.0)]
+    if with_endpoints:
+        return np.concatenate(([0.0], values, [1.0]))
+    return values
+
+
+def _check_component(component: object) -> int:
+    # bool is rejected although True == 1, and so are floats such as 1.0.
+    if (
+        isinstance(component, (bool, np.bool_))
+        or not isinstance(component, Integral)
+        or component not in (0, 1, 2)
+    ):
+        raise ValueError(
+            f"`component` must be 0, 1 or 2, but got {component!r}."
+        )
+    return int(component)
+
+
+def _iso_compositions(
+    values: ArrayLike, component: int, zero: int
+) -> np.ndarray:
+    """Compositions where `component` equals `values` and `zero` is 0."""
+    arr_values = np.atleast_1d(np.asarray(values, dtype=float))
+    if arr_values.ndim != 1:
+        raise ValueError(
+            "`values` must be a scalar or one-dimensional, but got shape "
+            f"{arr_values.shape}."
+        )
+    compositions = np.zeros((len(arr_values), 3))
+    compositions[:, component] = arr_values
+    compositions[:, 3 - component - zero] = 1.0 - arr_values
+    return compositions
+
+
+def get_edge_points(
+    values: ArrayLike, component: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the points for values on the edge of a component's ticks.
+
+    The ticks of component ``k`` are on the edge where component
+    ``(k + 1) % 3`` is 0: the right edge for component 0 (top vertex), the
+    left edge for component 1 (bottom-left vertex) and the bottom edge for
+    component 2 (bottom-right vertex). Along each edge the values increase
+    counterclockwise, from 0 at the vertex of component ``(k + 2) % 3`` to
+    1 at the vertex of component ``k``. The points are computed with
+    :func:`three2two`.
+
+    Parameters
+    ----------
+    values : ArrayLike
+        Values of `component` as fractions in [0, 1], given as a scalar or
+        a one-dimensional sequence.
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+
+    Returns
+    -------
+    x : numpy.ndarray
+        x coordinates of the points, a one-dimensional array with one
+        element per value.
+    y : numpy.ndarray
+        y coordinates of the points, with the same shape as `x`.
+
+    Raises
+    ------
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `values` has more than one dimension.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_edge_points
+    >>> x, y = get_edge_points([0.0, 0.5, 1.0], 2)
+    >>> x.tolist(), y.tolist()
+    ([0.0, 0.5, 1.0], [0.0, 0.0, 0.0])
+    >>> x, y = get_edge_points([0.0, 1.0], 0)
+    >>> x.round(3).tolist(), y.round(3).tolist()
+    ([1.0, 0.5], [0.0, 0.866])
+    >>> get_edge_points([0.5], 3)
+    Traceback (most recent call last):
+        ...
+    ValueError: `component` must be 0, 1 or 2, but got 3.
+    """
+    k = _check_component(component)
+    return three2two(_iso_compositions(values, k, zero=(k + 1) % 3))
+
+
+def get_grid_segments(
+    values: ArrayLike, component: int
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Return the end points of the iso-composition lines of a component.
+
+    The line where `component` (``k``) equals a value runs between two
+    edges. It starts on the edge where component ``(k + 1) % 3`` is 0,
+    which carries the ticks of `component` (see :func:`get_edge_points`),
+    and ends on the edge where component ``(k + 2) % 3`` is 0. The points
+    are computed with :func:`three2two`.
+
+    Parameters
+    ----------
+    values : ArrayLike
+        Values of `component` on the lines as fractions in [0, 1], given as
+        a scalar or a one-dimensional sequence.
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+
+    Returns
+    -------
+    xs : numpy.ndarray
+        x coordinates of the end points, an array of shape ``(n, 2)`` where
+        ``n`` is the number of values. Row ``i`` is the line of the
+        ``i``-th value: column 0 is its start on the tick edge and column 1
+        its end.
+    ys : numpy.ndarray
+        y coordinates of the end points, with the same layout as `xs`.
+
+    Raises
+    ------
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `values` has more than one dimension.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_grid_segments
+    >>> xs, ys = get_grid_segments([0.5], 2)
+    >>> xs.round(3).tolist(), ys.round(3).tolist()
+    ([[0.5, 0.75]], [[0.0, 0.433]])
+    >>> xs, ys = get_grid_segments([0.25, 0.5, 0.75], 0)
+    >>> xs.shape, ys.shape
+    ((3, 2), (3, 2))
+    """
+    k = _check_component(component)
+    start_x, start_y = get_edge_points(values, k)
+    end_x, end_y = three2two(_iso_compositions(values, k, zero=(k + 2) % 3))
+    return np.column_stack((start_x, end_x)), np.column_stack((start_y, end_y))
+
+
+def get_axis_label_position(
+    component: int, pad: float
+) -> Tuple[float, float, float]:
+    """Return the position and rotation of the axis title of a component.
+
+    The title is placed outside the edge that carries the ticks of
+    `component` (see :func:`get_edge_points`): at the midpoint of the edge
+    moved by `pad` along the outward unit normal of the edge. The rotation
+    makes the text parallel to the edge and never upside down.
+
+    Parameters
+    ----------
+    component : int
+        Index of the component in the order of the vertices: 0 (top),
+        1 (bottom left) or 2 (bottom right).
+    pad : float
+        Distance from the midpoint of the edge to the title in data
+        coordinates, where each edge has length 1. Positive values move
+        the title away from the triangle. ``bool`` is not accepted.
+
+    Returns
+    -------
+    x : float
+        x coordinate of the title.
+    y : float
+        y coordinate of the title.
+    rotation : float
+        Rotation of the title in degrees: 300 for the right edge
+        (component 0), 60 for the left edge (component 1) and 0 for the
+        bottom edge (component 2).
+
+    Raises
+    ------
+    TypeError
+        If `pad` is not a real number (``bool`` is rejected).
+    ValueError
+        If `component` is not 0, 1 or 2 (``bool`` and floats are
+        rejected), or if `pad` is not finite.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_axis_label_position
+    >>> get_axis_label_position(2, 0.15)
+    (0.5, -0.15, 0.0)
+    >>> x, y, rotation = get_axis_label_position(0, 0.15)
+    >>> round(x, 3), round(y, 3), rotation
+    (0.88, 0.508, 300.0)
+    >>> x, y, rotation = get_axis_label_position(1, 0.15)
+    >>> round(x, 3), round(y, 3), rotation
+    (0.12, 0.508, 60.0)
+    """
+    k = _check_component(component)
+    if isinstance(pad, (bool, np.bool_)) or not isinstance(pad, Real):
+        raise TypeError(f"`pad` must be a real number, but got {pad!r}.")
+    try:
+        distance = float(pad)
+    except OverflowError:
+        # An int or a Fraction too large for a float
+        distance = float("inf")
+    if not isfinite(distance):
+        raise ValueError(
+            f"`pad` must be a finite real number, but got {pad!r}."
+        )
+
+    (mid_x,), (mid_y,) = get_edge_points([0.5], k)
+    # The edge where component k+1 is 0 is opposite to the vertex of
+    # component k+1, and the median from that vertex is perpendicular to
+    # the edge, so it points along the outward normal.
+    opposite = np.zeros((1, 3))
+    opposite[0, (k + 1) % 3] = 1.0
+    (vertex_x,), (vertex_y,) = three2two(opposite)
+    median_length = float(np.hypot(mid_x - vertex_x, mid_y - vertex_y))
+    rotation = (300.0, 60.0, 0.0)[k]
+    return (
+        float(mid_x + distance * (mid_x - vertex_x) / median_length),
+        float(mid_y + distance * (mid_y - vertex_y) / median_length),
+        rotation,
+    )
+
+
+def get_tick_formatter(fmt: TickFormat) -> Callable[[float], str]:
+    """Return a function that turns a tick value into its label.
+
+    Parameters
+    ----------
+    fmt : str or callable
+        Format of the labels. The values given to the returned function
+        are fractions in [0, 1]. One of:
+
+        - ``"percent"``: the value as a percentage without unnecessary
+          digits (0.1 -> ``"10"``, 0.025 -> ``"2.5"``, 1 -> ``"100"``).
+        - ``"fraction"``: the value as a fraction (0.1 -> ``"0.1"``).
+        - Any other str: a format string applied to the fraction.
+          %-style (``"%.2f"``) is tried first, and {}-style
+          (``"{:.0%}"``, ``"{x:.1f}"``) is used if it fails.
+        - A callable that takes the fraction as a float. Its return value
+          is converted with ``str``, and its exceptions propagate when the
+          returned function is called.
+
+    Returns
+    -------
+    callable
+        Function that takes a value and returns its label as a str.
+
+    Raises
+    ------
+    TypeError
+        If `fmt` is neither a str nor a callable.
+    ValueError
+        If `fmt` is a str that is neither ``"percent"`` nor
+        ``"fraction"`` and either contains neither ``%`` nor ``{`` or
+        cannot format the trial value 0.5 in either style.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_tick_formatter
+    >>> percent = get_tick_formatter("percent")
+    >>> [percent(value) for value in (0.1, 0.025, 1.0)]
+    ['10', '2.5', '100']
+    >>> get_tick_formatter("fraction")(0.1)
+    '0.1'
+    >>> get_tick_formatter("%.2f")(0.1)
+    '0.10'
+    >>> get_tick_formatter("{:.0%}")(0.1)
+    '10%'
+    >>> get_tick_formatter("{x:.1f}")(0.1)
+    '0.1'
+    >>> get_tick_formatter(lambda value: f"{value * 100:.1f}%")(0.1)
+    '10.0%'
+    """
+    if callable(fmt):
+        func = fmt
+        return lambda value: str(func(float(value)))
+    if not isinstance(fmt, str):
+        raise TypeError(f"`fmt` must be a str or a callable, but got {fmt!r}.")
+    if fmt == "percent":
+        return lambda value: format(round(float(value) * 100, 10), "g")
+    if fmt == "fraction":
+        return lambda value: format(round(float(value), 12), "g")
+
+    accepted = (
+        "'percent', 'fraction', a %-style or {}-style format string "
+        "(e.g. '%.2f', '{:.0%}', '{x:.1f}') or a callable"
+    )
+    if "%" not in fmt and "{" not in fmt:
+        raise ValueError(f"`fmt` must be {accepted}, but got {fmt!r}.")
+    probe = 0.5
+    try:
+        fmt % probe
+    except (TypeError, ValueError):
+        pass
+    else:
+        return lambda value: fmt % float(value)
+    try:
+        fmt.format(probe, x=probe)
+    except (TypeError, ValueError, KeyError, IndexError, AttributeError) as e:
+        raise ValueError(
+            f"`fmt` {fmt!r} cannot format the value {probe} as a %-style "
+            f"or {{}}-style format string. `fmt` must be {accepted}."
+        ) from e
+    return lambda value: fmt.format(float(value), x=float(value))
 
 
 if __name__ == "__main__":

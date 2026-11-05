@@ -7,9 +7,9 @@ from typing import Tuple, List  # isort: skip
 
 from abc import abstractmethod
 from collections import defaultdict
-from math import sqrt
+from collections.abc import Mapping, Sequence
 from numbers import Number
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 import matplotlib
 import matplotlib.axes
@@ -46,7 +46,9 @@ from ternary_diagram._post_draw import (
     get_layout_state,
     layout_warning_message,
 )
+from ternary_diagram._skeleton import _check_vertex_label_kw, _Skeleton
 from ternary_diagram.utils import (
+    TickFormat,
     check_1d_vector,
     check_2d_vector,
     check_ax,
@@ -112,6 +114,81 @@ def _resolve_colorbar_arg(
 
 
 class TernaryDiagram:
+    """Ternary diagram drawn on a matplotlib Axes.
+
+    At construction, the diagram draws its skeleton on the Axes in 5
+    parts: the border of the triangle, the grid, the tick labels, the axis
+    titles (none by default) and the vertex labels (the materials). The
+    look of each part can be given at construction with its ``*_kw``
+    argument and changed afterwards with its change method, and the
+    artists that it draws are returned by its read-only accessor:
+
+    ===================  =========================  ==================
+    At construction      After construction         Artists
+    ===================  =========================  ==================
+    ``border_kw``        :meth:`set_border`         `border_lines_`
+    ``grid_kw``          :meth:`set_grid`           `grid_lines_`
+    ``tick_kw``          :meth:`set_ticks`          `tick_labels_`
+    ``axis_label_kw``    :meth:`set_axis_labels`    `axis_labels_`
+    ``vertex_label_kw``  :meth:`set_vertex_labels`  `vertex_labels_`
+    ===================  =========================  ==================
+
+    Notes
+    -----
+    The materials are given counterclockwise from the top vertex. The
+    ticks of each material are on one edge, and along that edge its value
+    increases counterclockwise, from 0 to 1 at the vertex of the material
+    (0 to 100 with the default format):
+
+    - The 1st material (top vertex): on the right edge, increasing from
+      the bottom right vertex to the top vertex.
+    - The 2nd material (bottom left vertex): on the left edge, increasing
+      from the top vertex to the bottom left vertex.
+    - The 3rd material (bottom right vertex): on the bottom edge,
+      increasing from the bottom left vertex to the bottom right vertex.
+
+    The grid line of a value starts at that value on the tick edge of the
+    material and runs parallel to the edge opposite to the vertex of the
+    material: the points on it have that value. With ``endpoints=True``
+    (see :meth:`set_ticks`), the labels of the values 0 and 1 are also
+    drawn, and the label of 1 of the 2nd material and that of 0 of the 3rd
+    material come close to each other at the bottom left vertex.
+
+    A change method removes all the artists that its part drew before and
+    draws new ones. The other parts, the artists drawn by the user
+    (scatter points, contours, lines, annotations, ...) and the position
+    and size of the Axes are not changed. Settings not given keep their
+    previous values: a named item (such as ``step``) given as ``None``,
+    and a matplotlib property left out. A part hidden with
+    ``visible=False`` keeps its settings and is drawn with them again
+    with ``visible=True``. If a change raises an error, the part keeps its
+    previous settings and artists. Artists of a part that are no longer on
+    the Axes, because they were removed with ``Artist.remove`` or the Axes
+    was cleared, are left as they are by the change methods.
+
+    The matplotlib properties given to a part apply to all its artists
+    and override the defaults of the part, including those that differ by
+    edge or by vertex (the rotation and the alignments of the labels).
+    Once such a property is given, the defaults of the edges or the
+    vertices cannot be restored. The ``*_kw`` arguments and the change
+    methods take only the named items of the part and the properties of
+    its artists (:class:`matplotlib.lines.Line2D` or
+    :class:`matplotlib.text.Text`), not the other arguments of
+    ``Axes.plot`` and ``Axes.text``, such as ``scalex`` or ``fontdict``:
+    pass the items of a ``fontdict`` as keywords (``**fontdict``).
+
+    A redrawn part keeps its zorder unless ``zorder`` is given: 1 for the
+    border and the grid, and the default of matplotlib for the labels (3
+    for text). With the same zorder, the border is always drawn over the
+    grid. Among artists with the same zorder, the one added to the Axes
+    later is drawn on top, so a redrawn part is drawn over the artists
+    with the same zorder that were drawn before the change: for example,
+    the labels over scatter points (zorder 3 by default) and, after a
+    change of the grid, the grid and the border over lines drawn with
+    ``zorder=1``. Give ``zorder`` to the change method or to your own
+    artists to choose the order.
+    """
+
     def __init__(
         self,
         materials: Tuple[str, str, str],
@@ -119,6 +196,11 @@ class TernaryDiagram:
         auto_latex_notation: bool = True,
         *,
         tight_layout: Optional[bool] = None,
+        border_kw: Optional[Mapping[str, Any]] = None,
+        grid_kw: Optional[Mapping[str, Any]] = None,
+        tick_kw: Optional[Mapping[str, Any]] = None,
+        axis_label_kw: Optional[Mapping[str, Any]] = None,
+        vertex_label_kw: Optional[Mapping[str, Any]] = None,
     ) -> None:
         """
         Make instance.
@@ -154,6 +236,42 @@ class TernaryDiagram:
             and subfigures are never adjusted, whatever the value,
             by default None
 
+        border_kw : dict or None, optional
+            Settings of the border of the triangle. Passing ``border_kw``
+            is equivalent to calling ``set_border(**border_kw)`` right
+            after construction; see :meth:`set_border` for the accepted
+            keys. ``None`` draws the border with the default appearance,
+            by default None
+
+        grid_kw : dict or None, optional
+            Settings of the grid. Passing ``grid_kw`` is equivalent to
+            calling ``set_grid(**grid_kw)`` right after construction; see
+            :meth:`set_grid` for the accepted keys. ``None`` draws the
+            grid with the default appearance, by default None
+
+        tick_kw : dict or None, optional
+            Settings of the tick labels. Passing ``tick_kw`` is equivalent
+            to calling ``set_ticks(**tick_kw)`` right after construction;
+            see :meth:`set_ticks` for the accepted keys. ``None`` draws the
+            tick labels with the default appearance, by default None
+
+        axis_label_kw : dict or None, optional
+            Settings of the axis titles along the edges. Passing
+            ``axis_label_kw`` is equivalent to calling
+            ``set_axis_labels(**axis_label_kw)`` right after construction;
+            see :meth:`set_axis_labels` for the accepted keys, such as
+            ``labels`` for the titles. ``None`` uses the default
+            appearance, which draws no titles, by default None
+
+        vertex_label_kw : dict or None, optional
+            Settings of the vertex labels. Passing ``vertex_label_kw`` is
+            equivalent to calling ``set_vertex_labels(**vertex_label_kw)``
+            right after construction; see :meth:`set_vertex_labels` for
+            the accepted keys, except ``labels``: the labels are given by
+            `materials`, and ``labels`` here raises a ValueError. ``None``
+            draws the vertex labels with the default appearance,
+            by default None
+
 
         Examples
         --------
@@ -180,17 +298,46 @@ class TernaryDiagram:
 
         # check `ax`
         self.__ax = check_ax(ax)
+        # check `materials` before changing anything on `ax`. A str is a
+        # sequence of 1-letter materials, as in ternary-diagram v3.
+        try:
+            material_items = tuple(materials)
+        except TypeError as error:
+            raise TypeError(
+                "`materials` must be a sequence of 3 materials, such as a "
+                f"list or a tuple, but got {materials!r}."
+            ) from error
+        if len(material_items) < 3:
+            raise ValueError(
+                "`materials` needs 3 materials, for the top, bottom left and "
+                f"bottom right vertices, but got {len(material_items)}: "
+                f"{material_items!r}."
+            )
         # check `tight_layout` before drawing anything on `ax`
         self.__post_draw_context = PostDrawContext(
             tight_layout=check_optional_bool(tight_layout, "tight_layout")
         )
+        part_kw = {
+            "border_kw": border_kw,
+            "grid_kw": grid_kw,
+            "tick_kw": tick_kw,
+            "axis_label_kw": axis_label_kw,
+            "vertex_label_kw": vertex_label_kw,
+        }
+        # check the settings of the parts before changing anything on `ax`.
+        # The parts check their content when they are drawn.
+        for name, kw in part_kw.items():
+            if kw is not None and not (
+                isinstance(kw, Mapping)
+                and all(isinstance(key, str) for key in kw)
+            ):
+                raise TypeError(
+                    f"`{name}` must be None or a mapping of str names to "
+                    f"values, such as a dict, but got {kw!r}."
+                )
+        if vertex_label_kw is not None:
+            _check_vertex_label_kw(vertex_label_kw)
         self.__fig = self.ax.figure
-
-        # Generate material_labels (LaTeX notation)
-        if auto_latex_notation:
-            material_labels = tuple(map(get_label, materials))
-        else:
-            material_labels = materials
 
         # Allign the aspect
         self.ax.set_aspect("equal", adjustable="datalim")
@@ -208,102 +355,15 @@ class TernaryDiagram:
         for position in ("bottom", "left", "right", "top"):
             self.ax.spines[position].set_visible(False)
 
-        # ROOT3_OVER_2 = √3/2
-        ROOT3_OVER_2 = sqrt(3.0) / 2.0
-
-        # inner tick marks
-        INNER_BORDER_OPTIONS = {
-            "color": "gray",
-            "lw": 0.5,
-            "zorder": DEFAULT_ZORDER_GRIDS,
-        }
-        for i in range(1, 10):
-            self.ax.plot(
-                [i / 20.0, 1.0 - i / 20.0],
-                [ROOT3_OVER_2 * i / 10.0, ROOT3_OVER_2 * i / 10.0],
-                **INNER_BORDER_OPTIONS,
-            )
-            self.ax.plot(
-                [i / 20.0, i / 10.0],
-                [ROOT3_OVER_2 * i / 10.0, 0.0],
-                **INNER_BORDER_OPTIONS,
-            )
-            self.ax.plot(
-                [0.5 + i / 20.0, i / 10.0],
-                [ROOT3_OVER_2 * (1.0 - i / 10.0), 0.0],
-                **INNER_BORDER_OPTIONS,
-            )
-
-        # borders
-        OUTER_BORDER_OPTIONS = {
-            "color": "black",
-            "lw": 2,
-            "linestyle": "-",
-            "zorder": DEFAULT_ZORDER_GRIDS,
-        }
-        self.ax.plot([0.0, 1.0], [0.0, 0.0], **OUTER_BORDER_OPTIONS)
-        self.ax.plot([0.0, 0.5], [0.0, ROOT3_OVER_2], **OUTER_BORDER_OPTIONS)
-        self.ax.plot([1.0, 0.5], [0.0, ROOT3_OVER_2], **OUTER_BORDER_OPTIONS)
-
-        # 頂点のラベル (Labels of vertices)
-        FONT_SIZE_MATERIAL_LABEL = 16
-        # top label
-        self.ax.text(
-            0.5,
-            ROOT3_OVER_2 + 0.02,
-            material_labels[0],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="center",
-            va="bottom",
+        # Draw the parts of the skeleton with their initial settings. The
+        # parts drawn before a part that fails are removed.
+        self.__skeleton = _Skeleton(
+            self.ax,
+            material_items,
+            auto_latex_notation,
+            zorder=DEFAULT_ZORDER_GRIDS,
+            **{name: {} if kw is None else kw for name, kw in part_kw.items()},
         )
-        # left bottom label
-        self.ax.text(
-            0,
-            -0.05,
-            material_labels[1],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="right",
-            va="top",
-        )  # , rotation=300)
-        # right bottom label
-        self.ax.text(
-            1,
-            -0.05,
-            material_labels[2],
-            fontsize=FONT_SIZE_MATERIAL_LABEL,
-            ha="left",
-            va="top",
-        )  # , rotation=60)
-
-        # 軸ラベル (Axis-label)
-        FONT_SIZE_AXIS_LABEL = 10
-        for i in range(1, 10):
-            self.ax.text(
-                0.5 + (10 - i) / 20.0,
-                ROOT3_OVER_2 * (1.0 - (10 - i) / 10.0),
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                va="bottom",
-                ha="left",
-            )
-            self.ax.text(
-                (10 - i) / 20.0 - 0.01,
-                ROOT3_OVER_2 * (10 - i) / 10.0 + 0.04,
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                rotation=300,
-                va="top",
-                ha="right",
-            )
-            self.ax.text(
-                i / 10.0 + 0.02,
-                0,
-                "%d0" % i,
-                fontsize=FONT_SIZE_AXIS_LABEL,
-                rotation=60,
-                va="top",
-                ha="right",
-            )
 
         # FIXME: mypy
         # 二次元に変換したデータを保存しておく (Save the data converted to two dimensions)
@@ -323,6 +383,717 @@ class TernaryDiagram:
     def fig(self) -> matplotlib.figure.Figure:
         """Figure object"""
         return self.__fig
+
+    @property
+    def border_lines_(self) -> List[matplotlib.lines.Line2D]:
+        """Lines of the border drawn now.
+
+        Use them to adjust a single edge. Each access returns a new list.
+        :meth:`set_border` replaces the lines with new ones, which drops
+        the changes made to them directly. To hide the border, use
+        ``set_border(visible=False)`` rather than removing the lines.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the bottom, left and right edges, empty while the
+            border is hidden.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> bottom, left, right = td.border_lines_
+        >>> bottom.set_color("tab:blue")
+        >>> bottom.get_color(), left.get_color()
+        ('tab:blue', 'black')
+        """
+        return cast(
+            List[matplotlib.lines.Line2D], self.__skeleton.artists("border")
+        )
+
+    @border_lines_.setter
+    def border_lines_(self, _lines):
+        raise AttributeError("border_lines_ is read-only")
+
+    @property
+    def grid_lines_(self) -> List[matplotlib.lines.Line2D]:
+        """Lines of the grid drawn now.
+
+        Use them to adjust single grid lines. Each access returns a new
+        list. :meth:`set_grid` replaces the lines with new ones, which
+        drops the changes made to them directly. To hide the grid, use
+        ``set_grid(visible=False)`` rather than removing the lines.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the lines of the 1st, 2nd and 3rd materials in
+            this order, each in ascending order of value, empty while the
+            grid is hidden.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.grid_lines_
+        >>> len(lines)  # 9 values for each of the 3 materials
+        27
+        >>> lines[4].set_linestyle("--")  # 0.5 of the 1st material
+        """
+        return cast(
+            List[matplotlib.lines.Line2D], self.__skeleton.artists("grid")
+        )
+
+    @grid_lines_.setter
+    def grid_lines_(self, _lines):
+        raise AttributeError("grid_lines_ is read-only")
+
+    @property
+    def tick_labels_(self) -> List[matplotlib.text.Text]:
+        """Tick labels drawn now.
+
+        Use them to adjust single labels, such as one of the labels that
+        come close at the bottom left vertex with ``endpoints=True`` (see
+        :meth:`set_ticks`). Each access returns a new list.
+        :meth:`set_ticks` replaces the labels with new ones, which drops
+        the changes made to them directly. To hide the tick labels, use
+        ``set_ticks(visible=False)`` rather than removing the labels.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the tick labels in ascending order of value, each
+            value for the 1st, 2nd and 3rd materials in this order, empty
+            while the tick labels are hidden.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> labels = td.tick_labels_
+        >>> len(labels)  # 9 values for each of the 3 materials
+        27
+        >>> [label.get_text() for label in labels[:3]]  # 0.1 of each
+        ['10', '10', '10']
+        >>> labels[12].set_color("tab:red")  # 0.5 of the 1st material
+        """
+        return cast(
+            List[matplotlib.text.Text], self.__skeleton.artists("ticks")
+        )
+
+    @tick_labels_.setter
+    def tick_labels_(self, _labels):
+        raise AttributeError("tick_labels_ is read-only")
+
+    @property
+    def axis_labels_(self) -> List[matplotlib.text.Text]:
+        """Axis titles drawn now.
+
+        Use them to adjust a single title. Each access returns a new list.
+        :meth:`set_axis_labels` replaces the titles with new ones, which
+        drops the changes made to them directly. To hide the titles, use
+        ``set_axis_labels(visible=False)`` rather than removing them.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the drawn axis titles in the order of the
+            materials, without the materials that have no title, empty
+            while the axis titles are hidden. No titles are drawn by
+            default.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> td.axis_labels_  # no titles by default
+        []
+        >>> _ = td.set_axis_labels([None, None, "TiO2 / mol%"])
+        >>> [title.get_text() for title in td.axis_labels_]
+        ['TiO2 / mol%']
+        """
+        return cast(
+            List[matplotlib.text.Text], self.__skeleton.artists("axis_labels")
+        )
+
+    @axis_labels_.setter
+    def axis_labels_(self, _labels):
+        raise AttributeError("axis_labels_ is read-only")
+
+    @property
+    def vertex_labels_(self) -> List[matplotlib.text.Text]:
+        """Vertex labels drawn now.
+
+        Use them to adjust a single label. Each access returns a new list.
+        :meth:`set_vertex_labels` replaces the labels with new ones, which
+        drops the changes made to them directly. To hide the labels, use
+        ``set_vertex_labels(visible=False)`` rather than removing them.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the labels of the top, bottom left and bottom
+            right vertices, empty while the vertex labels are hidden.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> top, left, right = td.vertex_labels_
+        >>> top.get_text()
+        'Li$_{2}$O'
+        >>> top.set_color("tab:red")
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.artists("vertex_labels"),
+        )
+
+    @vertex_labels_.setter
+    def vertex_labels_(self, _labels):
+        raise AttributeError("vertex_labels_ is read-only")
+
+    def set_border(
+        self, visible: Optional[bool] = None, **kwargs: Any
+    ) -> List[matplotlib.lines.Line2D]:
+        """Redraw the border of the triangle with new settings.
+
+        The lines of the border are removed and drawn again with the
+        settings given, merged with the current ones: settings not given
+        keep their previous values. The other parts and the artists drawn
+        by the user are not changed. If an error is raised, the border
+        keeps its previous settings and lines.
+
+        Parameters
+        ----------
+        visible : bool or None, optional
+            Whether to draw the border. ``None`` keeps the current setting
+            (initially True), by default None
+        **kwargs
+            Properties of :class:`matplotlib.lines.Line2D`, or their
+            aliases such as ``lw``, applied to all lines of the border.
+            They override the defaults (``color="black"``,
+            ``linewidth=2``, ``linestyle="-"``, ``zorder=1``), and
+            properties not given keep their current values. Arguments of
+            ``Axes.plot`` that are not properties, such as ``scalex``, are
+            not accepted.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the border lines drawn by this call (the bottom,
+            left and right edges), the same lines as `border_lines_`. It is
+            empty when the border is hidden.
+
+        Raises
+        ------
+        TypeError
+            If `visible` is not a bool, if a property is given by both its
+            name and an alias, or if it is ``xdata`` or ``ydata``, which
+            the border sets itself.
+        AttributeError
+            If a keyword is not a property of ``Line2D``.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.set_border(linewidth=1, linestyle="--")
+        >>> len(lines), lines[0].get_linewidth()
+        (3, 1.0)
+        >>> td.set_border(visible=False)
+        []
+        >>> lines = td.set_border(visible=True)  # keeps the dashed lines
+        >>> lines[0].get_linestyle()
+        '--'
+
+        ``border_kw`` at construction is equivalent to calling
+        ``set_border`` with the same settings right after construction:
+
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"],
+        ...     ax=ax,
+        ...     border_kw={"linewidth": 1, "linestyle": "--"},
+        ... )
+        >>> len(td.border_lines_), td.border_lines_[0].get_linewidth()
+        (3, 1.0)
+        """
+        return cast(
+            List[matplotlib.lines.Line2D],
+            self.__skeleton.update("border", visible=visible, **kwargs),
+        )
+
+    def set_grid(
+        self,
+        visible: Optional[bool] = None,
+        *,
+        step: Optional[float] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.lines.Line2D]:
+        """Redraw the grid with new settings.
+
+        The grid lines are drawn for each material at the multiples of
+        `step` strictly between 0 and 1. The line of a value starts at
+        that value on the tick edge of the material and runs parallel to
+        the edge opposite to the vertex of the material (see the Notes of
+        :class:`TernaryDiagram`).
+
+        All the grid lines are removed and drawn again with the settings
+        given, merged with the current ones: settings not given keep their
+        previous values. The border is then moved back over the new grid
+        lines. The other parts and the artists drawn by the user are not
+        changed. If an error is raised, the grid keeps its previous
+        settings and lines.
+
+        Parameters
+        ----------
+        visible : bool or None, optional
+            Whether to draw the grid. ``None`` keeps the current setting
+            (initially True), by default None
+        step : float or None, optional
+            Interval of the grid lines as a fraction in (0, 1], such as
+            0.05 for every 5 %. It is independent of the interval of the
+            tick labels. ``None`` keeps the current setting (initially
+            0.1), by default None
+        **kwargs
+            Properties of :class:`matplotlib.lines.Line2D`, or their
+            aliases such as ``lw``, applied to all grid lines. They
+            override the defaults (``color="gray"``, ``linewidth=0.5``,
+            ``zorder=1``), and properties not given keep their current
+            values. Arguments of ``Axes.plot`` that are not properties,
+            such as ``scalex``, are not accepted.
+
+        Returns
+        -------
+        List[matplotlib.lines.Line2D]
+            A new list of the grid lines drawn by this call, the same lines
+            as `grid_lines_`. It is empty when the grid is hidden.
+
+        Raises
+        ------
+        TypeError
+            If `visible` is not a bool, if `step` is not a real number, if
+            a property is given by both its name and an alias, or if it is
+            ``xdata`` or ``ydata``, which the grid sets itself.
+        ValueError
+            If `step` is not finite or not in (0, 1].
+        AttributeError
+            If a keyword is not a property of ``Line2D``.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.set_grid(step=0.05, color="lightgray")
+        >>> len(lines)  # 19 values for each of the 3 materials
+        57
+        >>> lines = td.set_grid(linestyle=":")  # keeps step and color
+        >>> len(lines), lines[0].get_color()
+        (57, 'lightgray')
+
+        ``grid_kw`` at construction is equivalent to calling ``set_grid``
+        with the same settings right after construction:
+
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"],
+        ...     ax=ax,
+        ...     grid_kw={"step": 0.05, "color": "lightgray"},
+        ... )
+        >>> len(td.grid_lines_)
+        57
+        """
+        return cast(
+            List[matplotlib.lines.Line2D],
+            self.__skeleton.update(
+                "grid", visible=visible, step=step, **kwargs
+            ),
+        )
+
+    def set_ticks(
+        self,
+        visible: Optional[bool] = None,
+        *,
+        step: Optional[float] = None,
+        fmt: Optional[TickFormat] = None,
+        endpoints: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the tick labels with new settings.
+
+        The tick labels of the 1st material (top vertex) are on the right
+        edge, those of the 2nd material (bottom left vertex) on the left
+        edge and those of the 3rd material (bottom right vertex) on the
+        bottom edge. Along each edge the values increase counterclockwise,
+        toward the vertex of the material: from the bottom right vertex to
+        the top vertex on the right edge, from the top vertex to the
+        bottom left vertex on the left edge, and from the bottom left
+        vertex to the bottom right vertex on the bottom edge.
+
+        All the tick labels are removed and drawn again with the settings
+        given, merged with the current ones: settings not given keep their
+        previous values. The other parts and the artists drawn by the user
+        are not changed. If an error is raised, the tick labels keep their
+        previous settings and artists.
+
+        Parameters
+        ----------
+        visible : bool or None, optional
+            Whether to draw the tick labels. ``None`` keeps the current
+            setting (initially True), by default None
+        step : float or None, optional
+            Interval of the tick labels as a fraction in (0, 1], such as
+            0.25 for every 25 %. It is independent of the interval of the
+            grid. ``None`` keeps the current setting (initially 0.1),
+            by default None
+        fmt : str, callable or None, optional
+            Format of the labels, applied to the values as fractions in
+            [0, 1]: ``"percent"`` (0.1 gives ``"10"``), ``"fraction"``
+            (0.1 gives ``"0.1"``), a %-style or {}-style format string such
+            as ``"%.2f"`` or ``"{:.0%}"``, or a callable that takes the
+            value as a float and returns the label (see
+            :func:`ternary_diagram.utils.get_tick_formatter`). A callable
+            is first called when the labels are drawn, not when it is
+            given: given while the labels are hidden, its errors are raised
+            only when they are shown again (pass a valid `fmt` together
+            with ``visible=True`` in that case). ``None`` keeps the
+            current setting (initially ``"percent"``), by default None
+        endpoints : bool or None, optional
+            Whether to also label the values 0 and 1 at the vertices.
+            ``None`` keeps the current setting (initially False),
+            by default None
+        **kwargs
+            Properties of :class:`matplotlib.text.Text`, or their aliases
+            such as ``ha``, applied to the labels of all edges. They
+            override the default ``fontsize=10`` and the rotation and the
+            alignments that differ by edge, and properties not given keep
+            their current values. Once ``rotation`` or an alignment is
+            given, the different defaults of the edges cannot be restored:
+            ``rotation=None`` draws the labels of all edges at 0 degrees.
+            Arguments of ``Axes.text`` that are not properties are not
+            accepted: pass the items of a ``fontdict`` as keywords.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the tick labels drawn by this call, the same
+            labels as `tick_labels_`. It is empty when the tick labels are
+            hidden.
+
+        Raises
+        ------
+        TypeError
+            If `visible` or `endpoints` is not a bool, if `step` is not a
+            real number, if `fmt` is neither a str nor a callable, if a
+            property is given by both its name and an alias, or if it is
+            ``x``, ``y`` or ``text``, which the tick labels set themselves.
+        ValueError
+            If `step` is not finite or not in (0, 1], or if `fmt` is a str
+            that cannot be used as a format.
+        AttributeError
+            If a keyword is not a property of ``Text``.
+        Exception
+            Whatever a callable `fmt` raises.
+
+        Notes
+        -----
+        With ``endpoints=True``, the label of 1 of the 2nd material and
+        that of 0 of the 3rd material come close to each other at the
+        bottom left vertex. Adjust or hide one of them through
+        `tick_labels_` if they overlap.
+
+        The tick labels keep the default zorder of matplotlib for text (3)
+        unless ``zorder`` is given. Among artists with the same zorder, the
+        one added to the Axes later is drawn on top, so the redrawn labels
+        are drawn over the artists with zorder 3 drawn before this call,
+        such as scatter points. Give ``zorder`` to choose the order.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> labels = td.set_ticks(step=0.25, fmt="{:.0%}")
+        >>> len(labels)  # 3 values for each of the 3 materials
+        9
+        >>> [label.get_text() for label in labels[::3]]  # the 1st material
+        ['25%', '50%', '75%']
+        >>> labels = td.set_ticks(endpoints=True)  # keeps step and fmt
+        >>> [label.get_text() for label in labels[::3]]
+        ['0%', '25%', '50%', '75%', '100%']
+
+        ``tick_kw`` at construction is equivalent to calling ``set_ticks``
+        with the same settings right after construction:
+
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"],
+        ...     ax=ax,
+        ...     tick_kw={"step": 0.25, "fmt": "{:.0%}"},
+        ... )
+        >>> [label.get_text() for label in td.tick_labels_[::3]]
+        ['25%', '50%', '75%']
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "ticks",
+                visible=visible,
+                step=step,
+                fmt=fmt,
+                endpoints=endpoints,
+                **kwargs,
+            ),
+        )
+
+    def set_axis_labels(
+        self,
+        labels: Optional[Sequence[Optional[str]]] = None,
+        *,
+        visible: Optional[bool] = None,
+        pad: Optional[float] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the axis titles with new settings.
+
+        The title of a material is drawn outside the middle of the edge
+        that carries its ticks, parallel to the edge and never upside
+        down: the 1st material on the right edge, the 2nd on the left edge
+        and the 3rd on the bottom edge. No titles are drawn by default.
+        The titles are shown as given, without the conversion to chemical
+        formulas applied to the vertex labels; write mathtext such as
+        ``"Li$_2$O"`` for subscripts.
+
+        All the titles are removed and drawn again with the settings
+        given, merged with the current ones: settings not given keep their
+        previous values. The other parts and the artists drawn by the user
+        are not changed. If an error is raised, the titles keep their
+        previous settings and artists.
+
+        Parameters
+        ----------
+        labels : sequence of (str or None), or None, optional
+            Titles of the 1st, 2nd and 3rd materials, such as a list, a
+            tuple, a numpy array or a pandas Index (for example
+            ``df.columns[:3] + " / mol%"``). A title that is ``None`` or
+            ``""`` is not drawn. ``None`` keeps the current titles
+            (initially ``(None, None, None)``: no titles), by default None
+        visible : bool or None, optional
+            Whether to draw the titles. ``None`` keeps the current setting
+            (initially True), by default None
+        pad : float or None, optional
+            Distance from the midpoints of the edges to the centers of the
+            titles in data coordinates, where each edge has length 1.
+            Positive values move the titles away from the triangle. As the
+            text is sized in points, on a small figure (about 3 by 3
+            inches) the titles may touch the tick labels: increase `pad`
+            or decrease ``fontsize`` then. ``None`` keeps the current
+            setting (initially 0.15), by default None
+        **kwargs
+            Properties of :class:`matplotlib.text.Text`, or their aliases
+            such as ``ha``, applied to all titles. They override the
+            defaults (``fontsize=12``, ``horizontalalignment="center"``,
+            ``verticalalignment="center"``) and the rotation that differs
+            by edge, and properties not given keep their current values.
+            Once ``rotation`` is given, the different rotations of the
+            edges cannot be restored. Arguments of ``Axes.text`` that are
+            not properties are not accepted: pass the items of a
+            ``fontdict`` as keywords.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the axis titles drawn by this call in the order
+            of the materials, the same titles as `axis_labels_`. It is
+            empty when the axis titles are hidden or none is given.
+
+        Raises
+        ------
+        TypeError
+            If `labels` is a str, bytes, a mapping, a set or not iterable,
+            if a title is neither a str nor None, if `visible` is not a
+            bool, if `pad` is not a real number, if a property is given by
+            both its name and an alias, or if it is ``x``, ``y`` or
+            ``text``, which the titles set themselves.
+        ValueError
+            If `labels` does not have 3 items, or if `pad` is not finite.
+        AttributeError
+            If a keyword is not a property of ``Text``.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> names = ["Li2O / mol%", "La2O3 / mol%", "TiO2 / mol%"]
+        >>> titles = td.set_axis_labels(names, fontsize=10)
+        >>> [title.get_text() for title in titles]
+        ['Li2O / mol%', 'La2O3 / mol%', 'TiO2 / mol%']
+        >>> titles = td.set_axis_labels([None, None, "TiO2 / mol%"])
+        >>> [(title.get_text(), title.get_fontsize()) for title in titles]
+        [('TiO2 / mol%', 10.0)]
+
+        ``axis_label_kw`` at construction is equivalent to calling
+        ``set_axis_labels`` with the same settings right after
+        construction:
+
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"],
+        ...     ax=ax,
+        ...     axis_label_kw={"labels": names, "fontsize": 10},
+        ... )
+        >>> [title.get_text() for title in td.axis_labels_]
+        ['Li2O / mol%', 'La2O3 / mol%', 'TiO2 / mol%']
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "axis_labels",
+                labels=labels,
+                visible=visible,
+                pad=pad,
+                **kwargs,
+            ),
+        )
+
+    def set_vertex_labels(
+        self,
+        labels: Optional[Sequence[str]] = None,
+        *,
+        visible: Optional[bool] = None,
+        offsets: Optional[Sequence[Tuple[float, float]]] = None,
+        **kwargs: Any,
+    ) -> List[matplotlib.text.Text]:
+        """Redraw the vertex labels with new settings.
+
+        The labels are drawn next to the top, bottom left and bottom right
+        vertices, initially with the first 3 materials. Whether they are
+        converted to chemical formulas (``"Li2O"`` is shown as
+        ``"Li$_{2}$O"``) is decided by ``auto_latex_notation`` at
+        construction, which also applies to the labels given here and
+        cannot be changed by this method.
+
+        All the labels are removed and drawn again with the settings
+        given, merged with the current ones: settings not given keep their
+        previous values. The other parts and the artists drawn by the user
+        are not changed. If an error is raised, the labels keep their
+        previous settings and artists.
+
+        Parameters
+        ----------
+        labels : sequence of str or None, optional
+            Labels of the top, bottom left and bottom right vertices, such
+            as a list, a tuple, a numpy array or a pandas Index (for
+            example ``df.columns[:3]``). With ``auto_latex_notation``, each
+            label must be a str; without it, any object is shown as
+            ``Axes.text`` shows it. ``None`` keeps the current labels
+            (initially the first 3 materials), by default None
+        visible : bool or None, optional
+            Whether to draw the labels. ``None`` keeps the current setting
+            (initially True), by default None
+        offsets : sequence of (float, float) or None, optional
+            Offsets ``(dx, dy)`` of the labels from the top, bottom left
+            and bottom right vertices in data coordinates, where each edge
+            has length 1: 3 pairs of finite real numbers, such as a list of
+            tuples or a numpy array of shape (3, 2). Convert a pandas
+            DataFrame with ``to_numpy()`` first. ``None`` keeps the current
+            setting (initially ``((0, 0.02), (0, -0.05), (0, -0.05))``),
+            by default None
+        **kwargs
+            Properties of :class:`matplotlib.text.Text`, or their aliases
+            such as ``ha``, applied to all labels. They override the
+            default ``fontsize=16`` and the alignments that differ by
+            vertex, and properties not given keep their current values.
+            Once an alignment is given, the different alignments of the
+            vertices cannot be restored. Arguments of ``Axes.text`` that
+            are not properties are not accepted: pass the items of a
+            ``fontdict`` as keywords.
+
+        Returns
+        -------
+        List[matplotlib.text.Text]
+            A new list of the vertex labels drawn by this call (the top,
+            bottom left and bottom right vertices), the same labels as
+            `vertex_labels_`. It is empty when the vertex labels are
+            hidden.
+
+        Raises
+        ------
+        TypeError
+            If `labels`, `offsets` or a pair of `offsets` is a str, bytes,
+            a mapping, a set or not iterable, if a value of `offsets` is
+            not a real number, if `visible` is not a bool, if a property is
+            given by both its name and an alias, or if it is ``x``, ``y``
+            or ``text``, which the labels set themselves.
+        ValueError
+            If `labels` or `offsets` does not have 3 items, if a pair of
+            `offsets` does not have 2 items, if a value of `offsets` is not
+            finite, or, with ``auto_latex_notation``, if a label is not a
+            str.
+        AttributeError
+            If a keyword is not a property of ``Text``.
+
+        Examples
+        --------
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> labels = td.set_vertex_labels(fontsize=12)
+        >>> [label.get_text() for label in labels]
+        ['Li$_{2}$O', 'La$_{2}$O$_{3}$', 'TiO$_{2}$']
+        >>> offsets = [(0, 0.02), (-0.02, -0.04), (0.02, -0.04)]
+        >>> labels = td.set_vertex_labels(offsets=offsets)  # keeps fontsize
+        >>> labels[1].get_position(), labels[1].get_fontsize()
+        ((-0.02, -0.04), 12.0)
+        >>> labels = td.set_vertex_labels(["Li2O", "La2O3", "SrTiO3"])
+        >>> labels[2].get_text()
+        'SrTiO$_{3}$'
+
+        ``vertex_label_kw`` at construction is equivalent to calling
+        ``set_vertex_labels`` with the same settings right after
+        construction. It cannot contain ``labels``, which are given by the
+        materials:
+
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"],
+        ...     ax=ax,
+        ...     vertex_label_kw={"fontsize": 12, "offsets": offsets},
+        ... )
+        >>> label = td.vertex_labels_[1]
+        >>> label.get_position(), label.get_fontsize()
+        ((-0.02, -0.04), 12.0)
+        """
+        return cast(
+            List[matplotlib.text.Text],
+            self.__skeleton.update(
+                "vertex_labels",
+                labels=labels,
+                visible=visible,
+                offsets=offsets,
+                **kwargs,
+            ),
+        )
 
     def scatter(
         self,
