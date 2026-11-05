@@ -385,17 +385,19 @@ class _SkeletonPart:
 ```
 - Preconditions: `kwargs` のキーは `OPTION_DEFAULTS` のキーか、`ARTIST_CLASS` のプロパティ名（別名可）
 - Postconditions: 成功時は `artists` が新しい artist だけになり、古い artist は `Axes` から消えている。`visible=False` のときは `artists == []`
-- Invariants: `artists` に含まれる artist はすべて `Axes` 上にあり、この部品が作ったもの
+- Invariants: `artists` に含まれる artist はすべてこの部品が作ったもの。利用者が `Artist.remove()` や `Axes.cla()` で Axes から外したものを除き、`Axes` 上にある
 
 ##### State Management
 - State model: `_options`（検証済みで全項目そろった辞書）、`_style`（正式名の辞書）、`_artists`（現在描いている artist のリスト）
-- 更新手順: (1) kwargs を options と style に分ける → (2) `None` を除いて options を統合し `_validate` → (3) style を統合 → (4) `visible` なら `_specs` で仕様を計算（純粋） → (5) 仕様から artist を順に生成。失敗したら作りかけを remove して例外を再送出 → (6) 古い artist を remove → (7) `_options` / `_style` / `_artists` を確定
+- 更新手順: (1) kwargs を options と style に分ける → (2) `None` を除いて options を統合し `_validate` → (3) style を統合し、プロパティ名を `ARTIST_CLASS` の setter と照合（表示・非表示にかかわらず行う） → (4) `visible` なら `_specs` で仕様を計算（純粋） → (5) 仕様から artist を順に生成。失敗したら作りかけを remove して例外を再送出 → (6) 古い artist のうち、まだ `Axes` の子であるものを remove（利用者が外したものは飛ばす） → (7) `_options` / `_style` / `_artists` を確定
 - Consistency: (1)〜(5) の失敗では `_options` / `_style` / `_artists` と `Axes` は変わらない
 - `visible` の検証は基底で、`None` を除いて統合した後の値を `utils.check_bool(visible, "visible")`（`plot-side-effects` が追加。`bool` / `numpy.bool_` 以外は `TypeError`）で行う。独自の真偽値チェックは書かない
 
 **Implementation Notes**
 - Integration: 線は `ax.plot(xdata, ydata, **kwargs)[0]`、文字は `ax.text(x, y, s, **kwargs)` で作る（現行と同じ呼び出しにして、自動スケールの要求や色のサイクルの扱いを変えない）
-- Validation: 未知のプロパティは matplotlib が `AttributeError` を出す。手順 (5) で捕まえて巻き戻し、同じ例外を送出する
+- Validation: 未知のプロパティ名は手順 (3) で `Artist.set` と同じ文面の `AttributeError`、部品が artist ごとに渡す名前（`Line2D` の `xdata` / `ydata`、`Text` の `x` / `y` / `text`）は `TypeError` にする。部品を非表示にしている間も検査し、受け付けない名前を設定に残さない。値の不正は手順 (5) で matplotlib が出す例外を捕まえて巻き戻し、同じ例外を送出する
+- 3 つの名前を受け取る引数（軸タイトルと頂点ラベルの `labels`）は、str / bytes / Mapping / Set / 反復できない値を `TypeError` にし、それ以外（list、tuple、pandas の Index / Series、numpy 配列など）を `tuple(...)` に変換してから個数（`ValueError`）と要素（`TypeError`）を確かめる
+- 利用者が外した artist: `update` の手順 (6) と `restack` は、`ax.get_children()` に含まれない artist を飛ばす。外された artist は remove できず（`ValueError` / `NotImplementedError`）、Axes に戻すべきでもないため。これにより、外した後の `set_*` もエラーにならず、新しい artist が孤立して残ることもない
 - Typing: `_skeleton.py` は新規モジュールなので、tech.md の規約どおり `from __future__ import annotations` を付け、注釈は組み込みジェネリクス（`list[...]`、`dict[...]`、`type[...]`）、`collections.abc` の `Sequence` / `Mapping`、`X | None` で書く（`typing.List` / `Dict` / `Optional` は使わない）。実行時に評価される式（型別名 `Spec`、`isinstance` の第 2 引数）だけは Python 3.9 で `|` が使えないので、`typing.Union` やタプルで書く
 - Risks: `normalize_kwargs` に Artist クラスを渡す呼び方が古い matplotlib にない場合は、分岐で別名の辞書を渡す
 
@@ -460,11 +462,12 @@ class _Skeleton:
         axis_label_kw: Mapping[str, Any],
         vertex_label_kw: Mapping[str, Any],
     ) -> None: ...
-    def update(self, name: PartName, **kwargs: Any) -> list[matplotlib.artist.Artist]: ...
+    # name is positional only, so that the Text alias `name` (fontname) can be passed in kwargs
+    def update(self, name: PartName, /, **kwargs: Any) -> list[matplotlib.artist.Artist]: ...
     def artists(self, name: PartName) -> list[matplotlib.artist.Artist]: ...
 ```
 - Postconditions（`__init__`）: 三角形の 3 頂点が `ax.dataLim` に含まれ、`autoscale_view()` が呼ばれている。部品はグリッド → 外枠 → 頂点ラベル → 目盛りラベル → 軸タイトルの順に 1 回ずつ描かれている。いずれかの部品の構築が失敗したときは、先に構築した部品の artist を取り除いてから元の例外を送出する
-- Postconditions（`update`）: `name == "grid"` のときは更新後に外枠を `restack` し、外枠の線が `ax.lines` の末尾にある
+- Postconditions（`update`）: `name == "grid"` のときは更新後に外枠を `restack` し、外枠の線（利用者が外したものを除く）が `ax.lines` の末尾にある
 - `tight_layout` や Axes の位置の変更は行わない（2.8）
 
 ### _api（公開ファサード）
@@ -538,7 +541,7 @@ class TernaryDiagram:
 - `<part>_kw` は、作成直後に対応する `set_*` を `set_*(**<part>_kw)` と呼ぶのと同じ意味（2.2）。対応は次の「`*_kw` と `set_*` の対応」の表で固定する
 - 名前付き引数の `None` は「直前の設定を引き継ぐ」。`**kwargs` は matplotlib の `Line2D` / `Text` のプロパティ
 - 取り出し口の並び: `grid_lines_` は成分 0, 1, 2 の順で値の昇順、`tick_labels_` は値の昇順で成分 0, 1, 2 の順（v3 の追加順と同じ）、`border_lines_` は底辺・左辺・右辺、`vertex_labels_` は上・左下・右下
-- Preconditions（`__init__`）: `materials` は 3 要素以上のシーケンス（3 未満は `ValueError`、10.6）。`*_kw` は `None` か `Mapping`（それ以外は `TypeError`、10.3）。`vertex_label_kw` に `labels` を含めない（含むと `ValueError`、10.5）
+- Preconditions（`__init__`）: `materials` は 3 要素以上の反復可能な値で、`tuple(materials)` に変換して使う（3 未満は `ValueError`、10.6。反復できなければ `TypeError`。v3 との互換のため str の `"ABC"` は 3 文字として受け付ける）。`*_kw` は `None` か、キーがすべて str の `Mapping`（それ以外は `TypeError`、10.3）。`vertex_label_kw` に `labels` を含めない（含むと `ValueError`、10.5）
 - Preconditions（`__init__` の検証の順）: `ax` → `materials` → `tight_layout` → `*_kw`（roadmap の「横断の取り決め」。詳細は「構築」フロー）。複数の引数が同時に不正なときは、この順で最初に見つかったもののエラーになる
 - Postconditions: `set_*` は新しく描いた artist のリストを返す（非表示なら空、3.2, 3.3）
 
@@ -639,6 +642,7 @@ step : float or None, optional
 - **不変条件**:
   - 部品の artist は、その部品の現在の設定から計算した仕様と一致する
   - 外枠の線は、グリッドの線より `ax.lines` の後ろにある
+  - 部品の artist のうち利用者が Axes から外したもの（`Artist.remove()`、`Axes.cla()`）は、部品の変更で remove も restack もされない
   - 既定の設定から得られる仕様は v3 の描画と一致する
 
 ## Error Handling
@@ -658,10 +662,14 @@ step : float or None, optional
 | `labels` / `offsets` が 3 つでない | `ValueError` | `_AxisLabels` / `_VertexLabels` | 10.2 |
 | 軸タイトルの要素が `str` / `None` でない、`pad` が有限の実数でない | `TypeError` / `ValueError` | `_AxisLabels`、`get_axis_label_position` | 10.3 |
 | `auto_latex_notation=True` で頂点ラベルが `str` でない | `ValueError`（現行の `get_label` のまま） | `_VertexLabels` | 1.4, 10.3 |
-| `*_kw` が `Mapping` でない | `TypeError` | `TernaryDiagram.__init__` | 10.3 |
+| `*_kw` が `Mapping` でない、またはキーが str でない | `TypeError` | `TernaryDiagram.__init__` | 10.3 |
+| `materials` が反復できない | `TypeError` | `TernaryDiagram.__init__` | 10.3 |
+| 3 つの名前の `labels` が str / bytes / Mapping / Set / 反復できない値 | `TypeError` | `_AxisLabels` / `_VertexLabels` | 10.3 |
 | `vertex_label_kw` に `labels` がある | `ValueError` | `TernaryDiagram.__init__` | 10.5 |
 | `materials` が 3 要素未満 | `ValueError`（v3 は `IndexError`） | `TernaryDiagram.__init__` | 10.6 |
-| 未知の matplotlib プロパティ、別名と正式名の重複 | matplotlib の `AttributeError` / `TypeError` をそのまま | `_SkeletonPart.update` | 10.7 |
+| 未知の matplotlib プロパティ名 | `AttributeError`（`Artist.set` と同じ文面。手順 (3) で非表示の間も検査） | `_SkeletonPart.update` | 10.7 |
+| 部品が artist ごとに渡すプロパティ名（`xdata`、`text` など）、別名と正式名の重複 | `TypeError` | `_SkeletonPart.update` | 10.7 |
+| プロパティの値が不正 | matplotlib の例外をそのまま | `_SkeletonPart.update`（手順 (5)） | 10.7 |
 | 呼び出し可能な `fmt` が例外を出す | その例外をそのまま | `_TickLabels._specs` | 10.8 |
 
 いずれの場合も、`set_*` 由来のエラーでは部品の artist・設定・`Axes` は呼び出し前と同じ（10.8）。`__init__` 由来のエラーでは `TernaryDiagram` は作られず、それまでに描いた土台の artist も取り除かれる（アスペクト比や spines の非表示など、部品より前に行う Axes の設定は戻さない）。
