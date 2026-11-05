@@ -294,6 +294,31 @@ def _check_style_names(
             )
 
 
+def _attached(
+    artists: Sequence[matplotlib.artist.Artist], ax: matplotlib.axes.Axes
+) -> list[matplotlib.artist.Artist]:
+    """Return the artists that are still children of `ax`, in their order.
+
+    An artist of a part leaves the Axes when the user removes it
+    (``Artist.remove``) or clears the Axes (``Axes.cla``). Such an artist
+    can be neither removed again nor moved, so it is skipped.
+
+    Parameters
+    ----------
+    artists : Sequence[matplotlib.artist.Artist]
+        Artists drawn by a part.
+    ax : matplotlib.axes.Axes
+        Axes the part draws on.
+
+    Returns
+    -------
+    list[matplotlib.artist.Artist]
+        The artists of `artists` found among the children of `ax`.
+    """
+    children = {id(child) for child in ax.get_children()}
+    return [artist for artist in artists if id(artist) in children]
+
+
 def _ordered_items(
     value: object, count: int, name: str, accepted: str, each: str
 ) -> tuple[Any, ...]:
@@ -463,7 +488,8 @@ class _SkeletonPart(ABC):
         The new artists are created before the previous ones are removed.
         If anything fails, the artists created by this call are removed, the
         error is raised again and the part keeps its previous settings and
-        artists.
+        artists. Previous artists that are no longer on the Axes, because
+        the user removed them or cleared the Axes, are left as they are.
 
         Parameters
         ----------
@@ -533,8 +559,9 @@ class _SkeletonPart(ABC):
         # (5) Create the new artists, all or none.
         artists = self._create_artists(specs)
 
-        # (6) Remove the previous artists and (7) commit.
-        for artist in self._artists:
+        # (6) Remove the previous artists still on the Axes and (7) commit.
+        # Those that the user removed or cleared are already gone.
+        for artist in _attached(self._artists, self._ax):
             artist.remove()
         self._options = options
         self._style = style
@@ -551,7 +578,9 @@ class _SkeletonPart(ABC):
 
         The same ``Line2D`` objects are removed and added back, so that they
         are drawn after the other artists with the same zorder while keeping
-        their identity and the changes made to them.
+        their identity and the changes made to them. Lines that are no
+        longer on the Axes, because the user removed them or cleared the
+        Axes, are not added back.
 
         Raises
         ------
@@ -564,7 +593,7 @@ class _SkeletonPart(ABC):
                 f"{type(self).__name__} draws "
                 f"{self.ARTIST_CLASS.__name__}."
             )
-        for artist in self._artists:
+        for artist in _attached(self._artists, self._ax):
             # Created by Axes.plot, as checked through ARTIST_CLASS above.
             line = cast(matplotlib.lines.Line2D, artist)
             line.remove()

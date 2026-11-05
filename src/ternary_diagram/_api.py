@@ -162,7 +162,9 @@ class TernaryDiagram:
     and a matplotlib property left out. A part hidden with
     ``visible=False`` keeps its settings and is drawn with them again
     with ``visible=True``. If a change raises an error, the part keeps its
-    previous settings and artists.
+    previous settings and artists. Artists of a part that are no longer on
+    the Axes, because they were removed with ``Artist.remove`` or the Axes
+    was cleared, are left as they are by the change methods.
 
     The matplotlib properties given to a part apply to all its artists
     and override the defaults of the part, including those that differ by

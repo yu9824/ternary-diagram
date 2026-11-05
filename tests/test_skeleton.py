@@ -1314,3 +1314,61 @@ def test_invalid_setting_at_construction_leaves_no_skeleton_artist(
 
     assert _same_artists(list(ax.lines), [user_line])
     assert _same_artists(list(ax.texts), [user_text])
+
+
+# --- artists removed by the user --------------------------------------------
+
+
+@pytest.mark.parametrize("part", PART_PARAMS)
+def test_change_after_the_user_removed_an_artist_of_the_part(titled_td, part):
+    previous = getattr(titled_td, part.accessor)
+    others = [
+        artist
+        for artist in _container(titled_td, part)
+        if not _contains(previous, artist)
+    ]
+    removed = previous[0]
+    removed.remove()
+
+    returned = getattr(titled_td, part.method)(**part.change)
+
+    assert len(returned) == part.changed_count
+    assert _same_artists(getattr(titled_td, part.accessor), returned)
+    container = _container(titled_td, part)
+    # Only the new artists of the part are left: no previous artist and no
+    # orphan of the new ones.
+    assert not any(_contains(container, artist) for artist in previous)
+    assert len(container) == len(others) + part.changed_count
+    assert all(_contains(container, artist) for artist in returned)
+    assert removed.axes is None
+
+
+def test_grid_change_after_the_user_removed_a_border_line(td):
+    border = td.border_lines_
+    border[0].remove()
+
+    grid = td.set_grid(step=0.05, color="red")
+
+    assert len(grid) == 57
+    assert _same_artists(td.grid_lines_, grid)
+    # The 2 border lines left on the Axes are still drawn over the grid.
+    assert _same_artists(list(td.ax.lines), [*grid, *border[1:]])
+
+
+@pytest.mark.parametrize("part", PART_PARAMS)
+def test_change_after_the_axes_is_cleared(titled_td, part):
+    titled_td.ax.cla()
+
+    returned = getattr(titled_td, part.method)(**part.change)
+
+    assert len(returned) == part.changed_count
+    assert _same_artists(getattr(titled_td, part.accessor), returned)
+    assert _same_artists(_container(titled_td, part), returned)
+
+
+def test_grid_change_after_the_axes_is_cleared_draws_only_the_grid(td):
+    td.ax.cla()
+
+    grid = td.set_grid(color="red")
+
+    assert _same_artists(list(td.ax.lines), grid)
