@@ -106,7 +106,7 @@
   - _Boundary: `src/ternary_diagram/_api.py: TernaryDiagram` のクラスの docstring（Notes）、`TernaryDiagram.__init__` の docstring（5 つの `*_kw` の Parameters の項目だけ）、`set_*` 5 メソッドと取り出し口 5 つの docstring, `CHANGELOG.md`（`Unreleased` の New features と Bug fixes への追記だけ）_
   - _Requirements: 12.1, 12.2, 12.3, 12.4_
 
-- [ ] 5. 公開 API を通した検証と回帰確認
+- [x] 5. 公開 API を通した検証と回帰確認
 - [x] 5.1 部品ごとの変更を公開 API 経由で検証するテストを追加する
   - 5 つの部品それぞれについて、作成時の指定と作成後の変更で同じ図形の集合になることを、design の「`*_kw` と `set_*` の対応」に沿ってパラメータ化して確かめる
   - 未指定の項目の引き継ぎ（間隔を変えた後に色だけ変える、非表示から表示に戻す）、外枠の線種・線幅、目盛り・軸タイトル・頂点ラベルのフォントサイズが全図形に効くことを確かめる
@@ -125,7 +125,7 @@
   - _Boundary: `tests/test_skeleton.py`（重なり順・表示範囲・レイアウト・巻き戻しのテストの追加だけ。ソースは変更しない）_
   - _Requirements: 2.8, 9.1, 9.2, 9.3, 9.4, 10.1, 10.4, 10.7, 10.8_
 
-- [ ] 5.3 全体の回帰確認を行う
+- [x] 5.3 全体の回帰確認を行う
   - テスト全体（共通ランナー `tests/test_doctests.py` を含み、FutureWarning をエラーにする設定のまま）、ruff の lint と format の確認、mypy を実行する。ruff や mypy が環境にない場合は、勝手にインストールせず承認を得るか、確認できなかったことを報告する
   - 既定の図を変更前と変更後で画像に保存して見比べ、見た目の差がないことを手元で確認する（テストスイートには画像比較を入れない。画像はリポジトリの外に書き出す）
   - テスト全体が通り、ruff と mypy が新しい警告やエラーを出さない
@@ -156,3 +156,4 @@
 - 5.3 / user-guide-docs で確認すること（4.3 のレビューより）: `endpoints=True` の既定の大きさの図で、左下の頂点の "100" と "0" の近接（docstring に記載済み）に加え、上の頂点で 2 番目の成分の値 0 の目盛りラベル "0" が頂点ラベルに重なる。spec の範囲外として今は直していない
 - Sphinx の既定 `autoclass_content="class"` では `__init__` の Parameters（`*_kw` の 5 項目を含む）が HTML に出ない。user-guide-docs が "both" に設定したときに表示を確認する（design の Revalidation Triggers）
 - 5.2 で足すとよいこと（5.1 のレビューより）: 要件 2.5 の例にある等高線（`contour`）も、全部品の変更後に残りプロパティが変わらないことを確かめる
+- 5.3 の結果（2026-11-06）: テスト一式 1435 passed / 1 xfailed（`-W error::FutureWarning`）、ruff は問題なし、mypy は yikit-dev / qchemdb311 とも基準の 7 件（新しいエラーなし）。既定の図・等高線・散布図とタイラインを変更前（docs/add-roadmap）と比べ、差は 68〜108 画素で輝度 1/255 以内（グリッドの描画順による既知の差）、目視で差なし
