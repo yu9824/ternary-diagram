@@ -68,7 +68,7 @@
 ### Existing Architecture Analysis
 - ドキュメントは Sphinx + MyST-NB + sphinx-book-theme。`nb_execution_mode = "off"` で、ノートブックは保存済みの出力を表示する。`docs_src/tutorials/*.ipynb` は `example/` のノートブックへのシンボリックリンク
 - API リファレンスは CI（正式版タグの `docs.yml`）で `sphinx-apidoc --module-first` が生成し、`modules.html`（目次）と `ternary_diagram.html`（`TernaryDiagram` と `utils`）になる。プライベートモジュールは含まれない
-- `TernaryDiagram` にクラスの docstring がなく、既定の `autoclass_content = "class"` のため、`__init__` の docstring が表示されていない
+- 既定の `autoclass_content = "class"` のため、`__init__` の docstring が表示されていない。`TernaryDiagram` のクラスの docstring は `diagram-customization` が書いた（要約 1 行、説明、5 つの部品と `*_kw` / `set_*` / 取り出し口の対応表、Notes 節）。本 spec はこの要約・説明・表を引き継ぎ、自分の書き方の規約に合わせて書き直す
 - 今のビルドは警告 0 件で、`_templates/layout.html` の広告スクリプトが全ページに入る
 
 ### Architecture Pattern & Boundary Map
@@ -475,7 +475,7 @@ roadmap の「横断の取り決め」に従う。「上流が書く」列の項
 
 | docstring | 本 spec が書く | 上流が書く（本 spec は書き換えない） |
 |---|---|---|
-| クラス `TernaryDiagram` | 要約と説明（何を描くクラスか、`ax` に描くこと、主なメソッドの案内） | Notes 節（目盛りの配置規約、merge、両端の目盛り、重なり順）: `diagram-customization` |
+| クラス `TernaryDiagram` | 要約と説明（何を描くクラスか、`ax` に描くこと、主なメソッドの案内）。`diagram-customization` が書いた要約・説明・部品の対応表を引き継いで書き直す（表は残すか説明に吸収するかを本 spec が決める） | Notes 節（目盛りの配置規約、merge、両端の目盛り、重なり順）: `diagram-customization` |
 | `TernaryDiagram.__init__` | 要約、`materials`・`ax`・`auto_latex_notation` の項目、Attributes 節（`x_`・`y_`）、Examples 節（本 spec だけが持つ） | Parameters の `tight_layout` の項目: `plot-side-effects`。Parameters の `border_kw`・`grid_kw`・`tick_kw`・`axis_label_kw`・`vertex_label_kw` の項目: `diagram-customization`。上流は `__init__` に Parameters の項目だけを書き、Examples 節には書かない |
 | `scatter` | 要約、`vector`・`z`・`z_min`・`z_max`・`annotations`・`**kwargs` の項目、Returns、See Also、Notes の本 spec の段落（既定の zorder 3 とカラーマップ）、Examples | Parameters の `colorbar`・`flag_cbar` の項目: `plot-side-effects`。注釈の整形の切り替え引数の項目（足された場合）: `annotate-plain-text` |
 | `contour` | 要約、`vector`・`z`・`z_min`・`z_max`・`fill`・`**kwargs`（`levels`）の項目、Returns、See Also、Notes の本 spec の段落（自動の 101 段階、zorder 0）、Examples | Parameters の `colorbar`・`flag_cbar` の項目: `plot-side-effects` |
