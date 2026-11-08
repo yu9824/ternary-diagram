@@ -9,12 +9,12 @@
 ### Package Source
 **Location**: `src/ternary_diagram/`
 **Purpose**: ライブラリ本体。`__init__.py` はメタデータ（`__version__` など）と公開 API の re-export だけを持つ
-**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
+**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。土台の 5 つの部品と、それを束ねる集約は `_skeleton.py`、描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
 
 ### Tests
 **Location**: `tests/`
-**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く
-**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`
+**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く。複数のテストファイルで共有する期待値の計算は `test_` の付かない `_` 接頭辞のモジュール（`_skeleton_expected.py`）に置く
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）
 
 ### Examples
 **Location**: `example/<use_case>/`
@@ -97,6 +97,26 @@ def new(self, vector: ArrayLike, **kwargs):
     return plotter.collection_  # matplotlib のネイティブオブジェクト
 ```
 
+### 土台の部品パターン（三角図の土台に部品を足すとき）
+
+土台の部品は `_skeleton._SkeletonPart` のサブクラスにし、既定値・検証・図形の仕様の計算だけを持たせる。更新の手順、巻き戻し、プロパティ名の照合は基底が受け持つ。
+
+```python
+class _NewPart(_SkeletonPart):
+    OPTION_DEFAULTS = {"visible": True, "step": 0.1}  # 名前付きの項目
+    STYLE_DEFAULTS = {"color": "black"}  # matplotlib のプロパティ
+    ARTIST_CLASS = matplotlib.lines.Line2D
+
+    def _validate(self, options):  # visible 以外の項目を検証して返す
+        ...
+
+    def _specs(self, options, style):  # Axes を変えずに _LineSpec / _TextSpec を返す
+        ...
+```
+
+- `_Skeleton` に部品を登録し（`PartName` に名前を足す）、`TernaryDiagram` に `set_<part>`・`<part>_kw`・取り出し口 `<part>_` をそろえて足す。`<part>_kw` は作成直後に `set_<part>(**<part>_kw)` を呼ぶのと同じ意味にする
+- 配置の計算（目盛りの値、辺上の点、線分）は図を使わない純粋関数として `utils` に置き、部品から呼ぶ
+
 ### 座標と入力の規約
 
 - 頂点の順序は「上 → 左下 → 右下」（反時計回り）。`materials` の並びと `vector` の列の並びは一致させる
@@ -115,3 +135,4 @@ _Document patterns, not file trees. New files following patterns shouldn't requi
 
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
 _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
+_updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_

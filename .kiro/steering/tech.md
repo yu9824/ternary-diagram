@@ -2,7 +2,7 @@
 
 ## Architecture
 
-matplotlib の薄いラッパーとして作られた純 Python ライブラリ。ファサード（`TernaryDiagram`）が描画種別ごとの Plotter クラスに処理を委譲し、各 Plotter が「3 成分ベクトルの検証・正規化 → 2 次元座標への変換 → matplotlib の呼び出し」を受け持つ。保持する状態は描画先の `Axes`、描画済み座標の記録（`x_` / `y_`）、三角図ごとの描画後処理の状態（`PostDrawContext`: レイアウト設定、この三角図が付けたカラーバー、出した警告）だけ。描画後の処理は「図を変えない純粋な判定（`_post_draw.py` の決定表）」と「副作用を 1 か所で実行する入口（`_BasePlotter._post_draw`）」に分けている。
+matplotlib の薄いラッパーとして作られた純 Python ライブラリ。ファサード（`TernaryDiagram`）が描画種別ごとの Plotter クラスに処理を委譲し、各 Plotter が「3 成分ベクトルの検証・正規化 → 2 次元座標への変換 → matplotlib の呼び出し」を受け持つ。保持する状態は描画先の `Axes`、描画済み座標の記録（`x_` / `y_`）、三角図ごとの描画後処理の状態（`PostDrawContext`: レイアウト設定、この三角図が付けたカラーバー、出した警告）、土台の部品の設定と artist（`_Skeleton`）だけ。描画後の処理は「図を変えない純粋な判定（`_post_draw.py` の決定表）」と「副作用を 1 か所で実行する入口（`_BasePlotter._post_draw`）」に分けている。
 
 ## Core Technologies
 
@@ -55,6 +55,7 @@ else:
 ### Error Handling
 
 - 入力検証は `utils.check_*` に集約し、何が悪いかを示すメッセージ付きで `TypeError` / `ValueError` を送出する
+- matplotlib のプロパティ名を受け取る API は、描く前に artist クラスの setter と照合し、未知の名前は `Artist.set` と同じ文面の `AttributeError` にする（何も描かない設定のときも受け付けない名前を残さない）。値の不正は matplotlib の例外をそのまま出す
 - 検証に `assert` は使わない（`python -O` で消えるため）
 - matplotlib の kwargs と内部で渡す引数が衝突する場合は、別名として受ける（`vmin` → `z_min`）か、ユーザー指定を優先する（`contour(levels=...)`）。どちらを使うか決められない組み合わせだけ `ValueError` にする
 - 利用者向けの警告は `_deprecation.warn_external` だけから出す（発生位置はパッケージ外で最初の呼び出し元＝利用者の行）。既定値の変更は FutureWarning で予告し、三角図ごと・理由ごとに 1 回に絞る。引数の改名は旧名を非推奨の別名として残し、`resolve_renamed_parameter` で解決する
@@ -102,6 +103,7 @@ else:
 - **kwargs の透過とデフォルト注入**: ライブラリ側のデフォルトは `_set_default_params` で「ユーザーが指定していなければ設定」する。ユーザー指定が常に優先される
 - **zorder による描画レイヤーの固定**: 等高線 (0) < グリッド (1) < 線 (2) < 散布図 (3) をモジュール定数 `DEFAULT_ZORDER_*` で管理し、呼び出し順に関係なく重なり順を保つ
 - **入力の自動正規化**: 各行を合計 1 に正規化してから座標変換するので、ユーザーは比率をそのまま渡せる
+- **土台は部品ごとの差し替えで変える**: 外枠・グリッドなど 5 つの部品は、設定（名前付きの項目と matplotlib のプロパティ）を保持し、変更のたびに「検証 → 図形の仕様を純粋に計算 → 新しい artist を作る → 古い artist を消す → 確定」の順で描き直す。途中で失敗したら作りかけを消して元の設定と artist を保つ（全部か無し）。未指定の設定は前回の値を引き継ぎ、非表示の間も設定を保つ。グリッドを描き直したら外枠を `ax.lines` の末尾へ移し、外枠が上に描かれる状態を保つ。利用者が `remove()` / `cla()` で外した artist は飛ばす。描き直しはレイアウト調整もカラーバーの判定もしない（`_post_draw` を呼ばない）
 - **描画後処理の一元化と既存レイアウトの尊重**: 描画後のレイアウト調整とカラーバーの追加は `_BasePlotter._post_draw` だけが行う。図にレイアウトエンジン（constrained など）があれば調整しない、subfigure では調整しない。v3.x の既定（エンジンのない図では `tight_layout()`、`z` 付きの描画ごとにカラーバー追加）は保ち、v4.0.0 で変える既定には FutureWarning で予告する。決定表は未指定の行だけを変えれば v4.0.0 に移れる形にしてある
 
 ---
@@ -109,3 +111,4 @@ _Document standards and patterns, not every dependency_
 
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
 _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
+_updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
