@@ -56,8 +56,8 @@ python-ternary（月間約 2.4 万 DL、2021 年以降リリースなし）と m
 spec の依存とは別に、`_api.py` での衝突を避けるため、実装は次の順に 1 つずつマージする。
 
 1. `plot-side-effects`（`TernaryDiagram.__init__` の最終的なシグネチャ、共通 doctest ランナー、CHANGELOG の見出しの組を確定させる） — 実装済み（2026-10-24）
-2. `diagram-customization`（1 に合わせる）
-3. `annotate-plain-text`（直接実装）
+2. `diagram-customization`（1 に合わせる） — 実装済み（2026-11-06）
+3. `annotate-plain-text`（直接実装） — 実装済み（2026-11-08）
 4. `region-plots` と `heatmaps`（どちらが先でもよいが、1 つずつ）
 5. `user-guide-docs`
 
@@ -76,7 +76,8 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 
 ## Direct Implementation Candidates
 
-- [ ] annotate-plain-text -- `annotate` と `scatter(annotations=...)` が普通の文字列まで化学式として変換する（`"Sample 1"` → `"Sample $_{1}$"`）。化学式とみなす条件を絞るか、変換の有無を引数で選べるようにする小さな修正。`region-plots` の `text` と `user-guide-docs` の説明が同じ判定を前提にするので、それより前に入れる。既存ユーザーの `annotate` の表示を v3.x で黙って変えないこと（変えるなら FutureWarning を出す）。`region-plots` の `text` は新しい API なので、呼び出しごとの `auto_latex_notation=None` で `TernaryDiagram` の設定を引き継ぐ
+- [x] annotate-plain-text -- `annotate` と `scatter(annotations=...)` が普通の文字列まで化学式として変換する（`"Sample 1"` → `"Sample $_{1}$"`）。化学式とみなす条件を絞るか、変換の有無を引数で選べるようにする小さな修正。`region-plots` の `text` と `user-guide-docs` の説明が同じ判定を前提にするので、それより前に入れる。既存ユーザーの `annotate` の表示を v3.x で黙って変えないこと（変えるなら FutureWarning を出す）。`region-plots` の `text` は新しい API なので、呼び出しごとの `auto_latex_notation=None` で `TernaryDiagram` の設定を引き継ぐ
+  - 実装結果: 整形の入口は `utils.to_latex_notation`（空白で区切った語のうち、`utils.is_chemical_formula` が化学式とみなすものだけを `get_label` で整形する。`$` を含む文字列はそのまま）。`annotate` と `scatter` の切り替え引数は `auto_latex_notation: bool | None = None`（キーワード専用）。`None` は v3.x の表示を保ち、表示が変わる文字列にだけ FutureWarning を出す（三角図ごとに 1 回）。`TernaryDiagram.__auto_latex_notation` は本件が `__init__` に足した。`region-plots` の `text` は `None` を三角図の設定で解決し、`to_latex_notation` を呼ぶ（警告の経路は通らない）
 - [ ] typing-cleanup -- `TernaryDiagram.x_` / `y_` に残っている `# FIXME: mypy` を型注釈で解消する。挙動は変えない
 
 ## Specs (dependency order)

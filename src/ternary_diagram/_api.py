@@ -31,6 +31,7 @@ from numpy.typing import ArrayLike
 
 from ternary_diagram._deprecation import (
     UNSET,
+    format_default_change,
     resolve_renamed_parameter,
     warn_external,
 )
@@ -55,6 +56,7 @@ from ternary_diagram.utils import (
     check_optional_bool,
     get_label,
     three2two,
+    to_latex_notation,
 )
 
 # default parameters
@@ -63,6 +65,108 @@ DEFAULT_ZORDER_CONTOUR = 0
 DEFAULT_ZORDER_GRIDS = 1
 DEFAULT_ZORDER_PLOTS = 2
 DEFAULT_ZORDER_SCATTER = 3
+
+#: Reason of the FutureWarning about the formatting of the annotations,
+#: shared by ``annotate`` and ``scatter`` so that it is emitted once per
+#: diagram.
+LATEX_NOTATION_WARNING_KEY = "annotate.auto_latex_notation"
+
+
+def _format_text(text: object, auto_latex_notation: bool) -> object:
+    """Return the text to display under the formatting rule of 4.0.0.
+
+    Parameters
+    ----------
+    text : object
+        Text given by the user. Objects other than str are not formatted.
+    auto_latex_notation : bool
+        Whether the chemical formulas in `text` are written in LaTeX
+        notation by ``utils.to_latex_notation``.
+
+    Returns
+    -------
+    object
+        `text` with its chemical formulas formatted, or `text` itself.
+    """
+    if auto_latex_notation and isinstance(text, str):
+        return to_latex_notation(text)
+    return text
+
+
+def _latex_notation_warning_message(
+    func: str, text: str, shown: str, future: object
+) -> str:
+    """Build the FutureWarning about the formatting of an annotation."""
+    return format_default_change(
+        current=(
+            f"`{func}` formatted {text!r} as {shown!r}, writing every "
+            f"number as a subscript."
+        ),
+        future=(
+            f"only the words that look like chemical formulas are "
+            f"formatted, and only when `auto_latex_notation` of "
+            f"`TernaryDiagram` is True, so it will be shown as {future!r}."
+        ),
+        keep=(
+            "pass the text formatted with `ternary_diagram.utils.get_label` "
+            "together with `auto_latex_notation=False`"
+        ),
+        adopt=(
+            "pass `auto_latex_notation=True` to format the chemical formulas "
+            "or `auto_latex_notation=False` to show the text as it is"
+        ),
+    )
+
+
+def _resolve_annotation_text(
+    text: object,
+    auto_latex_notation: Optional[bool],
+    *,
+    default: bool,
+    func: str,
+    context: PostDrawContext,
+) -> object:
+    """Return the text to display for an annotation.
+
+    With `auto_latex_notation` given, the rule of 4.0.0 applies. Without
+    it, the v3.x display is kept (every number of a str is written as a
+    subscript by ``get_label``), and a FutureWarning is emitted once per
+    diagram when the rule of 4.0.0 with the setting of the diagram would
+    display the text differently. A str containing ``$`` is shown as it
+    is, because the subscripts inserted into mathtext by v3.x could not be
+    rendered.
+
+    Parameters
+    ----------
+    text : object
+        Text given by the user.
+    auto_latex_notation : Optional[bool]
+        Value passed by the user, already checked. None means that it was
+        not specified.
+    default : bool
+        ``auto_latex_notation`` of the diagram, which the rule of 4.0.0 uses
+        when `auto_latex_notation` is not specified.
+    func : str
+        Name of the plotting method, shown in the warning.
+    context : PostDrawContext
+        State of the diagram, which records that the warning was emitted.
+
+    Returns
+    -------
+    object
+        The text to pass to matplotlib.
+    """
+    if auto_latex_notation is not None:
+        return _format_text(text, auto_latex_notation)
+    if not isinstance(text, str) or "$" in text:
+        return text
+    shown = get_label(text)
+    future = _format_text(text, default)
+    if shown != future and context.first_time(LATEX_NOTATION_WARNING_KEY):
+        warn_external(
+            _latex_notation_warning_message(func, text, shown, future)
+        )
+    return shown
 
 
 def _resolve_colorbar_arg(
@@ -222,8 +326,11 @@ class TernaryDiagram:
 
         auto_latex_notation : bool, optional
             If True, the LaTeX notation of the material is automatically
-            generated. If False, the material is displayed as it is.
-            , by default True
+            generated. If False, the material is displayed as it is. In
+            ternary-diagram 4.0.0, it will also decide whether
+            :meth:`annotate` and the annotations of :meth:`scatter` format
+            the chemical formulas when their own `auto_latex_notation` is
+            not given, by default True
 
         tight_layout : bool or None, optional
             Whether to adjust the figure margins with
@@ -364,6 +471,10 @@ class TernaryDiagram:
             zorder=DEFAULT_ZORDER_GRIDS,
             **{name: {} if kw is None else kw for name, kw in part_kw.items()},
         )
+
+        # Formatting of the annotations under the rule of 4.0.0, shared with
+        # the plotting methods that take `auto_latex_notation=None`.
+        self.__auto_latex_notation = bool(auto_latex_notation)
 
         # FIXME: mypy
         # 二次元に変換したデータを保存しておく (Save the data converted to two dimensions)
@@ -1103,6 +1214,8 @@ class TernaryDiagram:
         z_max: Optional[Number] = None,
         annotations: Optional[List[str]] = None,
         colorbar: Optional[bool] = None,
+        *,
+        auto_latex_notation: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
         """
@@ -1156,6 +1269,19 @@ class TernaryDiagram:
             together with `colorbar` raises a ValueError. When it is
             omitted, `colorbar` decides.
 
+        auto_latex_notation : bool or None, optional
+            Whether to write the chemical formulas in `annotations` in LaTeX
+            notation (``"Li2O"`` to ``"Li$_{2}$O"``). ``True`` formats each
+            word that looks like a chemical formula (see
+            :func:`ternary_diagram.utils.to_latex_notation`) and keeps the
+            other words, and ``False`` shows the text as it is. ``None``
+            keeps the v3.x behavior: every number in a str is written as a
+            subscript (``"Sample 1"`` to ``"Sample $_{1}$"``), except in a
+            text containing ``$``, and a FutureWarning is emitted once per
+            diagram when the display will change. In ternary-diagram
+            4.0.0, ``None`` will follow `auto_latex_notation` of
+            :class:`TernaryDiagram`, by default None
+
         kwargs : parameter of `matplotlib.pyplot.scatter`, optional
             For example, `marker='x'`, `facecolor='blue'` etc.
 
@@ -1169,6 +1295,9 @@ class TernaryDiagram:
         """  # noqa: E501
 
         colorbar = _resolve_colorbar_arg("scatter", colorbar, kwargs)
+        auto_latex_notation = check_optional_bool(
+            auto_latex_notation, "auto_latex_notation"
+        )
         plotter = _ScatterPlotter(
             vector=vector,
             ax=self.ax,
@@ -1178,6 +1307,8 @@ class TernaryDiagram:
             annotations=annotations,
             colorbar=colorbar,
             post_draw_context=self.__post_draw_context,
+            auto_latex_notation=auto_latex_notation,
+            default_auto_latex_notation=self.__auto_latex_notation,
             **kwargs,
         )
         self._append_x_y(plotter)
@@ -1308,7 +1439,12 @@ class TernaryDiagram:
         return plotter.collection_
 
     def annotate(
-        self, text: str, vector: ArrayLike, **kwargs
+        self,
+        text: str,
+        vector: ArrayLike,
+        *,
+        auto_latex_notation: Optional[bool] = None,
+        **kwargs,
     ) -> matplotlib.text.Annotation:
         """Annotate text.
 
@@ -1327,6 +1463,19 @@ class TernaryDiagram:
             The vectors are specified in semi-clockwise order starting
             from the vertex of the triangle.
 
+        auto_latex_notation : bool or None, optional
+            Whether to write the chemical formulas in `text` in LaTeX
+            notation (``"Li2O"`` to ``"Li$_{2}$O"``). ``True`` formats each
+            word that looks like a chemical formula (see
+            :func:`ternary_diagram.utils.to_latex_notation`) and keeps the
+            other words, and ``False`` shows the text as it is. ``None``
+            keeps the v3.x behavior: every number in a str is written as a
+            subscript (``"Sample 1"`` to ``"Sample $_{1}$"``), except in a
+            text containing ``$``, and a FutureWarning is emitted once per
+            diagram when the display will change. In ternary-diagram
+            4.0.0, ``None`` will follow `auto_latex_notation` of
+            :class:`TernaryDiagram`, by default None
+
         kwargs : parameter of matplotlib.pyplot.annotate, optional
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.annotate.html
 
@@ -1336,11 +1485,16 @@ class TernaryDiagram:
         matplotlib.text.Annotation
             An annotation.
         """  # noqa: E501
+        auto_latex_notation = check_optional_bool(
+            auto_latex_notation, "auto_latex_notation"
+        )
         plotter = _AnnotatePlotter(
             text,
             vector,
             ax=self.ax,
             post_draw_context=self.__post_draw_context,
+            auto_latex_notation=auto_latex_notation,
+            default_auto_latex_notation=self.__auto_latex_notation,
             **kwargs,
         )
         self._append_x_y(plotter)
@@ -1686,6 +1840,8 @@ class _ScatterPlotter(_BasePlotter):
         colorbar: Optional[bool] = None,
         *,
         post_draw_context: PostDrawContext,
+        auto_latex_notation: Optional[bool] = None,
+        default_auto_latex_notation: bool = True,
         **kwargs,
     ):
         super().__init__(
@@ -1711,9 +1867,16 @@ class _ScatterPlotter(_BasePlotter):
                     f"must be equal to the number of points ({len(self.x_)})."
                 )
             for x, y, txt in zip(self.x_, self.y_, annotations):
-                txt = get_label(txt)
-                self.ax.annotate(
+                txt = _resolve_annotation_text(
                     txt,
+                    auto_latex_notation,
+                    default=default_auto_latex_notation,
+                    func="scatter",
+                    context=post_draw_context,
+                )
+                self.ax.annotate(
+                    # matplotlib shows the other objects with str()
+                    cast(str, txt),
                     xy=(x, y),
                     xytext=(x + 0.02, y + 0.02),
                     fontsize=8,
@@ -1882,6 +2045,8 @@ class _AnnotatePlotter(_BasePlotter):
         ax=None,
         *,
         post_draw_context: PostDrawContext,
+        auto_latex_notation: Optional[bool] = None,
+        default_auto_latex_notation: bool = True,
         **kwargs,
     ):
         vector = check_1d_vector(vector, scale=False)
@@ -1900,11 +2065,13 @@ class _AnnotatePlotter(_BasePlotter):
         if "fontsize" not in kwargs:
             kwargs["fontsize"] = 8
 
-        # check_text
-        try:
-            text = get_label(text)
-        except ValueError:
-            pass
+        text = _resolve_annotation_text(
+            text,
+            auto_latex_notation,
+            default=default_auto_latex_notation,
+            func="annotate",
+            context=post_draw_context,
+        )
         # annotate
         self.collection_ = self.ax.annotate(
             text=text, xy=(self.x_[0], self.y_[0]), **kwargs

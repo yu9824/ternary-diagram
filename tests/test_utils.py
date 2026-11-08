@@ -24,7 +24,9 @@ from ternary_diagram.utils import (
     get_label,
     get_tick_formatter,
     get_tick_values,
+    is_chemical_formula,
     three2two,
+    to_latex_notation,
 )
 
 ROOT3_OVER_2 = sqrt(3.0) / 2.0
@@ -50,6 +52,89 @@ def test_get_label(compound_name, expected):
 def test_get_label_not_str(compound_name):
     with pytest.raises(ValueError, match="must be string"):
         get_label(compound_name)
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "Li2O",
+        "La2O3",
+        "(LiLa)0.5TiO3",
+        "Li0.33La0.55TiO3",
+        "Li7La3Zr2O12",
+        "(Li2O)",
+        "Ca(OH)2",
+        "AB2",
+        "A",
+        "LiF",
+    ],
+)
+def test_is_chemical_formula(word):
+    assert is_chemical_formula(word) is True
+
+
+@pytest.mark.parametrize(
+    "word",
+    [
+        "",
+        "Sample",
+        "sample1",
+        "1",
+        "2Li",
+        "Run-3",
+        "No.2",
+        "x=0.5",
+        "Li2O,",
+        "(Li",
+        "Li)",
+        ")Li(",
+        "Li)(O",
+        "α",
+        "$Li_2$",
+        "Li2.",
+    ],
+)
+def test_is_chemical_formula_rejects(word):
+    assert is_chemical_formula(word) is False
+
+
+@pytest.mark.parametrize("word", [1, None, b"Li2O", ["Li2O"]])
+def test_is_chemical_formula_not_str(word):
+    with pytest.raises(TypeError, match="`word` must be a str"):
+        is_chemical_formula(word)
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("Li2O", "Li$_{2}$O"),
+        ("(LiLa)0.5TiO3", "(LiLa)$_{0.5}$TiO$_{3}$"),
+        ("LiF + Li2O", "LiF + Li$_{2}$O"),
+        ("Li2O  La2O3", "Li$_{2}$O  La$_{2}$O$_{3}$"),
+        ("Li2O\tLa2O3\n", "Li$_{2}$O\tLa$_{2}$O$_{3}$\n"),
+        (" Li2O ", " Li$_{2}$O "),
+        ("Sample 1", "Sample 1"),
+        ("Run-3", "Run-3"),
+        ("No.2", "No.2"),
+        ("L + α", "L + α"),
+        ("$x_1$", "$x_1$"),
+        ("Li2O at $T_1$", "Li2O at $T_1$"),
+        ("", ""),
+    ],
+)
+def test_to_latex_notation(text, expected):
+    assert to_latex_notation(text) == expected
+
+
+def test_to_latex_notation_formats_formulas_like_get_label():
+    for word in ("Li2O", "(LiLa)0.5TiO3", "Li0.33La0.55TiO3"):
+        assert to_latex_notation(word) == get_label(word)
+
+
+@pytest.mark.parametrize("text", [1, None, b"Li2O", ["Li2O"]])
+def test_to_latex_notation_not_str(text):
+    with pytest.raises(TypeError, match="`text` must be a str"):
+        to_latex_notation(text)
 
 
 @pytest.mark.parametrize(
