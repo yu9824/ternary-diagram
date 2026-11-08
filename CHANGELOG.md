@@ -20,13 +20,16 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
   - Axis titles along the edges can be drawn with `set_axis_labels([...])` or `axis_label_kw={"labels": [...]}`. None are drawn by default.
 - The read-only properties `border_lines_`, `grid_lines_`, `tick_labels_`, `axis_labels_` and `vertex_labels_` return the artists that each part draws, to adjust them one by one.
 - `ternary_diagram.utils` gains `get_tick_values`, `get_tick_formatter` (with the type alias `TickFormat`), `get_edge_points`, `get_grid_segments` and `get_axis_label_position`, which compute the placement and the format of the tick labels, the grid lines and the axis titles without a figure.
+- `annotate(auto_latex_notation=...)` and `scatter(auto_latex_notation=...)` choose whether the chemical formulas in the text are written in LaTeX notation. `True` formats only the words that look like chemical formulas (`"LiF + Li2O"` to `"LiF + Li$_{2}$O"`, while `"Sample 1"` stays as it is), and `False` shows the text as it is.
+- `ternary_diagram.utils` gains `is_chemical_formula` and `to_latex_notation`, which tell whether a word looks like a chemical formula and format the chemical formulas in a text.
 
 ### Deprecations
 
 - `flag_cbar` of `scatter` and `contour` is deprecated and will be removed in 4.0.0. Use `colorbar` instead.
-- The following defaults will change in 4.0.0. A `FutureWarning` is emitted, once per diagram for each of these changes, when a call made with the default would give a different result under the new default. Pass `tight_layout` or `colorbar` explicitly to keep the current behavior or to adopt the new one.
+- The following defaults will change in 4.0.0. A `FutureWarning` is emitted, once per diagram for each of these changes, when a call made with the default would give a different result under the new default. Pass `tight_layout`, `colorbar` or `auto_latex_notation` explicitly to keep the current behavior or to adopt the new one.
   - `TernaryDiagram` will use `tight_layout=False` and no longer adjust the figure layout after plotting.
   - `scatter` and `contour` will not add a colorbar automatically to a diagram that already has one.
+  - `annotate` and the annotations of `scatter` will format only the words that look like chemical formulas, and only when `auto_latex_notation` of `TernaryDiagram` is true. Now every number in the text is written as a subscript (`"Sample 1"` to `"Sample $_{1}$"`), whatever the setting of the diagram.
 
 ### Bug fixes
 
@@ -36,6 +39,8 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - Plotting that adds a colorbar (for example `contour(z)`) on a figure created with `layout="constrained"` no longer raises `RuntimeError`.
 - Plotting on Axes of a subfigure no longer raises `AttributeError`.
 - `TernaryDiagram` raises `ValueError` instead of `IndexError` when `materials` has fewer than 3 items, and `TypeError` with a clear message when `materials` is not iterable.
+- `scatter(annotations=...)` accepts annotations that are not str, such as numbers, instead of raising `ValueError`.
+- `annotate` and the annotations of `scatter` show a text containing `$` (mathtext) as it is, instead of inserting subscripts into it that could not be drawn.
 
 ### Other changes
 
