@@ -1,6 +1,7 @@
 # deprecated in python>=3.9
 from typing import Tuple  # isort: skip
 
+import re
 from math import isfinite, sqrt
 from numbers import Integral, Real
 from typing import Callable, Optional, Union
@@ -281,6 +282,112 @@ def get_label(compound_name: str) -> str:
             i = j
         i += 1
     return "".join(lst_compound_name)
+
+
+#: A word made only of element-like symbols (an upper case letter and an
+#: optional lower case letter), numbers and parentheses, starting with a
+#: symbol or an opening parenthesis.
+_CHEMICAL_FORMULA = re.compile(
+    r"\(*[A-Z][a-z]?(?:[A-Z][a-z]?|\d+(?:\.\d+)?|[()])*"
+)
+
+
+def is_chemical_formula(word: str) -> bool:
+    """Tell whether a word looks like a chemical formula.
+
+    A word looks like a chemical formula when it is made only of
+    element-like symbols (an upper case letter followed by at most one lower
+    case letter, such as ``Li`` or ``O``), numbers (``2``, ``0.5``) and
+    balanced parentheses, and starts with a symbol or an opening
+    parenthesis. The symbols are not checked against the periodic table, so
+    placeholder materials such as ``AB2`` also look like chemical formulas.
+
+    Parameters
+    ----------
+    word : str
+        A word without white space, such as ``"Li2O"``.
+
+    Returns
+    -------
+    bool
+        True if `word` looks like a chemical formula.
+
+    Raises
+    ------
+    TypeError
+        If `word` is not a str.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import is_chemical_formula
+    >>> is_chemical_formula("Li2O")
+    True
+    >>> is_chemical_formula("(LiLa)0.5TiO3")
+    True
+    >>> is_chemical_formula("Sample")
+    False
+    >>> is_chemical_formula("1")
+    False
+    """
+    if not isinstance(word, str):
+        raise TypeError(f"`word` must be a str, but got {word!r}.")
+    if _CHEMICAL_FORMULA.fullmatch(word) is None:
+        return False
+    depth = 0
+    for letter in word:
+        if letter == "(":
+            depth += 1
+        elif letter == ")":
+            depth -= 1
+            if depth < 0:
+                return False
+    return depth == 0
+
+
+def to_latex_notation(text: str) -> str:
+    """Write the numbers of the chemical formulas in a text as subscripts.
+
+    The text is split at white space, and each word that looks like a
+    chemical formula (see :func:`is_chemical_formula`) is converted by
+    :func:`get_label`. The other words and the white space are kept as
+    they are. A text containing ``$`` is returned unchanged, because it is
+    already written in mathtext.
+
+    Parameters
+    ----------
+    text : str
+        A text such as a label of a point, like ``"LiF + Li2O"``.
+
+    Returns
+    -------
+    str
+        `text` with the chemical formulas in LaTeX notation.
+
+    Raises
+    ------
+    TypeError
+        If `text` is not a str.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import to_latex_notation
+    >>> to_latex_notation("Li2O")
+    'Li$_{2}$O'
+    >>> to_latex_notation("LiF + Li2O")
+    'LiF + Li$_{2}$O'
+    >>> to_latex_notation("Sample 1")
+    'Sample 1'
+    >>> to_latex_notation("$x_1$")
+    '$x_1$'
+    """
+    if not isinstance(text, str):
+        raise TypeError(f"`text` must be a str, but got {text!r}.")
+    if "$" in text:
+        return text
+    return "".join(
+        get_label(word) if is_chemical_formula(word) else word
+        for word in re.split(r"(\s+)", text)
+    )
 
 
 def get_tick_values(step: float, endpoints: bool = False) -> np.ndarray:
