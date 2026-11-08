@@ -4,7 +4,7 @@
 
 ## Core Capabilities
 
-- **三角図の土台生成**: 外枠、10% 刻みのグリッド、軸目盛り、頂点ラベルをインスタンス生成だけで描画
+- **三角図の土台生成**: 外枠、10% 刻みのグリッド、軸目盛り、頂点ラベルをインスタンス生成だけで描画。5 つの部品（外枠・グリッド・目盛りラベル・軸タイトル・頂点ラベル）は、作成時の `*_kw` か後からの `set_*` で見た目（表示、間隔、書式、matplotlib のプロパティ）を変えられ、描いた artist も取り出せる
 - **組成データのプロット**: 散布図（物性値によるカラーマップ付き）、等高線図（塗りつぶし / 線）、タイライン、注釈
 - **化学式の自動整形**: `Li2O` → `Li$_{2}$O` のように数字を下付きの LaTeX 表記へ変換（`auto_latex_notation=False` で無効化）
 - **matplotlib との透過的な統合**: 任意の `Axes` に描画でき、`**kwargs` はそのまま matplotlib に渡り、戻り値も matplotlib のネイティブオブジェクト
@@ -26,9 +26,10 @@
 
 - 描画ライブラリであり、相図計算や熱力学計算は扱わない
 - 公開 API は `TernaryDiagram` クラス 1 つに集約する。新しい描画種別もこのクラスのメソッドとして追加する
-- matplotlib の機能を隠さない。独自オプションは三角図特有のもの（`z_min` / `z_max`、`flag_cbar`、`annotations` など）に限る
+- matplotlib の機能を隠さない。独自オプションは三角図特有のもの（`z_min` / `z_max`、`colorbar`、`annotations`、土台の `step` / `fmt` など）に限り、見た目は matplotlib のプロパティとして素通しする
 
 ---
 _Focus on patterns and purpose, not exhaustive feature lists_
 
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
+_updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
