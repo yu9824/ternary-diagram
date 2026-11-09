@@ -14,7 +14,7 @@
   - _Boundary: `src/ternary_diagram/utils.py`: `get_triangular_lattice`（と `from numbers import Integral` の import）、`tests/test_utils.py`: `get_triangular_lattice` のテストの追記_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 8.1, 9.3, 9.5_
 
-- [ ] 1.2 (P) 塗り方と kwargs の検証、三角形分割、塗れない三角形のマスク、既定の色の範囲を計算する関数群を作る
+- [x] 1.2 (P) 塗り方と kwargs の検証、三角形分割、塗れない三角形のマスク、既定の色の範囲を計算する関数群を作る
   - 新しいモジュールなので、先頭に `from __future__ import annotations` を置き、関数の注釈は組み込みジェネリクスと `X | None` で書く（tech.md）。実行時に評価される型別名だけは Python 3.9 で動く `typing` の形で書く。private なモジュールなので docstring に `>>>` の例は書かない
   - 塗り方は flat と gouraud だけを受け付け、それ以外は受け付ける値を示す `ValueError` にする
   - kwargs の検証: 旧名 `flag_cbar` は `colorbar` を案内する `TypeError`、`c` と `facecolors` は塗りの値と同時に使えない旨の `ValueError`、格子が固定の描画では `triangles` と `mask` も「NaN を返せば塗らずに残せる」ことを案内する `ValueError` にする。受け取った辞書は変更しない
@@ -116,3 +116,4 @@
 ## Implementation Notes
 - 上流の状態: plot-side-effects・diagram-customization・annotate-plain-text・region-plots はマージ済み。zorder 定数は `DEFAULT_ZORDER_FILL = 0.5`、`DEFAULT_ZORDER_TEXT = 4` が既にあり、ヒートマップの定数はその後ろに置く。`tests/test_fill.py::test_default_zorder_heatmap_is_behind_fill` は `DEFAULT_ZORDER_HEATMAP` があれば自動で有効になる。`ruff check .` はノートブックの既存の F401 で落ちるので `ruff check src tests` で確かめる。mypy は既存の 7 件が基準
 - 1.1: 頂点番号は design の対応表ではなく閉形式 `row*(row+1)//2 + row - j` で求める（scale 1〜79・123・200 で総当たりと一致）。格子の (i, j) は private の `_lattice_indices` に切り出した
+- 1.2: `Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（matplotlib 3.3.4 でも確認）。`_api.py` の版分岐は private なサブモジュール（`TriContourSet` など）の位置のためで、新しいモジュールには持ち込まない（レビューで差し戻し 1 回）。`unpaintable_mask` は `values` の長さを検証しないので、2.1 の Plotter が呼ぶ前に `z` の要素数を確かめる
