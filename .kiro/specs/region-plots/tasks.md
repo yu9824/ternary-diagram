@@ -47,7 +47,7 @@
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 3.6, 6.4, 8.1, 8.3_
   - _Boundary: src/ternary_diagram/_api.py: TernaryDiagram.__init__ (`self.__auto_latex_notation` line only, if annotate-plain-text has not added it), TernaryDiagram.text, _TextPlotter（と `check_optional_bool`・整形の入口の import の追加（未 import の場合のみ））; tests/test_text.py_
 
-- [ ] 4. 統合と検証
+- [x] 4. 統合と検証
   - _Boundary: tests/test_fill.py, tests/test_text.py, CHANGELOG.md: New features entries for fill/text_
 
 - [x] 4.1 既存の描画と並べたときの重なり順を検証する結合テストを書く
@@ -72,7 +72,7 @@
   - _Requirements: 8.2_
   - _Boundary: CHANGELOG.md: New features entries for fill/text_
 
-- [ ] 4.4 全体の回帰確認を行う
+- [x] 4.4 全体の回帰確認を行う
   - 既存のテストファイルを変更せずに、テスト一式（`pytest -xs .`、未インストールなら `PYTHONPATH=src`）が通ることを確かめる。共通 doctest ランナー（`tests/test_doctests.py`）が `fill` と `text` の使用例を収集して実行し、通っていることを結果で確かめる
   - パッケージ本体（`_api.py`）の差分が追加行だけ（import、定数 2 つ、公開メソッド 2 つ、初期化の本体の `__auto_latex_notation` の 1 行（annotate-plain-text が足しておらず 3.2 で足した場合）、Plotter 2 つと配置の既定値の組）で、既存の定数・メソッド・Plotter の行を書き換えていないことを差分で確かめる
   - `ruff check .` と `ruff format --check .` を通す
@@ -90,3 +90,4 @@
 - 4.1: 層の zorder を比べる補助関数 `_assert_layers_are_stacked` は test_fill.py と test_text.py に重複している（conftest.py は境界外）。共通化するなら conftest に移す
 - 4.2: 描画後処理の補助（`SUBPLOT_PARAMS`、`LAYOUT_WARNING_MATCH`、`_subplotpars` など）は test_side_effects.py・test_fill.py・test_text.py の 3 か所に重複している。4.1 の補助と合わせて、conftest に寄せる候補
 - 4.3: CHANGELOG の 2 行だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、New features への追記だけ、要件 8.2）で親がその場でレビューした
+- 4.4: テスト一式 1630 passed, 1 skipped, 1 xfailed（-W error::FutureWarning）。共通 doctest ランナーで `TernaryDiagram.fill` / `text` が PASSED。`_api.py` の docs/add-roadmap からの差分は追加 309 行・削除 0 行。`ruff check src tests` / `ruff format --check src tests` は通過。`ruff check .` の 4 件はノートブック（example/、docs_src/tutorials/）の既存の F401 で、本 spec では変えていない。mypy は既存の 7 件
