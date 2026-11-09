@@ -66,7 +66,7 @@
   - _Requirements: 7.1, 7.2, 7.3_
   - _Boundary: tests/test_fill.py, tests/test_text.py: post-draw integration tests_
 
-- [ ] 4.3 (P) CHANGELOG の Unreleased に `fill` と `text` を追記する
+- [x] 4.3 (P) CHANGELOG の Unreleased に `fill` と `text` を追記する
   - plot-side-effects がそろえた Unreleased の見出しの組（Breaking changes / New features / Deprecations / Bug fixes / Other changes）のうち「New features」に、組成で指定した多角形を塗る `fill` と、組成点に文字を置く `text`（化学式の整形を三角図の設定から引き継ぎ、呼び出しごとに切り替えられる）を 1 項目ずつ、既存の書式（英語の箇条書き）で書く。見出しは足さず、並べ替えない
   - 完了時: CHANGELOG の Unreleased の New features に 2 項目があり、見出しの組と既存の項目は変わっていない
   - _Requirements: 8.2_
@@ -89,3 +89,4 @@
 - 3.2: `text` の整形は `_format_text`（annotate に `auto_latex_notation` を明示したときと同じ入口）を使い、v3 互換の警告経路は通らない。`Axes.text` のスタブが文字列しか受けないため、文字列以外を渡す箇所に理由付きの `# type: ignore[arg-type]` を置いた。3.1 の使用例は design の 3 ブロック構成に合わせて 3.2 の 2 ブロックに置き換えた
 - 4.1: 層の zorder を比べる補助関数 `_assert_layers_are_stacked` は test_fill.py と test_text.py に重複している（conftest.py は境界外）。共通化するなら conftest に移す
 - 4.2: 描画後処理の補助（`SUBPLOT_PARAMS`、`LAYOUT_WARNING_MATCH`、`_subplotpars` など）は test_side_effects.py・test_fill.py・test_text.py の 3 か所に重複している。4.1 の補助と合わせて、conftest に寄せる候補
+- 4.3: CHANGELOG の 2 行だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、New features への追記だけ、要件 8.2）で親がその場でレビューした

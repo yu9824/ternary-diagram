@@ -22,6 +22,8 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - `ternary_diagram.utils` gains `get_tick_values`, `get_tick_formatter` (with the type alias `TickFormat`), `get_edge_points`, `get_grid_segments` and `get_axis_label_position`, which compute the placement and the format of the tick labels, the grid lines and the axis titles without a figure.
 - `annotate(auto_latex_notation=...)` and `scatter(auto_latex_notation=...)` choose whether the chemical formulas in the text are written in LaTeX notation. `True` formats only the words that look like chemical formulas (`"LiF + Li2O"` to `"LiF + Li$_{2}$O"`, while `"Sample 1"` stays as it is), and `False` shows the text as it is.
 - `ternary_diagram.utils` gains `is_chemical_formula` and `to_latex_notation`, which tell whether a word looks like a chemical formula and format the chemical formulas in a text.
+- `fill` shades a polygon whose vertices are given as compositions, such as a region of a phase diagram, and can be labeled for the legend. By default it is drawn above contours and behind the grid and the other plots.
+- `text` places a text exactly at a composition, centered by default and drawn in front of the other plots. The chemical formulas in it are formatted following `auto_latex_notation` of `TernaryDiagram`, which `text(auto_latex_notation=...)` overrides for that call.
 
 ### Deprecations
 
