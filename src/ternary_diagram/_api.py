@@ -1548,8 +1548,9 @@ class TernaryDiagram:
         The polygon is drawn with ``zorder=0.5`` by default: in front of
         the contours of :meth:`contour` and behind the grid, the border,
         the tie lines of :meth:`plot`, the points of :meth:`scatter` and
-        the annotations. Pass `zorder` to change it, for example
-        ``zorder=-0.5`` to draw the polygon behind the contours.
+        the annotations and the texts of :meth:`text`. Pass `zorder` to
+        change it, for example ``zorder=-0.5`` to draw the polygon behind
+        the contours.
 
         Without a color, the polygon is filled with the next color of the
         matplotlib color cycle, so consecutive calls get different colors.
@@ -1617,8 +1618,10 @@ class TernaryDiagram:
             the text of this call and change neither the setting of the
             diagram, the vertex labels nor the other calls of
             :meth:`text` and :meth:`annotate`. Pass ``False`` to show a
-            text such as mathtext with ``$...$`` as it is, by default
-            None (the setting of the diagram)
+            word that looks like a chemical formula, such as a sample name
+            ``"S1"``, as it is. A text containing ``$`` (mathtext) is
+            always shown as it is, by default None (the setting of the
+            diagram)
 
         kwargs : parameter of `matplotlib.pyplot.text`, optional
             Properties of :class:`matplotlib.text.Text`, such as

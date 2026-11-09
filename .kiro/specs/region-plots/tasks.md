@@ -91,3 +91,4 @@
 - 4.2: 描画後処理の補助（`SUBPLOT_PARAMS`、`LAYOUT_WARNING_MATCH`、`_subplotpars` など）は test_side_effects.py・test_fill.py・test_text.py の 3 か所に重複している。4.1 の補助と合わせて、conftest に寄せる候補
 - 4.3: CHANGELOG の 2 行だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、New features への追記だけ、要件 8.2）で親がその場でレビューした
 - 4.4: テスト一式 1630 passed, 1 skipped, 1 xfailed（-W error::FutureWarning）。共通 doctest ランナーで `TernaryDiagram.fill` / `text` が PASSED。`_api.py` の docs/add-roadmap からの差分は追加 309 行・削除 0 行。`ruff check src tests` / `ruff format --check src tests` は通過。`ruff check .` の 4 件はノートブック（example/、docs_src/tutorials/）の既存の F401 で、本 spec では変えていない。mypy は既存の 7 件
+- 最終検証（`/kiro-validate-impl`）: GO。受入基準 43/43。指摘のうち `text` の docstring（`$` を含む文字列は設定にかかわらずそのまま表示される）と `fill` の Notes（`text` より奥）を直し、user-guide-docs の design の整形の判定の記述を `utils.to_latex_notation` に直した。steering の zorder の説明に fill 0.5 / text 4 を足すのはマージ後の steering 同期で行う
