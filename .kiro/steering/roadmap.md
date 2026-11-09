@@ -58,7 +58,7 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 1. `plot-side-effects`（`TernaryDiagram.__init__` の最終的なシグネチャ、共通 doctest ランナー、CHANGELOG の見出しの組を確定させる） — 実装済み（2026-10-24）
 2. `diagram-customization`（1 に合わせる） — 実装済み（2026-11-06）
 3. `annotate-plain-text`（直接実装） — 実装済み（2026-11-08）
-4. `region-plots` と `heatmaps`（どちらが先でもよいが、1 つずつ）
+4. `region-plots` と `heatmaps`（どちらが先でもよいが、1 つずつ） — `region-plots` は実装済み（2026-11-09）
 5. `user-guide-docs`
 
 `typing-cleanup` はいつ入れてもよい。
