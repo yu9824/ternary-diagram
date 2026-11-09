@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: fill と text の既定の重なり順を定数で固定する
+- [x] 1. 基盤: fill と text の既定の重なり順を定数で固定する
   - 着手条件: roadmap の実装順どおり、plot-side-effects・diagram-customization・annotate-plain-text がこの順にマージ済みである。heatmaps は本 spec の前でも後でもよいが、同時には入れない（1 つずつマージする）。条件を満たさなければ着手しない
   - 既存の zorder 定数の直後に（heatmaps が先にマージされていれば、ヒートマップ用の定数の後ろに）、塗りつぶし用（等高線図とグリッドの間）と文字用（散布図より手前）の 2 つの定数をまとめて追加する。既存の定数の値・名前・並びは変えない
   - 定数どうしの大小関係（等高線図 < 塗りつぶし < グリッド < 線 < 散布図 < 文字）と、文字用の値が matplotlib の文字の既定の重なり順（3）より大きいことを確かめるテストを、fill のテストファイルの最初のテストとして書く
@@ -80,3 +80,7 @@
   - 完了時: テスト一式（doctest ランナーを含む）と ruff の確認がすべて通り、`_api.py` の差分に削除行がない
   - _Requirements: 4.6, 5.4, 8.3_
   - _Boundary: verification only (no edits): src/ternary_diagram/_api.py diff, tests/ (full suite incl. tests/test_doctests.py), ruff_
+
+## Implementation Notes
+- 1: ヒートマップ < 塗りつぶしの確認は、それだけを理由付きでスキップできるよう別のテスト `test_default_zorder_heatmap_is_behind_fill` に分けた（`DEFAULT_ZORDER_HEATMAP` がなければ skip）
+- annotate-plain-text はマージ済み: 整形の入口は `utils.to_latex_notation`、`annotate` の切り替え引数は `auto_latex_notation`（キーワード専用、`None` は v3 の表示＋FutureWarning）。`TernaryDiagram.__auto_latex_notation` は `__init__` に追加済み。`ruff check .` は既存のノートブックの F401 で落ちるので `ruff check src tests` で確かめる

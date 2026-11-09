@@ -65,6 +65,10 @@ DEFAULT_ZORDER_CONTOUR = 0
 DEFAULT_ZORDER_GRIDS = 1
 DEFAULT_ZORDER_PLOTS = 2
 DEFAULT_ZORDER_SCATTER = 3
+# fill: in front of contours, behind the grid and the outline
+DEFAULT_ZORDER_FILL = 0.5
+# text: in front of scatter, annotations and labels (matplotlib default: 3)
+DEFAULT_ZORDER_TEXT = 4
 
 #: Reason of the FutureWarning about the formatting of the annotations,
 #: shared by ``annotate`` and ``scatter`` so that it is emitted once per
