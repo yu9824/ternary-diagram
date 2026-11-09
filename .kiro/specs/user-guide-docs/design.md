@@ -290,7 +290,7 @@ sequenceDiagram
 | diagram-customization | 目盛りの配置規約 | 成分 1 番目 → 右辺、2 番目 → 左辺、3 番目 → 底辺。値は反時計回りに増える |
 | region-plots | `fill(vector, **kwargs) -> List[Polygon]` | 頂点は渡した順に結ぶ（凸包なし）、3 個以上、`label` で凡例、色の順番は matplotlib の既定、zorder 0.5 |
 | annotate-plain-text（直接実装） | `annotate` と `scatter(annotations=...)` の整形の規則、切り替え引数（足された場合） | 化学式とみなす条件、または整形の有無を選ぶ引数。v3.x で表示を変える場合は FutureWarning。規則・引数の名前・警告の有無は 1.1 でマージ時点のコードから確かめる |
-| region-plots | `text(text, vector, *, auto_latex_notation=None, **kwargs) -> Text` | 中央・中央に配置、`annotate` と同じ判定（`utils.get_label`）で整形、`None`（既定）は作成時の `auto_latex_notation` を引き継ぎ、`True` / `False` で呼び出しごとに上書き。zorder 4 |
+| region-plots | `text(text, vector, *, auto_latex_notation=None, **kwargs) -> Text` | 中央・中央に配置、`annotate` に `auto_latex_notation=True` を渡したときと同じ判定（`utils.to_latex_notation`。annotate-plain-text の実装結果）で整形、`None`（既定）は作成時の `auto_latex_notation` を引き継ぎ、`True` / `False` で呼び出しごとに上書き。zorder 4 |
 | heatmaps | `tripcolor(vector, z, *, z_min=None, z_max=None, shading="flat", colorbar=None, **kwargs)` | flat は 3 頂点の平均、gouraud は線形。自動分割は凸包の内側だけ。NaN / inf の三角形は塗らない。`flag_cbar` は `TypeError` |
 | heatmaps | `heatmapf(func, *, scale=50, z_min=None, z_max=None, shading="flat", colorbar=None, **kwargs)` | `func(a, b, c)` を 1 回、成分ごとの 1 次元配列で呼ぶ。flat は重心、gouraud は格子点で評価。NaN を返すと塗らない。`flag_cbar` は `TypeError` |
 | heatmaps | `ternary_diagram.utils.get_triangular_lattice(scale)` | `(vertices, triangles)` を返す純粋関数 |
