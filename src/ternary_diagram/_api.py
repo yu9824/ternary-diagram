@@ -18,6 +18,7 @@ import matplotlib.collections
 import matplotlib.colorbar
 import matplotlib.figure
 import matplotlib.lines
+import matplotlib.patches
 import matplotlib.text
 import numpy as np
 
@@ -65,6 +66,10 @@ DEFAULT_ZORDER_CONTOUR = 0
 DEFAULT_ZORDER_GRIDS = 1
 DEFAULT_ZORDER_PLOTS = 2
 DEFAULT_ZORDER_SCATTER = 3
+# fill: in front of contours, behind the grid and the outline
+DEFAULT_ZORDER_FILL = 0.5
+# text: in front of scatter, annotations and labels (matplotlib default: 3)
+DEFAULT_ZORDER_TEXT = 4
 
 #: Reason of the FutureWarning about the formatting of the annotations,
 #: shared by ``annotate`` and ``scatter`` so that it is emitted once per
@@ -1500,6 +1505,207 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    def fill(
+        self, vector: ArrayLike, **kwargs: Any
+    ) -> List[matplotlib.patches.Polygon]:
+        """Fill a polygon whose vertices are given as compositions.
+
+        This is a wrapper of `matplotlib.pyplot.fill`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.fill.html
+
+        Parameters
+        ----------
+        vector : ArrayLike | shape = (n, 3)
+            Compositions of the vertices of the polygon, one row per
+            vertex. Each row represents the ratio of each component (the
+            sum does not have to be 1), in the same order as `materials`.
+            At least 3 vertices are needed. The vertices are joined in the
+            order given and the polygon is closed automatically; they are
+            not sorted and no convex hull is computed.
+
+        kwargs : parameter of `matplotlib.pyplot.fill`, optional
+            Properties of :class:`matplotlib.patches.Polygon`, such as
+            `label`, `facecolor`, `edgecolor`, `alpha` or `hatch`, passed
+            to matplotlib as they are. They take precedence over the
+            defaults of this method.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.fill.html
+
+        Returns
+        -------
+        List[matplotlib.patches.Polygon]
+            A list of one element, the filled polygon, as returned by
+            `matplotlib.axes.Axes.fill`.
+
+        Raises
+        ------
+        ValueError
+            If the shape of `vector` is not (n, 3) or it has fewer than 3
+            vertices.
+
+        Notes
+        -----
+        The polygon is drawn with ``zorder=0.5`` by default: in front of
+        the contours of :meth:`contour` and behind the grid, the border,
+        the tie lines of :meth:`plot`, the points of :meth:`scatter` and
+        the annotations and the texts of :meth:`text`. Pass `zorder` to
+        change it, for example ``zorder=-0.5`` to draw the polygon behind
+        the contours.
+
+        Without a color, the polygon is filled with the next color of the
+        matplotlib color cycle, so consecutive calls get different colors.
+        The polygon is opaque by default and hides what is behind it; pass
+        `alpha` to make it translucent, for example over a contour plot.
+
+        Examples
+        --------
+        Fill a three-phase region translucently and show it in the legend.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> (polygon,) = td.fill(
+        ...     [[0.5, 0.25, 0.25], [0.25, 0.5, 0.25], [0.25, 0.25, 0.5]],
+        ...     alpha=0.5,
+        ...     label="three-phase region",
+        ... )
+        >>> legend = td.ax.legend()
+        """  # noqa: E501
+        plotter = _FillPlotter(
+            vector=vector,
+            ax=self.ax,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
+        self._append_x_y(plotter)
+        return plotter.collection_
+
+    def text(
+        self,
+        text: str,
+        vector: ArrayLike,
+        *,
+        auto_latex_notation: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> matplotlib.text.Text:
+        """Place a text at a composition.
+
+        This is a wrapper of `matplotlib.pyplot.text`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.text.html
+
+        Parameters
+        ----------
+        text : str
+            Text to be displayed, such as the name of a phase. An object
+            other than str is not formatted and is converted to a string
+            by matplotlib.
+
+        vector : ArrayLike | shape = (3,) or (1, 3)
+            Composition of the point where the text is placed. It
+            represents the ratio of each component (the sum does not have
+            to be 1), in the same order as `materials`.
+
+        auto_latex_notation : bool or None, optional
+            Whether to write the chemical formulas in `text` in LaTeX
+            notation (``"Li2O"`` to ``"Li$_{2}$O"``), with the same rule
+            as :meth:`annotate` with ``auto_latex_notation=True`` (see
+            :func:`ternary_diagram.utils.to_latex_notation`). ``None``
+            follows `auto_latex_notation` of :class:`TernaryDiagram`, the
+            setting of the diagram also used for the vertex labels
+            (``True`` unless changed). ``True`` / ``False`` apply only to
+            the text of this call and change neither the setting of the
+            diagram, the vertex labels nor the other calls of
+            :meth:`text` and :meth:`annotate`. Pass ``False`` to show a
+            word that looks like a chemical formula, such as a sample name
+            ``"S1"``, as it is. A text containing ``$`` (mathtext) is
+            always shown as it is, by default None (the setting of the
+            diagram)
+
+        kwargs : parameter of `matplotlib.pyplot.text`, optional
+            Properties of :class:`matplotlib.text.Text`, such as
+            `fontsize`, `color`, `ha` or `fontdict`, passed to matplotlib
+            as they are. They take precedence over the defaults of this
+            method.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.text.html
+
+        Returns
+        -------
+        matplotlib.text.Text
+            The text placed at the composition.
+
+        Raises
+        ------
+        TypeError
+            If `auto_latex_notation` is neither None, True nor False.
+        ValueError
+            If `vector` does not have 3 components.
+
+        Notes
+        -----
+        The center of the text is placed exactly at the composition by
+        default (``horizontalalignment="center"`` and
+        ``verticalalignment="center"``). Pass `ha` / `va` (or their full
+        names, also in `fontdict`) to change it.
+
+        The text is drawn with ``zorder=4`` by default: in front of the
+        polygons of :meth:`fill`, the grid, the border, the tie lines of
+        :meth:`plot` and the points of :meth:`scatter`. Pass `zorder` to
+        change it. The font size is left to matplotlib (rcParams).
+
+        Examples
+        --------
+        Place the name of a phase on a default diagram, which formats the
+        chemical formulas, and show another text as it is only in that
+        call.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> label = td.text("Li2TiO3", [0.5, 0, 0.5])
+        >>> label.get_text()
+        'Li$_{2}$TiO$_{3}$'
+        >>> plain = td.text(
+        ...     "Phase 1", [0.2, 0.4, 0.4], auto_latex_notation=False
+        ... )
+        >>> plain.get_text()
+        'Phase 1'
+
+        On a diagram that does not format the chemical formulas, the text
+        is shown as it is unless ``auto_latex_notation=True`` is passed.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"], ax=ax, auto_latex_notation=False
+        ... )
+        >>> label = td.text("Li2TiO3", [0.5, 0, 0.5])
+        >>> label.get_text()
+        'Li2TiO3'
+        >>> formula = td.text(
+        ...     "Li2TiO3", [0.5, 0, 0.5], auto_latex_notation=True
+        ... )
+        >>> formula.get_text()
+        'Li$_{2}$TiO$_{3}$'
+        """  # noqa: E501
+        flag = check_optional_bool(auto_latex_notation, "auto_latex_notation")
+        if flag is None:
+            # inherit the setting of the diagram (not overwritten)
+            flag = self.__auto_latex_notation
+        plotter = _TextPlotter(
+            text,
+            vector,
+            ax=self.ax,
+            auto_latex_notation=flag,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
+        self._append_x_y(plotter)
+        return plotter.collection_
+
     def colorbar(
         self,
         mappable,
@@ -2082,6 +2288,112 @@ class _AnnotatePlotter(_BasePlotter):
     @property
     def name(self):
         return "annotate"
+
+
+class _FillPlotter(_BasePlotter):
+    def __init__(
+        self,
+        vector: ArrayLike,
+        ax: Optional[matplotlib.axes.Axes] = None,
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
+        )
+
+        # a polygon needs at least 3 vertices; checked before drawing
+        n_vertices = len(self.x_)
+        if n_vertices < 3:
+            raise ValueError(
+                "`vector` must have at least 3 vertices to draw a polygon, "
+                f"but got {n_vertices}."
+            )
+
+        # default options (colors are left to matplotlib's color cycle)
+        self._set_default_params(
+            zorder=DEFAULT_ZORDER_FILL,
+        )
+
+        # fill
+        self.collection_: List[matplotlib.patches.Polygon] = self.ax.fill(
+            self.x_, self.y_, **self.kwargs
+        )
+        self._post_draw()
+
+    @property
+    def name(self) -> str:
+        return "fill"
+
+
+#: Default alignment of ``text``: (canonical name, alias, value). Each value
+#: is set only when neither the canonical name nor the alias is given in
+#: the kwargs or in ``fontdict``.
+_TEXT_ALIGNMENT_DEFAULTS: Tuple[Tuple[str, str, str], ...] = (
+    ("horizontalalignment", "ha", "center"),
+    ("verticalalignment", "va", "center"),
+)
+
+
+class _TextPlotter(_BasePlotter):
+    def __init__(
+        self,
+        text: str,
+        vector: ArrayLike,
+        ax: Optional[matplotlib.axes.Axes] = None,
+        *,
+        auto_latex_notation: bool,  # resolved by TernaryDiagram.text
+        post_draw_context: PostDrawContext,
+        **kwargs: Any,
+    ) -> None:
+        # a single composition; checked before drawing
+        vector = check_1d_vector(vector, scale=False)
+        super().__init__(
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
+        )
+
+        # default alignment, unless given by either name in kwargs or
+        # fontdict (the user's value always takes precedence)
+        fontdict = self.kwargs.get("fontdict") or {}
+        for name, alias, value in _TEXT_ALIGNMENT_DEFAULTS:
+            if not any(
+                key in self.kwargs or key in fontdict for key in (name, alias)
+            ):
+                self.kwargs[name] = value
+        # default options (the font size is left to matplotlib)
+        self._set_default_params(
+            zorder=DEFAULT_ZORDER_TEXT,
+        )
+
+        # text
+        # format the chemical formulas of a str, like `annotate`. A text
+        # other than str is passed as it is and converted by matplotlib,
+        # although the stub of `Axes.text` accepts only str.
+        label = _format_text(text, auto_latex_notation)
+        self.collection_: matplotlib.text.Text = self.ax.text(
+            self.x_[0],
+            self.y_[0],
+            label,  # type: ignore[arg-type]
+            **self.kwargs,
+        )
+        self._post_draw()
+
+    @property
+    def name(self) -> str:
+        return "text"
 
 
 if __name__ == "__main__":
