@@ -10,7 +10,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.6_
   - _Boundary: src/ternary_diagram/_api.py: DEFAULT_ZORDER_FILL, DEFAULT_ZORDER_TEXT; tests/test_fill.py: zorder constants test_
 
-- [ ] 2. コア: 組成で指定した多角形を塗る `fill` を Plotter パターンで実装し、単体テストで振る舞いを固定する
+- [x] 2. コア: 組成で指定した多角形を塗る `fill` を Plotter パターンで実装し、単体テストで振る舞いを固定する
   - 着手条件: 1 と同じ（plot-side-effects により、Plotter の基底が三角図ごとの状態を必須のキーワード専用引数で受け取り、描画後処理の入口を持ち、TernaryDiagram がその状態を保持し、共通 fixture の三角図がレイアウト設定を明示し、共通 doctest ランナーがある）
   - 頂点の並びを既存の検証と正規化に通し、頂点が 3 個未満なら、必要な個数と実際の個数を示す `ValueError` を描画の前に送出する
   - 既定値として重なり順だけを入れ（利用者の指定を優先）、色・線・透明度は matplotlib に任せる。追加のキーワード引数をそのまま matplotlib の塗りつぶし関数へ渡し、その戻り値（1 要素のリスト）を返す
@@ -84,3 +84,4 @@
 ## Implementation Notes
 - 1: ヒートマップ < 塗りつぶしの確認は、それだけを理由付きでスキップできるよう別のテスト `test_default_zorder_heatmap_is_behind_fill` に分けた（`DEFAULT_ZORDER_HEATMAP` がなければ skip）
 - annotate-plain-text はマージ済み: 整形の入口は `utils.to_latex_notation`、`annotate` の切り替え引数は `auto_latex_notation`（キーワード専用、`None` は v3 の表示＋FutureWarning）。`TernaryDiagram.__auto_latex_notation` は `__init__` に追加済み。`ruff check .` は既存のノートブックの F401 で落ちるので `ruff check src tests` で確かめる
+- 2: `_FillPlotter` は既存の `_LinePlotter` にそろえて `super().__init__` に `z=None, z_min=None, z_max=None` を明示する（利用者の `z=` は TypeError になる）。3.1 で `text` を足したら、`fill` の docstring の Notes にも text より奥に描かれることを追記するとよい（レビューの提案）

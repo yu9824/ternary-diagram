@@ -18,6 +18,7 @@ import matplotlib.collections
 import matplotlib.colorbar
 import matplotlib.figure
 import matplotlib.lines
+import matplotlib.patches
 import matplotlib.text
 import numpy as np
 
@@ -1504,6 +1505,81 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    def fill(
+        self, vector: ArrayLike, **kwargs: Any
+    ) -> List[matplotlib.patches.Polygon]:
+        """Fill a polygon whose vertices are given as compositions.
+
+        This is a wrapper of `matplotlib.pyplot.fill`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.fill.html
+
+        Parameters
+        ----------
+        vector : ArrayLike | shape = (n, 3)
+            Compositions of the vertices of the polygon, one row per
+            vertex. Each row represents the ratio of each component (the
+            sum does not have to be 1), in the same order as `materials`.
+            At least 3 vertices are needed. The vertices are joined in the
+            order given and the polygon is closed automatically; they are
+            not sorted and no convex hull is computed.
+
+        kwargs : parameter of `matplotlib.pyplot.fill`, optional
+            Properties of :class:`matplotlib.patches.Polygon`, such as
+            `label`, `facecolor`, `edgecolor`, `alpha` or `hatch`, passed
+            to matplotlib as they are. They take precedence over the
+            defaults of this method.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.fill.html
+
+        Returns
+        -------
+        List[matplotlib.patches.Polygon]
+            A list of one element, the filled polygon, as returned by
+            `matplotlib.axes.Axes.fill`.
+
+        Raises
+        ------
+        ValueError
+            If the shape of `vector` is not (n, 3) or it has fewer than 3
+            vertices.
+
+        Notes
+        -----
+        The polygon is drawn with ``zorder=0.5`` by default: in front of
+        the contours of :meth:`contour` and behind the grid, the border,
+        the tie lines of :meth:`plot`, the points of :meth:`scatter` and
+        the annotations. Pass `zorder` to change it, for example
+        ``zorder=-0.5`` to draw the polygon behind the contours.
+
+        Without a color, the polygon is filled with the next color of the
+        matplotlib color cycle, so consecutive calls get different colors.
+        The polygon is opaque by default and hides what is behind it; pass
+        `alpha` to make it translucent, for example over a contour plot.
+
+        Examples
+        --------
+        Fill a three-phase region translucently and show it in the legend.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> (polygon,) = td.fill(
+        ...     [[0.5, 0.25, 0.25], [0.25, 0.5, 0.25], [0.25, 0.25, 0.5]],
+        ...     alpha=0.5,
+        ...     label="three-phase region",
+        ... )
+        >>> legend = td.ax.legend()
+        """  # noqa: E501
+        plotter = _FillPlotter(
+            vector=vector,
+            ax=self.ax,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
+        self._append_x_y(plotter)
+        return plotter.collection_
+
     def colorbar(
         self,
         mappable,
@@ -2086,6 +2162,49 @@ class _AnnotatePlotter(_BasePlotter):
     @property
     def name(self):
         return "annotate"
+
+
+class _FillPlotter(_BasePlotter):
+    def __init__(
+        self,
+        vector: ArrayLike,
+        ax: Optional[matplotlib.axes.Axes] = None,
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
+        )
+
+        # a polygon needs at least 3 vertices; checked before drawing
+        n_vertices = len(self.x_)
+        if n_vertices < 3:
+            raise ValueError(
+                "`vector` must have at least 3 vertices to draw a polygon, "
+                f"but got {n_vertices}."
+            )
+
+        # default options (colors are left to matplotlib's color cycle)
+        self._set_default_params(
+            zorder=DEFAULT_ZORDER_FILL,
+        )
+
+        # fill
+        self.collection_: List[matplotlib.patches.Polygon] = self.ax.fill(
+            self.x_, self.y_, **self.kwargs
+        )
+        self._post_draw()
+
+    @property
+    def name(self) -> str:
+        return "fill"
 
 
 if __name__ == "__main__":
