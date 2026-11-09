@@ -25,7 +25,7 @@
 - [ ] 3. コア: 組成点への文字の配置
   - _Boundary: src/ternary_diagram/_api.py: TernaryDiagram.__init__ (`self.__auto_latex_notation` line only, if annotate-plain-text has not added it), TernaryDiagram.text, _TextPlotter, _TEXT_ALIGNMENT_DEFAULTS（と `check_optional_bool`・整形の入口の import の追加（未 import の場合のみ））; tests/test_text.py_
 
-- [ ] 3.1 `text` の配置を Plotter パターンで実装し、単体テストで振る舞いを固定する
+- [x] 3.1 `text` の配置を Plotter パターンで実装し、単体テストで振る舞いを固定する
   - 2 と同じモジュールの TernaryDiagram と Plotter の並びに追加するので、2 と並行しない
   - 1 点の組成を既存の 1 点用の検証に通し（3 成分でなければ `ValueError`）、正規化した位置に文字を 1 つ置き、matplotlib の文字オブジェクトを返す
   - 水平・垂直の配置は、正式名と別名（`ha` / `va`）のどちらもキーワード引数と `fontdict` に指定されていないときだけ中央にする。重なり順の既定値も入れ、文字の大きさは入れない。追加のキーワード引数は matplotlib にそのまま渡す
@@ -85,3 +85,4 @@
 - 1: ヒートマップ < 塗りつぶしの確認は、それだけを理由付きでスキップできるよう別のテスト `test_default_zorder_heatmap_is_behind_fill` に分けた（`DEFAULT_ZORDER_HEATMAP` がなければ skip）
 - annotate-plain-text はマージ済み: 整形の入口は `utils.to_latex_notation`、`annotate` の切り替え引数は `auto_latex_notation`（キーワード専用、`None` は v3 の表示＋FutureWarning）。`TernaryDiagram.__auto_latex_notation` は `__init__` に追加済み。`ruff check .` は既存のノートブックの F401 で落ちるので `ruff check src tests` で確かめる
 - 2: `_FillPlotter` は既存の `_LinePlotter` にそろえて `super().__init__` に `z=None, z_min=None, z_max=None` を明示する（利用者の `z=` は TypeError になる）。3.1 で `text` を足したら、`fill` の docstring の Notes にも text より奥に描かれることを追記するとよい（レビューの提案）
+- 3.1: matplotlib 3.10 では正式名と別名（`horizontalalignment` と `ha`）を同時に渡すと別名が後から効くため、別名の判定を外しても今の版ではテストが落ちない。判定は版の差に備えたものとして残す（レビューの所見）

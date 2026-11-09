@@ -1580,6 +1580,78 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    def text(
+        self, text: str, vector: ArrayLike, **kwargs: Any
+    ) -> matplotlib.text.Text:
+        """Place a text at a composition.
+
+        This is a wrapper of `matplotlib.pyplot.text`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.text.html
+
+        Parameters
+        ----------
+        text : str
+            Text to be displayed, such as the name of a phase.
+
+        vector : ArrayLike | shape = (3,) or (1, 3)
+            Composition of the point where the text is placed. It
+            represents the ratio of each component (the sum does not have
+            to be 1), in the same order as `materials`.
+
+        kwargs : parameter of `matplotlib.pyplot.text`, optional
+            Properties of :class:`matplotlib.text.Text`, such as
+            `fontsize`, `color`, `ha` or `fontdict`, passed to matplotlib
+            as they are. They take precedence over the defaults of this
+            method.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.text.html
+
+        Returns
+        -------
+        matplotlib.text.Text
+            The text placed at the composition.
+
+        Raises
+        ------
+        ValueError
+            If `vector` does not have 3 components.
+
+        Notes
+        -----
+        The center of the text is placed exactly at the composition by
+        default (``horizontalalignment="center"`` and
+        ``verticalalignment="center"``). Pass `ha` / `va` (or their full
+        names, also in `fontdict`) to change it.
+
+        The text is drawn with ``zorder=4`` by default: in front of the
+        polygons of :meth:`fill`, the grid, the border, the tie lines of
+        :meth:`plot` and the points of :meth:`scatter`. Pass `zorder` to
+        change it. The font size is left to matplotlib (rcParams).
+
+        Examples
+        --------
+        Place the name of a phase at the center of a region.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> (region,) = td.fill(
+        ...     [[0.5, 0.25, 0.25], [0.25, 0.5, 0.25], [0.25, 0.25, 0.5]],
+        ...     alpha=0.5,
+        ... )
+        >>> label = td.text("Liquid", [1, 1, 1])
+        """  # noqa: E501
+        plotter = _TextPlotter(
+            text,
+            vector,
+            ax=self.ax,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
+        self._append_x_y(plotter)
+        return plotter.collection_
+
     def colorbar(
         self,
         mappable,
@@ -2205,6 +2277,61 @@ class _FillPlotter(_BasePlotter):
     @property
     def name(self) -> str:
         return "fill"
+
+
+#: Default alignment of ``text``: (canonical name, alias, value). Each value
+#: is set only when neither the canonical name nor the alias is given in
+#: the kwargs or in ``fontdict``.
+_TEXT_ALIGNMENT_DEFAULTS: Tuple[Tuple[str, str, str], ...] = (
+    ("horizontalalignment", "ha", "center"),
+    ("verticalalignment", "va", "center"),
+)
+
+
+class _TextPlotter(_BasePlotter):
+    def __init__(
+        self,
+        text: str,
+        vector: ArrayLike,
+        ax: Optional[matplotlib.axes.Axes] = None,
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs: Any,
+    ) -> None:
+        # a single composition; checked before drawing
+        vector = check_1d_vector(vector, scale=False)
+        super().__init__(
+            vector,
+            ax=ax,
+            z=None,
+            z_min=None,
+            z_max=None,
+            post_draw_context=post_draw_context,
+            **kwargs,
+        )
+
+        # default alignment, unless given by either name in kwargs or
+        # fontdict (the user's value always takes precedence)
+        fontdict = self.kwargs.get("fontdict") or {}
+        for name, alias, value in _TEXT_ALIGNMENT_DEFAULTS:
+            if not any(
+                key in self.kwargs or key in fontdict for key in (name, alias)
+            ):
+                self.kwargs[name] = value
+        # default options (the font size is left to matplotlib)
+        self._set_default_params(
+            zorder=DEFAULT_ZORDER_TEXT,
+        )
+
+        # text
+        self.collection_: matplotlib.text.Text = self.ax.text(
+            self.x_[0], self.y_[0], text, **self.kwargs
+        )
+        self._post_draw()
+
+    @property
+    def name(self) -> str:
+        return "text"
 
 
 if __name__ == "__main__":
