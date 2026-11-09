@@ -1,5 +1,7 @@
+import warnings
 from math import sqrt
 
+import matplotlib.pyplot as plt
 import matplotlib.text
 import numpy as np
 import pytest
@@ -292,3 +294,75 @@ def test_stacking_order_after_redrawing_the_skeleton(td, redraw_first):
             ("text", [text]),
         ]
     )
+
+
+# 結合テスト: 描画後処理 (integration tests: processing after drawing)
+SUBPLOT_PARAMS = ("left", "bottom", "right", "top", "wspace", "hspace")
+# 警告文の要点 (essentials of the layout warning, checked with `match=`)
+LAYOUT_WARNING_MATCH = r"(?s)(?=.*4\.0\.0)(?=.*`tight_layout=True`)"
+
+
+def _subplotpars(fig) -> dict:
+    return {name: getattr(fig.subplotpars, name) for name in SUBPLOT_PARAMS}
+
+
+def _is_layout_future_warning(warning) -> bool:
+    return issubclass(warning.category, FutureWarning) and (
+        "tight_layout" in str(warning.message)
+    )
+
+
+def _messages(record) -> list:
+    return [f"{w.category.__name__}: {w.message}" for w in record]
+
+
+@pytest.mark.parametrize("tight_layout", [False, True])
+def test_text_follows_layout_setting_without_colorbar(tight_layout):
+    fig, ax = plt.subplots()
+    default = _subplotpars(fig)
+    td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=tight_layout)
+    n_axes = len(fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        td.text("Liquid", CENTER)
+
+    # カラーバーが増えない (no colorbar is added)
+    assert len(fig.axes) == n_axes
+    # 余白は三角図の設定に従う (the margins follow the diagram setting)
+    assert (_subplotpars(fig) != default) is tight_layout
+
+
+def test_text_alone_warns_about_layout_once_per_diagram():
+    fig, (ax_fill, ax_text) = plt.subplots(1, 2)
+    # `tight_layout` は既定値を確かめるため省略する
+    # (`tight_layout` is omitted on purpose: this checks the default)
+    default = _subplotpars(fig)
+    td_fill = TernaryDiagram(MATERIALS, ax=ax_fill)
+    td_text = TernaryDiagram(MATERIALS, ax=ax_text)
+    n_axes = len(fig.axes)
+
+    # fill → text の三角図では全体で 1 回
+    # (once in total on the diagram drawing fill then text)
+    with pytest.warns(FutureWarning, match=LAYOUT_WARNING_MATCH) as record:
+        td_fill.fill([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+        td_fill.text("Liquid", CENTER)
+
+    assert len(record) == 1, _messages(record)
+    assert _is_layout_future_warning(record[0])
+    assert record[0].filename == __file__
+
+    # text だけを描いた別の三角図でも 1 回
+    # (once also on another diagram drawing only text)
+    # 余白を戻し、text が調整し直すかを見る
+    # (restore the margins to see whether text adjusts them again)
+    fig.subplots_adjust(**default)
+    with pytest.warns(FutureWarning, match=LAYOUT_WARNING_MATCH) as record:
+        td_text.text("Liquid", CENTER)
+        td_text.text("Solid", [1, 0, 0])
+
+    assert len(record) == 1, _messages(record)
+    assert _is_layout_future_warning(record[0])
+    assert record[0].filename == __file__
+    assert _subplotpars(fig) != default
+    assert len(fig.axes) == n_axes

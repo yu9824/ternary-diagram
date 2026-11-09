@@ -1,3 +1,4 @@
+import warnings
 from math import sqrt
 
 import matplotlib.pyplot as plt
@@ -7,7 +8,9 @@ import pytest
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Polygon
 
-from ternary_diagram import _api
+from ternary_diagram import TernaryDiagram, _api
+
+MATERIALS = ("Li2O", "La2O3", "TiO2")
 
 
 def test_default_zorder_constants():
@@ -263,3 +266,66 @@ def test_stacking_order_does_not_depend_on_the_drawing_order(
     _assert_layers_are_stacked(
         [(name, artists[name]) for name in STACKING_ORDER]
     )
+
+
+# 結合テスト: 描画後処理 (integration tests: processing after drawing)
+SUBPLOT_PARAMS = ("left", "bottom", "right", "top", "wspace", "hspace")
+# 警告文の要点 (essentials of the layout warning, checked with `match=`)
+LAYOUT_WARNING_MATCH = r"(?s)(?=.*4\.0\.0)(?=.*`tight_layout=True`)"
+
+
+def _subplotpars(fig) -> dict:
+    return {name: getattr(fig.subplotpars, name) for name in SUBPLOT_PARAMS}
+
+
+def _is_layout_future_warning(warning) -> bool:
+    return issubclass(warning.category, FutureWarning) and (
+        "tight_layout" in str(warning.message)
+    )
+
+
+def _messages(record) -> list:
+    return [f"{w.category.__name__}: {w.message}" for w in record]
+
+
+@pytest.mark.parametrize("tight_layout", [False, True])
+def test_fill_follows_layout_setting_without_colorbar(tight_layout):
+    fig, ax = plt.subplots()
+    default = _subplotpars(fig)
+    td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=tight_layout)
+    n_axes = len(fig.axes)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        td.fill(TRIANGLE)
+
+    # カラーバーが増えない (no colorbar is added)
+    assert len(fig.axes) == n_axes
+    # 余白は三角図の設定に従う (the margins follow the diagram setting)
+    assert (_subplotpars(fig) != default) is tight_layout
+
+
+def test_fill_then_text_warn_about_layout_once_in_total():
+    fig, ax = plt.subplots()
+    default = _subplotpars(fig)
+    # `tight_layout` は既定値を確かめるため省略する
+    # (`tight_layout` is omitted on purpose: this checks the default)
+    td = TernaryDiagram(MATERIALS, ax=ax)
+    n_axes = len(fig.axes)
+
+    with pytest.warns(FutureWarning, match=LAYOUT_WARNING_MATCH) as record:
+        td.fill(TRIANGLE)
+
+    assert len(record) == 1, _messages(record)
+    assert _is_layout_future_warning(record[0])
+    assert record[0].filename == __file__
+    assert _subplotpars(fig) != default
+
+    # 同じ三角図の text は警告を繰り返さない
+    # (text on the same diagram does not repeat the warning)
+    with warnings.catch_warnings(record=True) as record:
+        warnings.simplefilter("always")
+        td.text("Liquid", CENTER)
+
+    assert record == [], _messages(record)
+    assert len(fig.axes) == n_axes

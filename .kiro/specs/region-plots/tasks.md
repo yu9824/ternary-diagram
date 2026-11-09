@@ -58,7 +58,7 @@
   - _Requirements: 4.1, 4.2, 4.3, 4.4_
   - _Boundary: tests/test_fill.py, tests/test_text.py: zorder integration tests_
 
-- [ ] 4.2 描画後処理との整合を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 4.2 描画後処理との整合を TernaryDiagram 経由で検証する結合テストを書く
   - `fill` と `text` のそれぞれで、描画の前後で図の Axes の数が変わらない（カラーバーが増えない）ことを確かめる
   - `tight_layout=False` で作った三角図では描画の前後で図の余白のパラメータが変わらず、`tight_layout=True` では変わることを確かめる
   - レイアウト設定を指定しない三角図をレイアウトエンジンのない図に作り、`fill` → `text` と続けて描くとレイアウトの FutureWarning が全体で 1 回だけ出ること、`text` だけを描いた別の三角図でも 1 回出ることを、警告文の要点だけを照合して確かめる
@@ -88,3 +88,4 @@
 - 3.1: matplotlib 3.10 では正式名と別名（`horizontalalignment` と `ha`）を同時に渡すと別名が後から効くため、別名の判定を外しても今の版ではテストが落ちない。判定は版の差に備えたものとして残す（レビューの所見）
 - 3.2: `text` の整形は `_format_text`（annotate に `auto_latex_notation` を明示したときと同じ入口）を使い、v3 互換の警告経路は通らない。`Axes.text` のスタブが文字列しか受けないため、文字列以外を渡す箇所に理由付きの `# type: ignore[arg-type]` を置いた。3.1 の使用例は design の 3 ブロック構成に合わせて 3.2 の 2 ブロックに置き換えた
 - 4.1: 層の zorder を比べる補助関数 `_assert_layers_are_stacked` は test_fill.py と test_text.py に重複している（conftest.py は境界外）。共通化するなら conftest に移す
+- 4.2: 描画後処理の補助（`SUBPLOT_PARAMS`、`LAYOUT_WARNING_MATCH`、`_subplotpars` など）は test_side_effects.py・test_fill.py・test_text.py の 3 か所に重複している。4.1 の補助と合わせて、conftest に寄せる候補
