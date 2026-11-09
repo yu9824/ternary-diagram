@@ -2,9 +2,10 @@
 
 The functions here validate the arguments of ``tripcolor`` and
 ``heatmapf``, triangulate the compositions, find the triangles that cannot
-be painted, compute the default color range and build the message of the
-warning about duplicated compositions. None of them draws, warns or changes
-its arguments: they only read the arguments and return new objects.
+be painted, compute the default color range, evaluate the function of
+``heatmapf`` and build the message of the warning about duplicated
+compositions. None of them draws, warns or changes its arguments: they
+only read the arguments and return new objects.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ __all__ = (
     "check_shading",
     "default_color_range",
     "duplicate_points_message",
+    "evaluate_function",
     "triangulate",
     "unpaintable_mask",
 )
@@ -260,6 +262,62 @@ def default_color_range(
     vmin = float(finite.min()) if z_min is None else z_min
     vmax = float(finite.max()) if z_max is None else z_max
     return vmin, vmax
+
+
+def evaluate_function(func: object, points: np.ndarray) -> np.ndarray:
+    """Evaluate a function at all the points with a single call.
+
+    Parameters
+    ----------
+    func : object
+        The function given by the user, called as ``func(a, b, c)``.
+    points : np.ndarray
+        Compositions of the evaluation points, shape ``(m, 3)``. It is not
+        changed even if ``func`` changes its arguments.
+
+    Returns
+    -------
+    np.ndarray
+        A new float array of shape ``(m,)``. Masked values returned by
+        ``func`` become NaN.
+
+    Raises
+    ------
+    TypeError
+        If ``func`` is not callable.
+    ValueError
+        If ``func`` returns values that cannot be converted to numbers, or
+        an array whose shape is none of ``(m,)``, ``(m, 1)`` and ``(1, m)``.
+        Exceptions raised by ``func`` itself are propagated as they are.
+    """
+    if not callable(func):
+        raise TypeError(f"`func` must be callable, but got {func!r}.")
+
+    n_points = len(points)
+    # Each column is copied into a new contiguous array, so ``func`` cannot
+    # change ``points`` through its arguments.
+    a, b, c = (np.array(points[:, i], dtype=float) for i in range(3))
+    raw = func(a, b, c)
+
+    expected = (
+        f"`func` must return {n_points} numeric values (an array of shape "
+        f"({n_points},))"
+    )
+    hint = "If `func` only accepts scalars, wrap it with `numpy.vectorize`."
+    try:
+        values = np.ma.asarray(raw, dtype=float).filled(np.nan)
+    except (TypeError, ValueError) as err:
+        raise ValueError(
+            f"{expected}, but returned {type(raw).__name__!r} that cannot "
+            f"be converted to numbers. {hint}"
+        ) from err
+    if values.shape not in ((n_points,), (n_points, 1), (1, n_points)):
+        raise ValueError(
+            f"{expected}, but returned an array of shape {values.shape}. "
+            f"{hint}"
+        )
+    # ``filled`` may return a view of the array returned by ``func``.
+    return np.array(values.reshape(n_points), dtype=float)
 
 
 def duplicate_points_message(n_unused: int) -> str:

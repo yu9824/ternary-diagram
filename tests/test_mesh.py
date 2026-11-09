@@ -17,6 +17,7 @@ from ternary_diagram._mesh import (
     check_shading,
     default_color_range,
     duplicate_points_message,
+    evaluate_function,
     triangulate,
     unpaintable_mask,
 )
@@ -465,3 +466,225 @@ def test_duplicate_points_message(n_unused):
     assert "same composition" in message
     assert "aggregate" in message.lower()
     assert "`tripcolor`" in message
+
+
+# ---------------------------------------------------------------------------
+# evaluate_function
+# ---------------------------------------------------------------------------
+
+# 4 evaluation points; each row sums to 1.
+POINTS = np.array(
+    [
+        [1.0, 0.0, 0.0],
+        [0.5, 0.25, 0.25],
+        [0.2, 0.3, 0.5],
+        [0.0, 0.0, 1.0],
+    ]
+)
+M = len(POINTS)
+VECTORIZE_MESSAGE = "numpy.vectorize"
+
+
+def test_evaluate_function_calls_func_once_with_the_columns():
+    calls = []
+
+    def func(*args):
+        calls.append(tuple(np.array(arg, copy=True) for arg in args))
+        return args[0] + 2 * args[1] + 3 * args[2]
+
+    values = evaluate_function(func, POINTS)
+
+    assert len(calls) == 1
+    (args,) = calls
+    assert len(args) == 3
+    for i, arg in enumerate(args):
+        assert arg.shape == (M,)
+        assert arg.dtype == float
+        np.testing.assert_array_equal(arg, POINTS[:, i])
+    np.testing.assert_allclose(
+        values, POINTS[:, 0] + 2 * POINTS[:, 1] + 3 * POINTS[:, 2]
+    )
+
+
+def test_evaluate_function_passes_copies_of_the_columns():
+    received = []
+
+    def func(a, b, c):
+        received.extend([a, b, c])
+        return a + b + c
+
+    evaluate_function(func, POINTS)
+
+    for arg in received:
+        assert isinstance(arg, np.ndarray)
+        assert arg.flags.c_contiguous
+        assert not np.shares_memory(arg, POINTS)
+
+
+def test_evaluate_function_does_not_change_points_when_func_mutates_args():
+    points = POINTS.copy()
+
+    def func(a, b, c):
+        a[:] = -1.0
+        b *= 10.0
+        c.fill(np.nan)
+        return np.zeros(len(a))
+
+    evaluate_function(func, points)
+
+    np.testing.assert_array_equal(points, POINTS)
+
+
+@pytest.mark.parametrize(
+    "wrap",
+    [
+        lambda v: v,
+        lambda v: v.reshape(-1, 1),
+        lambda v: v.reshape(1, -1),
+        lambda v: v.tolist(),
+        lambda v: v.astype(np.float32),
+        lambda v: v.astype(int),
+    ],
+    ids=["(m,)", "(m, 1)", "(1, m)", "list", "float32", "int"],
+)
+def test_evaluate_function_accepts_shapes(wrap):
+    expected = np.array([1.0, 2.0, 3.0, 4.0])
+
+    values = evaluate_function(lambda a, b, c: wrap(expected), POINTS)
+
+    assert isinstance(values, np.ndarray)
+    assert not isinstance(values, np.ma.MaskedArray)
+    assert values.shape == (M,)
+    assert values.dtype == float
+    np.testing.assert_array_equal(values, expected)
+
+
+@pytest.mark.parametrize("shape", [(1,), (1, 1)])
+def test_evaluate_function_accepts_shapes_for_one_point(shape):
+    values = evaluate_function(lambda a, b, c: np.full(shape, 7.0), POINTS[:1])
+    assert values.shape == (1,)
+    np.testing.assert_array_equal(values, [7.0])
+
+
+def test_evaluate_function_returns_a_new_array():
+    returned = np.array([1.0, 2.0, 3.0, 4.0])
+
+    values = evaluate_function(lambda a, b, c: returned, POINTS)
+
+    assert not np.shares_memory(values, returned)
+    values[0] = 100.0
+    np.testing.assert_array_equal(returned, [1.0, 2.0, 3.0, 4.0])
+
+
+def test_evaluate_function_keeps_nan():
+    values = evaluate_function(
+        lambda a, b, c: np.array([1.0, np.nan, np.inf, 4.0]), POINTS
+    )
+    np.testing.assert_array_equal(values, [1.0, np.nan, np.inf, 4.0])
+
+
+@pytest.mark.parametrize("shape", [(M,), (M, 1), (1, M)])
+def test_evaluate_function_turns_masked_values_into_nan(shape):
+    data = np.array([1.0, 2.0, 3.0, 4.0]).reshape(shape)
+    mask = np.array([False, True, False, True]).reshape(shape)
+    returned = np.ma.MaskedArray(data, mask=mask)
+
+    values = evaluate_function(lambda a, b, c: returned, POINTS)
+
+    assert not isinstance(values, np.ma.MaskedArray)
+    np.testing.assert_array_equal(values, [1.0, np.nan, 3.0, np.nan])
+    # The masked array returned by ``func`` is not changed.
+    np.testing.assert_array_equal(returned.data, data)
+    np.testing.assert_array_equal(returned.mask, mask)
+
+
+@pytest.mark.parametrize(
+    "returned",
+    [
+        1.0,
+        np.float64(1.0),
+        np.zeros(M + 1),
+        np.zeros(M - 1),
+        np.zeros((M, 2)),
+        np.zeros((2, M)),
+        np.zeros((M, 1, 1)),
+        np.zeros((0,)),
+    ],
+    ids=[
+        "scalar",
+        "numpy-scalar",
+        "(m + 1,)",
+        "(m - 1,)",
+        "(m, 2)",
+        "(2, m)",
+        "(m, 1, 1)",
+        "empty",
+    ],
+)
+def test_evaluate_function_rejects_shapes(returned):
+    with pytest.raises(ValueError, match=VECTORIZE_MESSAGE) as excinfo:
+        evaluate_function(lambda a, b, c: returned, POINTS)
+    message = str(excinfo.value)
+    assert f"must return {M} numeric values" in message
+    assert str(np.shape(returned)) in message
+
+
+@pytest.mark.parametrize(
+    "returned",
+    [
+        "abc",
+        ["a", "b", "c", "d"],
+        np.array(["a", "b", "c", "d"]),
+        {"a": 1},
+        [[1.0, 2.0], [3.0]],
+    ],
+    ids=["str", "list-of-str", "str-array", "dict", "ragged"],
+)
+def test_evaluate_function_rejects_values_that_are_not_numbers(returned):
+    with pytest.raises(ValueError, match=VECTORIZE_MESSAGE) as excinfo:
+        evaluate_function(lambda a, b, c: returned, POINTS)
+    assert f"must return {M} numeric values" in str(excinfo.value)
+    # The error of the conversion is chained.
+    assert isinstance(excinfo.value.__cause__, (TypeError, ValueError))
+
+
+@pytest.mark.parametrize("func", [None, 1.0, "sum", np.zeros(3)])
+def test_evaluate_function_rejects_objects_that_are_not_callable(func):
+    with pytest.raises(TypeError, match="`func` must be callable"):
+        evaluate_function(func, POINTS)
+
+
+def test_evaluate_function_does_not_call_func_twice_on_error():
+    calls = []
+
+    def func(a, b, c):
+        calls.append(1)
+        return np.zeros(len(a) + 1)
+
+    with pytest.raises(ValueError, match=VECTORIZE_MESSAGE):
+        evaluate_function(func, POINTS)
+    assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    "error", [ZeroDivisionError("boom"), ValueError("boom"), TypeError("x")]
+)
+def test_evaluate_function_propagates_exceptions_of_func(error):
+    def func(a, b, c):
+        raise error
+
+    with pytest.raises(type(error)) as excinfo:
+        evaluate_function(func, POINTS)
+    assert excinfo.value is error
+    assert excinfo.value.__cause__ is None
+
+
+def test_evaluate_function_works_with_numpy_vectorize():
+    def scalar_only(a, b, c):
+        if not isinstance(a, float):
+            raise TypeError("scalars only")
+        return a - c
+
+    values = evaluate_function(np.vectorize(scalar_only), POINTS)
+
+    np.testing.assert_allclose(values, POINTS[:, 0] - POINTS[:, 2])

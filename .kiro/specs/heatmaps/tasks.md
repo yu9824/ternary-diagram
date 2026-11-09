@@ -4,7 +4,7 @@
 >
 > docstring の例は steering の tech.md「Docstring Examples」に従い、共通 doctest ランナーで実行する。本 spec は doctest を実行する独自のテストを作らず、ランナーも変更しない。
 
-- [ ] 1. 基盤: 格子生成と、三角形を塗る描画の計算・検証
+- [x] 1. 基盤: 格子生成と、三角形を塗る描画の計算・検証
 - [x] 1.1 (P) 正則な三角格子を図なしで返す関数を追加する
   - 分割数が整数でない（真偽値を含む）ときは受け付ける値を示す `TypeError`、1 未満のときは範囲を示す `ValueError` にする。numpy の整数型は受け付ける
   - 格子点 (n+1)(n+2)/2 個（各成分が 1/n の整数倍で合計 1、列は頂点ラベルの順）と小三角形 n² 個を、design に定めた並び順（格子点は上の行から各行は左から、小三角形は上向きのあと下向き）と向き（反時計回り）で返す
@@ -26,7 +26,7 @@
   - _Boundary: `src/ternary_diagram/_mesh.py`（新規）: `Shading`、`HeatmapFunc`、`MeshCollection`、`SHADINGS`、`DEFAULT_HEATMAPF_SCALE`、`check_shading`、`check_mesh_kwargs`、`triangulate`、`unpaintable_mask`、`default_color_range`、`duplicate_points_message`、`tests/test_mesh.py`（新規）_
   - _Requirements: 1.4, 1.5, 1.7, 1.8, 2.5, 4.1, 4.2, 4.3, 5.4, 5.5, 6.5, 7.5, 7.6, 7.7_
 
-- [ ] 1.3 関数を評価点でまとめて 1 回だけ呼び、戻り値を検証する関数を作る
+- [x] 1.3 関数を評価点でまとめて 1 回だけ呼び、戻り値を検証する関数を作る
   - 1.2 と同じモジュールに置くので、1.2 の後に行う（並行不可）
   - 呼び出し可能でないものには `TypeError` を出す。評価点の 3 成分をそれぞれ複製した 1 次元配列として関数をちょうど 1 回呼び、関数が出した例外は置き換えずにそのまま伝える
   - 戻り値を浮動小数点に変換し（マスク付き配列のマスクは NaN にする）、形 `(m,)`・`(m, 1)`・`(1, m)` を `(m,)` に揃える。それ以外の形や数値に変換できない戻り値は、期待する個数と `numpy.vectorize` での包み方を示す `ValueError` にする
@@ -117,3 +117,4 @@
 - 上流の状態: plot-side-effects・diagram-customization・annotate-plain-text・region-plots はマージ済み。zorder 定数は `DEFAULT_ZORDER_FILL = 0.5`、`DEFAULT_ZORDER_TEXT = 4` が既にあり、ヒートマップの定数はその後ろに置く。`tests/test_fill.py::test_default_zorder_heatmap_is_behind_fill` は `DEFAULT_ZORDER_HEATMAP` があれば自動で有効になる。`ruff check .` はノートブックの既存の F401 で落ちるので `ruff check src tests` で確かめる。mypy は既存の 7 件が基準
 - 1.1: 頂点番号は design の対応表ではなく閉形式 `row*(row+1)//2 + row - j` で求める（scale 1〜79・123・200 で総当たりと一致）。格子の (i, j) は private の `_lattice_indices` に切り出した
 - 1.2: `Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（matplotlib 3.3.4 でも確認）。`_api.py` の版分岐は private なサブモジュール（`TriContourSet` など）の位置のためで、新しいモジュールには持ち込まない（レビューで差し戻し 1 回）。`unpaintable_mask` は `values` の長さを検証しないので、2.1 の Plotter が呼ぶ前に `z` の要素数を確かめる
+- 1.3: `evaluate_function` は戻り値を常に新しい (m,) 配列にする。複素数を返す関数は numpy の ComplexWarning（発生位置は numpy 内部）が出て虚部が捨てられたまま受け付けられる（design の変換どおり。拒否するなら `np.iscomplexobj` で ValueError にする改善の候補）
