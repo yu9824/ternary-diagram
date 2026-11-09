@@ -234,3 +234,61 @@ def test_text_invalid_auto_latex_notation_draws_nothing(td, value):
     assert len(td.ax.texts) == n_texts
     assert "text" not in td.x_
     assert "text" not in td.y_
+
+
+# 結合テスト: 土台を描き直した後の重なり順
+# (integration tests: stacking order after redrawing the skeleton)
+def _assert_layers_are_stacked(layers):
+    for (back_name, back), (front_name, front) in zip(layers, layers[1:]):
+        assert back, back_name
+        assert front, front_name
+        back_zorder = max(artist.get_zorder() for artist in back)
+        front_zorder = min(artist.get_zorder() for artist in front)
+        assert back_zorder < front_zorder, (
+            f"{back_name} (zorder {back_zorder}) must be behind "
+            f"{front_name} (zorder {front_zorder})"
+        )
+
+
+def _redraw_skeleton(td):
+    td.set_grid(step=0.2, linewidth=0.8)
+    td.set_border(linewidth=2.0)
+
+
+@pytest.mark.parametrize(
+    "redraw_first", [False, True], ids=["redraw-last", "redraw-first"]
+)
+def test_stacking_order_after_redrawing_the_skeleton(td, redraw_first):
+    if redraw_first:
+        _redraw_skeleton(td)
+
+    contour = td.contour(
+        [[1, 0, 0], [0, 1, 0], [0, 0, 1], CENTER],
+        z=[0, 1, 2, 3],
+        colorbar=False,
+    )
+    polygons = td.fill([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    tie_lines = td.plot([[1, 0, 0], [0, 0, 1]])
+    scatter = td.scatter([CENTER])
+    annotation = td.annotate("A", CENTER)
+    text = td.text("Liquid", CENTER)
+
+    if not redraw_first:
+        _redraw_skeleton(td)
+
+    # 描き直した線が使われている (the redrawn lines are in use)
+    skeleton_lines = td.border_lines_ + td.grid_lines_
+    assert len(td.grid_lines_) == 3 * 4
+    assert all(line.get_linewidth() == 2.0 for line in td.border_lines_)
+    assert all(line in td.ax.lines for line in skeleton_lines)
+
+    _assert_layers_are_stacked(
+        [
+            ("contour", [contour]),
+            ("fill", polygons),
+            ("skeleton lines", skeleton_lines),
+            ("tie line", tie_lines),
+            ("scatter and annotation", [scatter, annotation]),
+            ("text", [text]),
+        ]
+    )

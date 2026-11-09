@@ -50,7 +50,7 @@
 - [ ] 4. 統合と検証
   - _Boundary: tests/test_fill.py, tests/test_text.py, CHANGELOG.md: New features entries for fill/text_
 
-- [ ] 4.1 既存の描画と並べたときの重なり順を検証する結合テストを書く
+- [x] 4.1 既存の描画と並べたときの重なり順を検証する結合テストを書く
   - 等高線図（カラーバーなし）・タイライン・散布図・注釈・土台の線と、`fill`・`text` を同じ三角図に描き、各 artist の重なり順が「等高線図 < fill < 土台の線 < タイライン < 散布図・注釈 < text」になることを確かめる
   - 描画の順序を逆にしても同じ関係になることを確かめる
   - diagram-customization の `set_grid`（マージ済み）で土台を描き直した後の線とも、同じ関係になることを確かめる
@@ -87,3 +87,4 @@
 - 2: `_FillPlotter` は既存の `_LinePlotter` にそろえて `super().__init__` に `z=None, z_min=None, z_max=None` を明示する（利用者の `z=` は TypeError になる）。3.1 で `text` を足したら、`fill` の docstring の Notes にも text より奥に描かれることを追記するとよい（レビューの提案）
 - 3.1: matplotlib 3.10 では正式名と別名（`horizontalalignment` と `ha`）を同時に渡すと別名が後から効くため、別名の判定を外しても今の版ではテストが落ちない。判定は版の差に備えたものとして残す（レビューの所見）
 - 3.2: `text` の整形は `_format_text`（annotate に `auto_latex_notation` を明示したときと同じ入口）を使い、v3 互換の警告経路は通らない。`Axes.text` のスタブが文字列しか受けないため、文字列以外を渡す箇所に理由付きの `# type: ignore[arg-type]` を置いた。3.1 の使用例は design の 3 ブロック構成に合わせて 3.2 の 2 ブロックに置き換えた
+- 4.1: 層の zorder を比べる補助関数 `_assert_layers_are_stacked` は test_fill.py と test_text.py に重複している（conftest.py は境界外）。共通化するなら conftest に移す

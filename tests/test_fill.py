@@ -203,3 +203,63 @@ def test_fill_invalid_vector_draws_nothing(td, vector, match):
     assert len(td.ax.patches) == n_patches
     assert "fill" not in td.x_
     assert "fill" not in td.y_
+
+
+# 結合テスト: 既存の描画と並べたときの重なり順
+# (integration tests: stacking order next to the existing plots)
+# 奥から手前への層 (layers from back to front)
+STACKING_ORDER = (
+    "contour",
+    "fill",
+    "skeleton lines",
+    "tie line",
+    "scatter and annotation",
+    "text",
+)
+CENTER = [1, 1, 1]
+LAYER_DRAWERS = {
+    "contour": lambda td: [
+        td.contour(
+            [[1, 0, 0], [0, 1, 0], [0, 0, 1], CENTER],
+            z=[0, 1, 2, 3],
+            colorbar=False,
+        )
+    ],
+    "fill": lambda td: td.fill(TRIANGLE),
+    "tie line": lambda td: td.plot([[1, 0, 0], [0, 0, 1]]),
+    "scatter and annotation": lambda td: [
+        td.scatter([CENTER]),
+        td.annotate("A", CENTER),
+    ],
+    "text": lambda td: [td.text("Liquid", CENTER)],
+}
+
+
+def _assert_layers_are_stacked(layers):
+    for (back_name, back), (front_name, front) in zip(layers, layers[1:]):
+        assert back, back_name
+        assert front, front_name
+        back_zorder = max(artist.get_zorder() for artist in back)
+        front_zorder = min(artist.get_zorder() for artist in front)
+        assert back_zorder < front_zorder, (
+            f"{back_name} (zorder {back_zorder}) must be behind "
+            f"{front_name} (zorder {front_zorder})"
+        )
+
+
+@pytest.mark.parametrize(
+    "drawing_order",
+    [
+        pytest.param(list(LAYER_DRAWERS), id="back-to-front"),
+        pytest.param(list(LAYER_DRAWERS)[::-1], id="front-to-back"),
+    ],
+)
+def test_stacking_order_does_not_depend_on_the_drawing_order(
+    td, drawing_order
+):
+    artists = {name: LAYER_DRAWERS[name](td) for name in drawing_order}
+    artists["skeleton lines"] = td.border_lines_ + td.grid_lines_
+
+    _assert_layers_are_stacked(
+        [(name, artists[name]) for name in STACKING_ORDER]
+    )
