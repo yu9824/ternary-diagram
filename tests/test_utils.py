@@ -24,6 +24,7 @@ from ternary_diagram.utils import (
     get_label,
     get_tick_formatter,
     get_tick_values,
+    get_triangular_lattice,
     is_chemical_formula,
     three2two,
     to_latex_notation,
@@ -902,3 +903,167 @@ def test_get_axis_label_position_huge_pad_is_not_finite():
     # Too large to convert to float, but a ValueError, not OverflowError.
     with pytest.raises(ValueError, match="finite real number"):
         get_axis_label_position(0, 10**400)
+
+
+# get_triangular_lattice
+
+
+def _lattice_areas(vertices, triangles):
+    """Signed areas of the small triangles in the 2D coordinates."""
+    x, y = three2two(vertices)
+    x0, x1, x2 = x[triangles].T
+    y0, y1, y2 = y[triangles].T
+    return ((x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)) / 2.0
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3, 50])
+def test_get_triangular_lattice_counts_and_dtypes(scale):
+    vertices, triangles = get_triangular_lattice(scale)
+
+    assert vertices.shape == ((scale + 1) * (scale + 2) // 2, 3)
+    assert triangles.shape == (scale**2, 3)
+    assert vertices.dtype == np.float64
+    assert triangles.dtype == np.intp
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3, 50])
+def test_get_triangular_lattice_compositions(scale):
+    vertices, triangles = get_triangular_lattice(scale)
+
+    np.testing.assert_allclose(vertices.sum(axis=1), 1.0)
+    # Each component is a multiple of 1/scale.
+    integers = vertices * scale
+    np.testing.assert_allclose(integers, np.round(integers), atol=1e-9)
+    # The set of compositions equals the full enumeration.
+    actual = {tuple(row) for row in np.round(integers).astype(int).tolist()}
+    expected = {
+        (i, j, scale - i - j)
+        for i in range(scale + 1)
+        for j in range(scale + 1 - i)
+    }
+    assert actual == expected
+    assert len(actual) == len(vertices)
+    # Every lattice point is used and every index is valid.
+    assert triangles.min() == 0
+    assert triangles.max() == len(vertices) - 1
+    assert set(np.unique(triangles).tolist()) == set(range(len(vertices)))
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3, 50])
+def test_get_triangular_lattice_vertex_order(scale):
+    vertices, _ = get_triangular_lattice(scale)
+    integers = np.round(vertices * scale).astype(int)
+
+    # Descending i, then descending j within the same i.
+    keys = [(-i, -j) for i, j, _ in integers.tolist()]
+    assert keys == sorted(keys)
+    # In 2D: rows from top to bottom, left to right within a row.
+    x, y = three2two(vertices)
+    for i in range(scale + 1):
+        row = integers[:, 0] == i
+        assert np.all(np.diff(x[row]) > 0)
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3, 50])
+def test_get_triangular_lattice_areas(scale):
+    vertices, triangles = get_triangular_lattice(scale)
+    areas = _lattice_areas(vertices, triangles)
+
+    # Counterclockwise (positive), all equal and covering the diagram.
+    assert np.all(areas > 0)
+    np.testing.assert_allclose(areas, sqrt(3.0) / 4.0 / scale**2)
+    np.testing.assert_allclose(areas.sum(), sqrt(3.0) / 4.0)
+
+
+@pytest.mark.parametrize("scale", [1, 2, 3, 50])
+def test_get_triangular_lattice_upward_then_downward(scale):
+    vertices, triangles = get_triangular_lattice(scale)
+    n_up = scale * (scale + 1) // 2
+    integers = np.round(vertices * scale).astype(int)
+    corners = integers[triangles]  # shape (n_triangles, 3, 3)
+
+    up, down = corners[:n_up], corners[n_up:]
+    assert len(down) == scale * (scale - 1) // 2
+    # Upward: top, bottom left, bottom right of a base (i, j, k).
+    base_up = up[:, 0] - [1, 0, 0]
+    np.testing.assert_array_equal(up[:, 1], base_up + [0, 1, 0])
+    np.testing.assert_array_equal(up[:, 2], base_up + [0, 0, 1])
+    # Downward: bottom, upper right, upper left of a base (i, j, k).
+    base_down = down[:, 0] - [0, 1, 1]
+    np.testing.assert_array_equal(down[:, 1], base_down + [1, 0, 1])
+    np.testing.assert_array_equal(down[:, 2], base_down + [1, 1, 0])
+    # Bases in descending i, then descending j, within each group.
+    for base in (base_up, base_down):
+        keys = [(-i, -j) for i, j, _ in base.tolist()]
+        assert keys == sorted(keys)
+
+
+def test_get_triangular_lattice_scale_1():
+    vertices, triangles = get_triangular_lattice(1)
+
+    assert vertices.tolist() == [
+        [1.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.0, 1.0],
+    ]
+    assert triangles.tolist() == [[0, 1, 2]]
+
+
+def test_get_triangular_lattice_scale_2():
+    vertices, triangles = get_triangular_lattice(2)
+
+    assert vertices.tolist() == [
+        [1.0, 0.0, 0.0],
+        [0.5, 0.5, 0.0],
+        [0.5, 0.0, 0.5],
+        [0.0, 1.0, 0.0],
+        [0.0, 0.5, 0.5],
+        [0.0, 0.0, 1.0],
+    ]
+    assert triangles.tolist() == [[0, 1, 2], [1, 3, 4], [2, 4, 5], [4, 2, 1]]
+
+
+@pytest.mark.parametrize("scale", [1, 2, 7])
+def test_get_triangular_lattice_is_deterministic(scale):
+    vertices1, triangles1 = get_triangular_lattice(scale)
+    vertices2, triangles2 = get_triangular_lattice(scale)
+
+    np.testing.assert_array_equal(vertices1, vertices2)
+    np.testing.assert_array_equal(triangles1, triangles2)
+    # Fresh arrays: modifying one result does not affect the next call.
+    assert vertices1 is not vertices2
+    vertices1[:] = -1.0
+    triangles1[:] = -1
+    vertices3, triangles3 = get_triangular_lattice(scale)
+    np.testing.assert_array_equal(vertices3, vertices2)
+    np.testing.assert_array_equal(triangles3, triangles2)
+
+
+@pytest.mark.parametrize(
+    "scale", [np.int64(3), np.int32(3), np.uint8(3), np.intp(3)]
+)
+def test_get_triangular_lattice_accepts_numpy_integers(scale):
+    vertices, triangles = get_triangular_lattice(scale)
+    expected_vertices, expected_triangles = get_triangular_lattice(3)
+
+    np.testing.assert_array_equal(vertices, expected_vertices)
+    np.testing.assert_array_equal(triangles, expected_triangles)
+
+
+@pytest.mark.parametrize(
+    "scale",
+    [1.5, 3.0, "3", True, False, np.bool_(True), None, [3], np.float64(3)],
+)
+def test_get_triangular_lattice_not_integer(scale):
+    expected = f"`scale` must be an integer, but got {scale!r}."
+
+    with pytest.raises(TypeError, match=re.escape(expected)):
+        get_triangular_lattice(scale)
+
+
+@pytest.mark.parametrize("scale", [0, -1, np.int64(0), -(10**20)])
+def test_get_triangular_lattice_less_than_one(scale):
+    expected = f"`scale` must be 1 or greater, but got {scale!r}."
+
+    with pytest.raises(ValueError, match=re.escape(expected)):
+        get_triangular_lattice(scale)

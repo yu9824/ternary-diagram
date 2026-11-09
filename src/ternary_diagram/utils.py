@@ -754,6 +754,115 @@ def get_tick_formatter(fmt: TickFormat) -> Callable[[float], str]:
     return lambda value: fmt.format(float(value), x=float(value))
 
 
+def _lattice_indices(scale: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Return ``(i, j)`` of the points with ``i + j + k = scale``.
+
+    The points are in descending ``i``, then descending ``j``. Both arrays
+    are empty when `scale` is negative.
+    """
+    rows = np.arange(scale + 1, dtype=np.intp)
+    row = np.repeat(rows, rows + 1)
+    # k equals the position of the point within its row.
+    k = np.arange(len(row), dtype=np.intp) - row * (row + 1) // 2
+    return scale - row, row - k
+
+
+def get_triangular_lattice(scale: int) -> Tuple[np.ndarray, np.ndarray]:
+    """Return a regular triangular lattice with `scale` parts on each edge.
+
+    The lattice points are all the compositions whose components are
+    multiples of ``1 / scale`` and sum to 1, and the small triangles cover
+    the whole diagram without overlaps or gaps, all with the same area.
+
+    Parameters
+    ----------
+    scale : int
+        Number of parts into which each edge is divided, 1 or greater.
+        Integer types of numpy are accepted, ``bool`` is not.
+
+    Returns
+    -------
+    vertices : numpy.ndarray
+        Compositions of the lattice points, a float array of shape
+        ``((scale + 1) * (scale + 2) // 2, 3)``. Each row is
+        ``(i, j, k) / scale`` with non-negative integers
+        ``i + j + k = scale``, and the columns are in the order of the
+        vertices of the diagram (top, bottom left, bottom right). The rows
+        are in descending ``i``, then descending ``j``: from the top row to
+        the bottom row of the diagram, and from left to right within a row.
+    triangles : numpy.ndarray
+        Small triangles as the row numbers of three `vertices`, an array of
+        ``numpy.intp`` with shape ``(scale ** 2, 3)``. The
+        ``scale * (scale + 1) // 2`` upward triangles come first, each as
+        its top, bottom-left and bottom-right vertices, followed by the
+        ``scale * (scale - 1) // 2`` downward triangles, each as its
+        bottom, upper-right and upper-left vertices. Every triangle is
+        counterclockwise in the coordinates of :func:`three2two`. Within
+        each group the triangles are ordered from the top row to the bottom
+        row of the diagram, and from left to right within a row.
+
+    Raises
+    ------
+    TypeError
+        If `scale` is not an integer (``bool`` is rejected).
+    ValueError
+        If `scale` is less than 1.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_triangular_lattice
+    >>> vertices, triangles = get_triangular_lattice(1)
+    >>> vertices.tolist()
+    [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    >>> triangles.tolist()
+    [[0, 1, 2]]
+    >>> vertices, triangles = get_triangular_lattice(2)
+    >>> vertices.shape, triangles.shape
+    ((6, 3), (4, 3))
+    >>> for row in vertices.tolist():
+    ...     print(row)
+    [1.0, 0.0, 0.0]
+    [0.5, 0.5, 0.0]
+    [0.5, 0.0, 0.5]
+    [0.0, 1.0, 0.0]
+    [0.0, 0.5, 0.5]
+    [0.0, 0.0, 1.0]
+    >>> triangles.tolist()
+    [[0, 1, 2], [1, 3, 4], [2, 4, 5], [4, 2, 1]]
+    >>> get_triangular_lattice(0)
+    Traceback (most recent call last):
+        ...
+    ValueError: `scale` must be 1 or greater, but got 0.
+    """
+    if isinstance(scale, (bool, np.bool_)) or not isinstance(scale, Integral):
+        raise TypeError(f"`scale` must be an integer, but got {scale!r}.")
+    if scale < 1:
+        raise ValueError(f"`scale` must be 1 or greater, but got {scale!r}.")
+    n = int(scale)
+
+    def index(i: np.ndarray, j: np.ndarray) -> np.ndarray:
+        # Row number in `vertices` of the point (i, j, n - i - j).
+        row = n - i
+        return row * (row + 1) // 2 + row - j
+
+    i, j = _lattice_indices(n)
+    vertices = np.stack((i, j, n - i - j), axis=1) / n
+
+    # Upward triangles on the bases (i, j, k) with i + j + k = n - 1.
+    bi, bj = _lattice_indices(n - 1)
+    upward = np.stack(
+        (index(bi + 1, bj), index(bi, bj + 1), index(bi, bj)), axis=1
+    )
+    # Downward triangles on the bases (i, j, k) with i + j + k = n - 2.
+    bi, bj = _lattice_indices(n - 2)
+    downward = np.stack(
+        (index(bi, bj + 1), index(bi + 1, bj), index(bi + 1, bj + 1)),
+        axis=1,
+    )
+    triangles = np.concatenate((upward, downward)).astype(np.intp)
+    return vertices, triangles
+
+
 if __name__ == "__main__":
     from doctest import testmod
 

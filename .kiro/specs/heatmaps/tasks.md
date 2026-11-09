@@ -5,7 +5,7 @@
 > docstring の例は steering の tech.md「Docstring Examples」に従い、共通 doctest ランナーで実行する。本 spec は doctest を実行する独自のテストを作らず、ランナーも変更しない。
 
 - [ ] 1. 基盤: 格子生成と、三角形を塗る描画の計算・検証
-- [ ] 1.1 (P) 正則な三角格子を図なしで返す関数を追加する
+- [x] 1.1 (P) 正則な三角格子を図なしで返す関数を追加する
   - 分割数が整数でない（真偽値を含む）ときは受け付ける値を示す `TypeError`、1 未満のときは範囲を示す `ValueError` にする。numpy の整数型は受け付ける
   - 格子点 (n+1)(n+2)/2 個（各成分が 1/n の整数倍で合計 1、列は頂点ラベルの順）と小三角形 n² 個を、design に定めた並び順（格子点は上の行から各行は左から、小三角形は上向きのあと下向き）と向き（反時計回り）で返す
   - 格子点や小三角形ごとの Python の繰り返しを使わず、numpy のベクトル演算で作る。`diagram-customization` が追加した配置関数とは別の名前にし、既存の関数は変えない
@@ -112,3 +112,7 @@
   - 完了時: テスト全体（共通 doctest ランナーで `tripcolor`・`heatmapf`・`get_triangular_lattice` の例が FutureWarning なしに通ることを含む）と ruff の確認が通り、依存の追加がない
   - _Boundary: 読み取りと実行のみ（ファイルを変更しない）。確認対象: テスト全体、`pyproject.toml`: `[project] dependencies`、`src/ternary_diagram/_api.py`: `DEFAULT_ZORDER_*`_
   - _Requirements: 7.2, 7.10, 8.2, 9.5_
+
+## Implementation Notes
+- 上流の状態: plot-side-effects・diagram-customization・annotate-plain-text・region-plots はマージ済み。zorder 定数は `DEFAULT_ZORDER_FILL = 0.5`、`DEFAULT_ZORDER_TEXT = 4` が既にあり、ヒートマップの定数はその後ろに置く。`tests/test_fill.py::test_default_zorder_heatmap_is_behind_fill` は `DEFAULT_ZORDER_HEATMAP` があれば自動で有効になる。`ruff check .` はノートブックの既存の F401 で落ちるので `ruff check src tests` で確かめる。mypy は既存の 7 件が基準
+- 1.1: 頂点番号は design の対応表ではなく閉形式 `row*(row+1)//2 + row - j` で求める（scale 1〜79・123・200 で総当たりと一致）。格子の (i, j) は private の `_lattice_indices` に切り出した
