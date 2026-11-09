@@ -5,8 +5,9 @@ import numpy as np
 import pytest
 from matplotlib.colors import to_rgba
 
-from ternary_diagram import _api
+from ternary_diagram import TernaryDiagram, _api
 
+MATERIALS = ("Li2O", "La2O3", "TiO2")
 ROOT3_OVER_2 = sqrt(3.0) / 2.0
 # 上の頂点の座標 (the top vertex)
 TOP_XY = (0.5, ROOT3_OVER_2)
@@ -139,6 +140,96 @@ def test_text_invalid_vector_draws_nothing(td, vector):
 
     with pytest.raises(ValueError, match="length must be 3"):
         td.text("Liquid", vector)
+
+    assert len(td.ax.texts) == n_texts
+    assert "text" not in td.x_
+    assert "text" not in td.y_
+
+
+# --- auto_latex_notation (化学式の整形 / formatting chemical formulas) ---
+
+
+@pytest.fixture
+def td_plain(ax):
+    """A diagram that does not format chemical formulas by default."""
+    return TernaryDiagram(
+        MATERIALS, ax=ax, auto_latex_notation=False, tight_layout=True
+    )
+
+
+def test_text_formats_chemical_formula_by_default(td):
+    assert td.text("Li2O", CENTER).get_text() == "Li$_{2}$O"
+
+
+def test_text_auto_latex_notation_false_applies_to_the_call_only(td):
+    assert (
+        td.text("Li2O", CENTER, auto_latex_notation=False).get_text() == "Li2O"
+    )
+    # 三角図単位の設定は書き換わらない (the diagram setting is unchanged)
+    assert td.text("Li2O", CENTER).get_text() == "Li$_{2}$O"
+
+
+def test_text_explicit_true_formats_on_default_diagram(td):
+    assert (
+        td.text("Li2O", CENTER, auto_latex_notation=True).get_text()
+        == "Li$_{2}$O"
+    )
+
+
+@pytest.mark.parametrize("kwargs", [{}, {"auto_latex_notation": None}])
+def test_text_inherits_diagram_setting_without_formatting(td_plain, kwargs):
+    assert td_plain.text("Li2O", CENTER, **kwargs).get_text() == "Li2O"
+
+
+def test_text_auto_latex_notation_true_overrides_diagram_setting(td_plain):
+    assert (
+        td_plain.text("Li2O", CENTER, auto_latex_notation=True).get_text()
+        == "Li$_{2}$O"
+    )
+    # 三角図単位の設定は書き換わらない (the diagram setting is unchanged)
+    assert td_plain.text("Li2O", CENTER).get_text() == "Li2O"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(np.bool_(False), "Li2O"), (np.bool_(True), "Li$_{2}$O")],
+)
+def test_text_accepts_numpy_bool(td, value, expected):
+    assert (
+        td.text("Li2O", CENTER, auto_latex_notation=value).get_text()
+        == expected
+    )
+
+
+def test_text_does_not_warn_without_auto_latex_notation(td, recwarn):
+    td.text("Sample 1", CENTER)
+
+    assert not [w for w in recwarn if issubclass(w.category, FutureWarning)]
+
+
+@pytest.mark.parametrize(
+    "string", ["Li2O", "Sample 1", "LiF + Li2O", "L + α", "Liquid"]
+)
+def test_text_formats_like_annotate(td, string):
+    text = td.text(string, CENTER)
+    annotation = td.annotate(string, CENTER, auto_latex_notation=True)
+
+    assert text.get_text() == annotation.get_text()
+
+
+@pytest.mark.parametrize("auto_latex_notation", [None, True, False])
+def test_text_does_not_format_non_str(td, auto_latex_notation):
+    text = td.text(1.5, CENTER, auto_latex_notation=auto_latex_notation)
+
+    assert text.get_text() == "1.5"
+
+
+@pytest.mark.parametrize("value", [1, 0, "yes"])
+def test_text_invalid_auto_latex_notation_draws_nothing(td, value):
+    n_texts = len(td.ax.texts)
+
+    with pytest.raises(TypeError, match="auto_latex_notation"):
+        td.text("Li2O", CENTER, auto_latex_notation=value)
 
     assert len(td.ax.texts) == n_texts
     assert "text" not in td.x_

@@ -22,7 +22,7 @@
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 4.5, 5.1, 5.3, 6.1, 6.2, 6.4, 7.1, 7.2, 8.1, 8.3_
   - _Boundary: src/ternary_diagram/_api.py: TernaryDiagram.fill, _FillPlotter（と `import matplotlib.patches`（戻り値と `collection_` の型注釈）、`ternary_diagram._post_draw` の `PostDrawContext`（`_FillPlotter.__init__` の型注釈。plot-side-effects が import 済みなら足さない）の import の追加）; tests/test_fill.py_
 
-- [ ] 3. コア: 組成点への文字の配置
+- [x] 3. コア: 組成点への文字の配置
   - _Boundary: src/ternary_diagram/_api.py: TernaryDiagram.__init__ (`self.__auto_latex_notation` line only, if annotate-plain-text has not added it), TernaryDiagram.text, _TextPlotter, _TEXT_ALIGNMENT_DEFAULTS（と `check_optional_bool`・整形の入口の import の追加（未 import の場合のみ））; tests/test_text.py_
 
 - [x] 3.1 `text` の配置を Plotter パターンで実装し、単体テストで振る舞いを固定する
@@ -36,7 +36,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 4.5, 5.1, 5.2, 5.3, 6.3, 6.4, 7.1, 7.2, 8.1, 8.3_
   - _Boundary: src/ternary_diagram/_api.py: TernaryDiagram.text, _TextPlotter, _TEXT_ALIGNMENT_DEFAULTS; tests/test_text.py_
 
-- [ ] 3.2 `text` に化学式の整形の切り替えと、三角図単位の設定の引き継ぎを足す
+- [x] 3.2 `text` に化学式の整形の切り替えと、三角図単位の設定の引き継ぎを足す
   - 着手条件: annotate-plain-text がマージ済みであることを確かめ、`annotate` が使っている整形の入口、`annotate` に整形の切り替え引数があればその名前、annotate-plain-text が `TernaryDiagram.__init__` に三角図単位の設定の private な bool 属性 `__auto_latex_notation` の 1 行を足しているか、`annotate` が互換のための警告の経路を持つかを確認する。切り替え引数の名前が違えば `text` の引数名をそろえる。互換の警告の経路があれば `text` はそれを通らずに規則の最終形を使い、design の想定と合わなければ着手前に要件 3.2 を見直す
   - roadmap「横断の取り決め」に従い、三角図単位の設定は private な bool 属性 `TernaryDiagram.__auto_latex_notation` から読む。annotate-plain-text がすでに足していれば何も足さずにそれを使い、まだなければ初期化の本体に `self.__auto_latex_notation = bool(auto_latex_notation)` を 1 行だけ足す（最初に必要になった側が足す）。別名の属性は作らない。シグネチャ・検証・土台の構築は変えない
   - キーワード専用の切り替え引数（既定は `None`）を公開メソッドに足し、Plotter を作る前に plot-side-effects の `None` を受け付ける真偽値の検証関数（`check_optional_bool`）に通す。`None`・真偽値以外は、受け付けられる値と受け取った値を示す `TypeError` になり、何も描かない
@@ -86,3 +86,4 @@
 - annotate-plain-text はマージ済み: 整形の入口は `utils.to_latex_notation`、`annotate` の切り替え引数は `auto_latex_notation`（キーワード専用、`None` は v3 の表示＋FutureWarning）。`TernaryDiagram.__auto_latex_notation` は `__init__` に追加済み。`ruff check .` は既存のノートブックの F401 で落ちるので `ruff check src tests` で確かめる
 - 2: `_FillPlotter` は既存の `_LinePlotter` にそろえて `super().__init__` に `z=None, z_min=None, z_max=None` を明示する（利用者の `z=` は TypeError になる）。3.1 で `text` を足したら、`fill` の docstring の Notes にも text より奥に描かれることを追記するとよい（レビューの提案）
 - 3.1: matplotlib 3.10 では正式名と別名（`horizontalalignment` と `ha`）を同時に渡すと別名が後から効くため、別名の判定を外しても今の版ではテストが落ちない。判定は版の差に備えたものとして残す（レビューの所見）
+- 3.2: `text` の整形は `_format_text`（annotate に `auto_latex_notation` を明示したときと同じ入口）を使い、v3 互換の警告経路は通らない。`Axes.text` のスタブが文字列しか受けないため、文字列以外を渡す箇所に理由付きの `# type: ignore[arg-type]` を置いた。3.1 の使用例は design の 3 ブロック構成に合わせて 3.2 の 2 ブロックに置き換えた

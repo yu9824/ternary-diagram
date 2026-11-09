@@ -1581,7 +1581,12 @@ class TernaryDiagram:
         return plotter.collection_
 
     def text(
-        self, text: str, vector: ArrayLike, **kwargs: Any
+        self,
+        text: str,
+        vector: ArrayLike,
+        *,
+        auto_latex_notation: Optional[bool] = None,
+        **kwargs: Any,
     ) -> matplotlib.text.Text:
         """Place a text at a composition.
 
@@ -1592,12 +1597,28 @@ class TernaryDiagram:
         Parameters
         ----------
         text : str
-            Text to be displayed, such as the name of a phase.
+            Text to be displayed, such as the name of a phase. An object
+            other than str is not formatted and is converted to a string
+            by matplotlib.
 
         vector : ArrayLike | shape = (3,) or (1, 3)
             Composition of the point where the text is placed. It
             represents the ratio of each component (the sum does not have
             to be 1), in the same order as `materials`.
+
+        auto_latex_notation : bool or None, optional
+            Whether to write the chemical formulas in `text` in LaTeX
+            notation (``"Li2O"`` to ``"Li$_{2}$O"``), with the same rule
+            as :meth:`annotate` with ``auto_latex_notation=True`` (see
+            :func:`ternary_diagram.utils.to_latex_notation`). ``None``
+            follows `auto_latex_notation` of :class:`TernaryDiagram`, the
+            setting of the diagram also used for the vertex labels
+            (``True`` unless changed). ``True`` / ``False`` apply only to
+            the text of this call and change neither the setting of the
+            diagram, the vertex labels nor the other calls of
+            :meth:`text` and :meth:`annotate`. Pass ``False`` to show a
+            text such as mathtext with ``$...$`` as it is, by default
+            None (the setting of the diagram)
 
         kwargs : parameter of `matplotlib.pyplot.text`, optional
             Properties of :class:`matplotlib.text.Text`, such as
@@ -1613,6 +1634,8 @@ class TernaryDiagram:
 
         Raises
         ------
+        TypeError
+            If `auto_latex_notation` is neither None, True nor False.
         ValueError
             If `vector` does not have 3 components.
 
@@ -1630,22 +1653,50 @@ class TernaryDiagram:
 
         Examples
         --------
-        Place the name of a phase at the center of a region.
+        Place the name of a phase on a default diagram, which formats the
+        chemical formulas, and show another text as it is only in that
+        call.
 
         >>> import matplotlib.pyplot as plt
         >>> from ternary_diagram import TernaryDiagram
         >>> fig, ax = plt.subplots(layout="constrained")
         >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
-        >>> (region,) = td.fill(
-        ...     [[0.5, 0.25, 0.25], [0.25, 0.5, 0.25], [0.25, 0.25, 0.5]],
-        ...     alpha=0.5,
+        >>> label = td.text("Li2TiO3", [0.5, 0, 0.5])
+        >>> label.get_text()
+        'Li$_{2}$TiO$_{3}$'
+        >>> plain = td.text(
+        ...     "Phase 1", [0.2, 0.4, 0.4], auto_latex_notation=False
         ... )
-        >>> label = td.text("Liquid", [1, 1, 1])
+        >>> plain.get_text()
+        'Phase 1'
+
+        On a diagram that does not format the chemical formulas, the text
+        is shown as it is unless ``auto_latex_notation=True`` is passed.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Li2O", "La2O3", "TiO2"], ax=ax, auto_latex_notation=False
+        ... )
+        >>> label = td.text("Li2TiO3", [0.5, 0, 0.5])
+        >>> label.get_text()
+        'Li2TiO3'
+        >>> formula = td.text(
+        ...     "Li2TiO3", [0.5, 0, 0.5], auto_latex_notation=True
+        ... )
+        >>> formula.get_text()
+        'Li$_{2}$TiO$_{3}$'
         """  # noqa: E501
+        flag = check_optional_bool(auto_latex_notation, "auto_latex_notation")
+        if flag is None:
+            # inherit the setting of the diagram (not overwritten)
+            flag = self.__auto_latex_notation
         plotter = _TextPlotter(
             text,
             vector,
             ax=self.ax,
+            auto_latex_notation=flag,
             post_draw_context=self.__post_draw_context,
             **kwargs,
         )
@@ -2295,6 +2346,7 @@ class _TextPlotter(_BasePlotter):
         vector: ArrayLike,
         ax: Optional[matplotlib.axes.Axes] = None,
         *,
+        auto_latex_notation: bool,  # resolved by TernaryDiagram.text
         post_draw_context: PostDrawContext,
         **kwargs: Any,
     ) -> None:
@@ -2324,8 +2376,15 @@ class _TextPlotter(_BasePlotter):
         )
 
         # text
+        # format the chemical formulas of a str, like `annotate`. A text
+        # other than str is passed as it is and converted by matplotlib,
+        # although the stub of `Axes.text` accepts only str.
+        label = _format_text(text, auto_latex_notation)
         self.collection_: matplotlib.text.Text = self.ax.text(
-            self.x_[0], self.y_[0], text, **self.kwargs
+            self.x_[0],
+            self.y_[0],
+            label,  # type: ignore[arg-type]
+            **self.kwargs,
         )
         self._post_draw()
 
