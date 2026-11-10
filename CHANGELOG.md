@@ -24,6 +24,10 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - `ternary_diagram.utils` gains `is_chemical_formula` and `to_latex_notation`, which tell whether a word looks like a chemical formula and format the chemical formulas in a text.
 - `fill` shades a polygon whose vertices are given as compositions, such as a region of a phase diagram, and can be labeled for the legend. By default it is drawn above contours and behind the grid and the other plots.
 - `text` places a text exactly at a composition, centered by default and drawn in front of the other plots. The chemical formulas in it are formatted following `auto_latex_notation` of `TernaryDiagram`, which `text(auto_latex_notation=...)` overrides for that call.
+- `tripcolor` paints the triangles between scattered compositions with colors given by a value at each composition, without interpolating on a grid (`shading="flat"` or `"gouraud"`). Only the inside of the convex hull of the compositions is painted, and triangles touching a NaN value are left blank.
+- `heatmapf` evaluates a function `f(a, b, c)` of the composition on a regular triangular lattice, calling it once with arrays, and paints the result as a heatmap; `scale` sets the number of divisions of each edge (50 by default). A function that returns NaN leaves those triangles blank.
+- Both heatmaps are drawn behind every other plot by default and add a colorbar in the same way as `scatter` and `contour` (`colorbar=...`, `z_min` / `z_max` and their aliases `vmin` / `vmax`).
+- `ternary_diagram.utils` gains `get_triangular_lattice`, which returns the points and the triangles of a regular triangular lattice without a figure.
 
 ### Deprecations
 

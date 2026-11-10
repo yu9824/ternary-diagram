@@ -4,8 +4,8 @@
 >
 > docstring の例は steering の tech.md「Docstring Examples」に従い、共通 doctest ランナーで実行する。本 spec は doctest を実行する独自のテストを作らず、ランナーも変更しない。
 
-- [ ] 1. 基盤: 格子生成と、三角形を塗る描画の計算・検証
-- [ ] 1.1 (P) 正則な三角格子を図なしで返す関数を追加する
+- [x] 1. 基盤: 格子生成と、三角形を塗る描画の計算・検証
+- [x] 1.1 (P) 正則な三角格子を図なしで返す関数を追加する
   - 分割数が整数でない（真偽値を含む）ときは受け付ける値を示す `TypeError`、1 未満のときは範囲を示す `ValueError` にする。numpy の整数型は受け付ける
   - 格子点 (n+1)(n+2)/2 個（各成分が 1/n の整数倍で合計 1、列は頂点ラベルの順）と小三角形 n² 個を、design に定めた並び順（格子点は上の行から各行は左から、小三角形は上向きのあと下向き）と向き（反時計回り）で返す
   - 格子点や小三角形ごとの Python の繰り返しを使わず、numpy のベクトル演算で作る。`diagram-customization` が追加した配置関数とは別の名前にし、既存の関数は変えない
@@ -14,7 +14,7 @@
   - _Boundary: `src/ternary_diagram/utils.py`: `get_triangular_lattice`（と `from numbers import Integral` の import）、`tests/test_utils.py`: `get_triangular_lattice` のテストの追記_
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5, 8.1, 9.3, 9.5_
 
-- [ ] 1.2 (P) 塗り方と kwargs の検証、三角形分割、塗れない三角形のマスク、既定の色の範囲を計算する関数群を作る
+- [x] 1.2 (P) 塗り方と kwargs の検証、三角形分割、塗れない三角形のマスク、既定の色の範囲を計算する関数群を作る
   - 新しいモジュールなので、先頭に `from __future__ import annotations` を置き、関数の注釈は組み込みジェネリクスと `X | None` で書く（tech.md）。実行時に評価される型別名だけは Python 3.9 で動く `typing` の形で書く。private なモジュールなので docstring に `>>>` の例は書かない
   - 塗り方は flat と gouraud だけを受け付け、それ以外は受け付ける値を示す `ValueError` にする
   - kwargs の検証: 旧名 `flag_cbar` は `colorbar` を案内する `TypeError`、`c` と `facecolors` は塗りの値と同時に使えない旨の `ValueError`、格子が固定の描画では `triangles` と `mask` も「NaN を返せば塗らずに残せる」ことを案内する `ValueError` にする。受け取った辞書は変更しない
@@ -26,7 +26,7 @@
   - _Boundary: `src/ternary_diagram/_mesh.py`（新規）: `Shading`、`HeatmapFunc`、`MeshCollection`、`SHADINGS`、`DEFAULT_HEATMAPF_SCALE`、`check_shading`、`check_mesh_kwargs`、`triangulate`、`unpaintable_mask`、`default_color_range`、`duplicate_points_message`、`tests/test_mesh.py`（新規）_
   - _Requirements: 1.4, 1.5, 1.7, 1.8, 2.5, 4.1, 4.2, 4.3, 5.4, 5.5, 6.5, 7.5, 7.6, 7.7_
 
-- [ ] 1.3 関数を評価点でまとめて 1 回だけ呼び、戻り値を検証する関数を作る
+- [x] 1.3 関数を評価点でまとめて 1 回だけ呼び、戻り値を検証する関数を作る
   - 1.2 と同じモジュールに置くので、1.2 の後に行う（並行不可）
   - 呼び出し可能でないものには `TypeError` を出す。評価点の 3 成分をそれぞれ複製した 1 次元配列として関数をちょうど 1 回呼び、関数が出した例外は置き換えずにそのまま伝える
   - 戻り値を浮動小数点に変換し（マスク付き配列のマスクは NaN にする）、形 `(m,)`・`(m, 1)`・`(1, m)` を `(m,)` に揃える。それ以外の形や数値に変換できない戻り値は、期待する個数と `numpy.vectorize` での包み方を示す `ValueError` にする
@@ -34,9 +34,9 @@
   - _Boundary: `src/ternary_diagram/_mesh.py`: `evaluate_function`、`tests/test_mesh.py`: `evaluate_function` のテストの追記_
   - _Requirements: 2.2, 2.6, 2.7, 2.8, 2.9_
 
-- [ ] 2. 統合: 計算関数を Plotter と公開メソッドに組み込む
+- [x] 2. 統合: 計算関数を Plotter と公開メソッドに組み込む
   - 2.1 と 2.2 は、共通の描画手順・Plotter・公開メソッド（いずれも design の「描画」層で、同じモジュール）に 1.x の関数と上流の描画後処理をつなぐ統合タスクである
-- [ ] 2.1 共通の描画手順と重なり順の定数を用意し、`tripcolor` を TernaryDiagram に追加する
+- [x] 2.1 共通の描画手順と重なり順の定数を用意し、`tripcolor` を TernaryDiagram に追加する
   - 既存の zorder 定数ブロックの末尾（`region-plots` が先にマージされていればその定数の後ろ）に、等高線より奥（-1）のヒートマップ用の定数を追加する。既存の定数の名前・値・並びは変えない
   - 共通の描画手順を Plotter の基底として用意する: `z_min` / `z_max` と別名 `vmin` / `vmax` の統合（既存の別名統合をそのまま使う）→ 塗れない三角形のマスク → 既定の色の範囲（`norm` だけが指定され範囲が未指定なら範囲を渡さない）→ 既定のカラーマップと zorder の注入（利用者の指定が優先）→ マスクの適用 → 値の位置（点 / 三角形）に応じた matplotlib の `tripcolor` 呼び出し。本 spec の例外はすべて matplotlib を呼ぶ前に出し終える
   - `tripcolor` の Plotter: 塗り方・kwargs の検証 → `triangles` / `mask` の取り出し → 基底の初期化 → `z` の欠落と要素数の検証 → 三角形分割 → 重複があれば `warn_external(..., category=UserWarning)` で利用者のコード位置に警告（roadmap の横断の取り決めで `warn_external` はパッケージ全体の利用者向け警告の入口）→ 描画 → `__init__` の最後で描画後処理を 1 回だけ呼ぶ。`tight_layout` やカラーバーを直接呼ばない。種類名は `"tripcolor"`
@@ -49,7 +49,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `DEFAULT_ZORDER_HEATMAP`、`_MeshPlotter`、`_TripcolorPlotter`、`TernaryDiagram.tripcolor`（と `_mesh` の公開名・`check_optional_bool`・`warn_external` の import）、`tests/test_tripcolor.py`（新規: スモークテスト）_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 4.1, 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 7.1, 7.2, 7.3, 7.4, 7.8, 7.9, 9.1, 9.5_
 
-- [ ] 2.2 `heatmapf` を TernaryDiagram に追加する
+- [x] 2.2 `heatmapf` を TernaryDiagram に追加する
   - 2.1 と同じモジュールを編集するので、2.1 の後に行う（並行不可）
   - `heatmapf` の Plotter: 塗り方・kwargs（格子固定）の検証 → 格子の生成（分割数の例外はそのまま伝える）→ 評価点の選択（flat は小三角形の重心、gouraud は格子点）→ 関数を 1 回だけ評価 → 評価点と関数値で基底を初期化 → 格子点の座標と小三角形から三角形分割を作る → flat は三角形の値、gouraud は点の値として共通の描画手順に渡す → `__init__` の最後で描画後処理を 1 回だけ呼ぶ。種類名は `"heatmapf"`、記録する座標は評価点
   - 公開メソッド `heatmapf` は関数だけを位置引数にし、`scale`（既定 50）・`z_min`・`z_max`・`shading`・`colorbar` をキーワード専用で受ける。2.1 と同じく Plotter を作る前に `utils.check_optional_bool(colorbar, "colorbar")` で検証し、検証済みの値を Plotter に渡す
@@ -61,8 +61,8 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `_HeatmapfPlotter`、`TernaryDiagram.heatmapf`（と `get_triangular_lattice` の import）、`tests/test_heatmapf.py`（新規: スモークテスト）_
   - _Requirements: 2.1, 2.3, 2.4, 2.5, 3.6, 4.2, 6.1, 6.2, 6.3, 6.4, 7.1, 7.7, 7.8, 7.9, 9.1, 9.2, 9.5_
 
-- [ ] 3. 検証と変更履歴
-- [ ] 3.1 (P) `tripcolor` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 3. 検証と変更履歴
+- [x] 3.1 (P) `tripcolor` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - flat の色の値が各三角形の 3 頂点の `z` の平均、gouraud の色の値が `z` そのものであることを確認する
   - 三角形の 3 頂点と内部の点では塗った面積の合計が三角図全体、内側の小さな三角形の頂点と内部の点ではその小さな三角形の面積に一致すること（凸包の外を塗らない）を確認する
   - kwargs の `triangles` で指定どおりの三角形になり、`mask` で塗る三角形が減ることを確認する
@@ -74,7 +74,7 @@
   - _Boundary: `tests/test_tripcolor.py`_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 4.1, 4.3, 7.1, 7.8_
 
-- [ ] 3.2 (P) `heatmapf` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 3.2 (P) `heatmapf` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - 記録用の関数で、呼び出し回数が 1、引数が 3 つの 1 次元配列で各評価点の合計が 1 になること、flat では評価点が n² 個で全成分が 0 より大きい（辺上で評価しない）こと、gouraud では (n+1)(n+2)/2 個で三角形の頂点を含むことを確認する。第 1 引数が上の頂点の成分であること（`lambda a, b, c: a` で上ほど値が大きい）も確認する
   - flat の色の値が重心での関数値と一致すること、既定の `scale` で多角形が 2,500 個になることを確認する
   - `(m, 1)` を返す関数で描けること、スカラーを返す関数で `ValueError`（メッセージに `numpy.vectorize`）、呼び出し可能でないもので `TypeError`、例外を出す関数で元の例外になり、いずれも Axes の描画オブジェクトが増えないことを確認する
@@ -86,7 +86,7 @@
   - _Boundary: `tests/test_heatmapf.py`_
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.6, 4.2, 4.3, 7.1, 7.7, 7.8, 8.1_
 
-- [ ] 3.3 (P) 両メソッドに共通の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 3.3 (P) 両メソッドに共通の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `tripcolor` と `heatmapf` でパラメータ化する
   - 値の範囲: `z_min` / `z_max` と `vmin` / `vmax` で同じ範囲になり、同時指定は `scatter` と同じ文面の `ValueError`。未指定なら有限な値の最小・最大（`tripcolor` の flat では三角形の平均の範囲より広いこと）、片側だけの指定、`norm` の指定で例外が出ず渡した `norm` が使われること、既定のカラーマップが `scatter` / `contour` と同じであることを確認する
   - カラーバー: 既定で 1 本追加されて戻り値から参照できること、同じ三角図での 2 回目の既定の描画で追加かつ FutureWarning が 1 回（文面は `plot-side-effects` の所有物なので、`match=` は `"colorbar"` かメソッド名などの変わりにくい断片だけにする）、`colorbar=False` で増えず `colorbar=True` で増えること、`colorbar=1` で `TypeError` になり描画オブジェクトが増えないこと、`flag_cbar=False` で `TypeError` になること、戻り値を `TernaryDiagram.colorbar()` に渡したカラーバーの範囲とカラーマップが戻り値と一致することを確認する
@@ -98,17 +98,31 @@
   - _Boundary: `tests/test_heatmaps.py`（新規）_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 7.2, 7.3, 7.4, 7.5, 7.6, 7.8, 7.9, 7.10_
 
-- [ ] 3.4 (P) CHANGELOG の Unreleased に追加機能を記載する
+- [x] 3.4 (P) CHANGELOG の Unreleased に追加機能を記載する
   - `plot-side-effects` がそろえた Unreleased の見出しの組（Breaking changes / New features / Deprecations / Bug fixes / Other changes）のうち New features に、`TernaryDiagram.tripcolor`、`TernaryDiagram.heatmapf`、`ternary_diagram.utils.get_triangular_lattice` を、既存の項目の書式（英語、箇条書き）で追記する
   - 見出しは足さず、他の spec が追記した項目は並べ替えない
   - 完了時: CHANGELOG の Unreleased の New features に 3 項目があり、既存の書式に揃っている
   - _Boundary: `CHANGELOG.md`: Unreleased の New features の `tripcolor` / `heatmapf` / `get_triangular_lattice` の項目_
   - _Requirements: 9.4_
 
-- [ ] 3.5 全体の回帰確認を行う
+- [x] 3.5 全体の回帰確認を行う
   - テスト全体（`pytest -xs .`。共通 doctest ランナー `tests/test_doctests.py` を含む）、`ruff check .`、`ruff format --check .` を実行する。mypy は環境にあれば実行し、なければインストールせずに確認できなかったことを報告する
   - 既存のテスト（`scatter`・`contour`・`plot`・`annotate`・三角図の土台）を変更せずに通ること、ランタイム依存（`pyproject.toml` の dependencies）が numpy と matplotlib のままであることを確認する
   - `region-plots` が先にマージされている場合は、`DEFAULT_ZORDER_HEATMAP (-1) < DEFAULT_ZORDER_FILL (0.5)` であることを確認する
   - 完了時: テスト全体（共通 doctest ランナーで `tripcolor`・`heatmapf`・`get_triangular_lattice` の例が FutureWarning なしに通ることを含む）と ruff の確認が通り、依存の追加がない
   - _Boundary: 読み取りと実行のみ（ファイルを変更しない）。確認対象: テスト全体、`pyproject.toml`: `[project] dependencies`、`src/ternary_diagram/_api.py`: `DEFAULT_ZORDER_*`_
   - _Requirements: 7.2, 7.10, 8.2, 9.5_
+
+## Implementation Notes
+- 上流の状態: plot-side-effects・diagram-customization・annotate-plain-text・region-plots はマージ済み。zorder 定数は `DEFAULT_ZORDER_FILL = 0.5`、`DEFAULT_ZORDER_TEXT = 4` が既にあり、ヒートマップの定数はその後ろに置く。`tests/test_fill.py::test_default_zorder_heatmap_is_behind_fill` は `DEFAULT_ZORDER_HEATMAP` があれば自動で有効になる。`ruff check .` はノートブックの既存の F401 で落ちるので `ruff check src tests` で確かめる。mypy は既存の 7 件が基準
+- 1.1: 頂点番号は design の対応表ではなく閉形式 `row*(row+1)//2 + row - j` で求める（scale 1〜79・123・200 で総当たりと一致）。格子の (i, j) は private の `_lattice_indices` に切り出した
+- 1.2: `Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（matplotlib 3.3.4 でも確認）。`_api.py` の版分岐は private なサブモジュール（`TriContourSet` など）の位置のためで、新しいモジュールには持ち込まない（レビューで差し戻し 1 回）。`unpaintable_mask` は `values` の長さを検証しないので、2.1 の Plotter が呼ぶ前に `z` の要素数を確かめる
+- 1.3: `evaluate_function` は戻り値を常に新しい (m,) 配列にする。複素数を返す関数は numpy の ComplexWarning（発生位置は numpy 内部）が出て虚部が捨てられたまま受け付けられる（design の変換どおり。拒否するなら `np.iscomplexobj` で ValueError にする改善の候補）
+- 2.1: `tripcolor` は `fill` / `text` と同じく `colorbar()` の前に置いた。`_api.py` の `_mesh` からの import は使う名前だけで、2.2 で `DEFAULT_HEATMAPF_SCALE`・`HeatmapFunc`・`evaluate_function` を足す。`norm` だけを渡すと色の範囲は matplotlib の自動調整（flat では三角形の平均の範囲）。`norm` と `z_min` / `z_max` の併用は matplotlib の ValueError。重複の UserWarning は描画前に出るので、その後に「塗れる三角形がない」ValueError が続くことがある。See Also の `heatmapf` は 2.2 で参照先ができる（レビューで差し戻し 1 回: See Also の不足）
+- 2.2: `heatmapf` の docstring の速度・ファイルサイズの目安は matplotlib 3.10 での実測（scale=100 の描画は約 0.05 秒、SVG は scale=50 で約 0.4 MB、100 で約 1.5 MB。PDF は圧縮されるので小さい）。`rasterized=True` で SVG は大きく減る
+- 3.1: 塗った三角形は flat（PolyCollection）でも gouraud（TriMesh）でも公開の `get_paths()` で取り出せる（マスクした三角形にはパスがない）。private の `TriMesh._triangulation` には頼らない（レビューの提案で置き換えた）
+- 3.2: 既定の scale で多角形 2,500 個（flat）と格子点 1,326 個・三角形 2,500 個（gouraud）はスモークテストで確かめる。速度のテストは関数の評価・tight_layout・既定のカラーバーを含めて計測し、実測 0.08〜0.17 秒に対して閾値 1 秒。遅い CI で不安定になったら、閾値を変えずに 2 回目の呼び出しを測る案がある
+- 3.3: 範囲を持たない `norm` だけでは、既定の範囲を書き込む誤りを `tripcolor` の flat でしか判別できない。範囲を持つ `LogNorm(vmin=0.5, vmax=10)` が描画後も変わらないことを確かめるテストを足し、4 通りすべてで判別できるようにした（mutant で確認）
+- 3.4: CHANGELOG の New features への追記だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、他の spec の項目を並べ替えない、要件 9.4 の 3 項目）でその場でレビューした。`tripcolor` / `heatmapf` / `get_triangular_lattice` に加え、両方に共通する既定の重なり順とカラーバーの扱いを 1 項目にまとめた
+- 3.5: テスト一式 1965 passed, 1 xfailed（-W error::FutureWarning）。共通 doctest ランナーで `tripcolor`・`heatmapf`・`get_triangular_lattice` が PASSED。`ruff format --check .` は通過、`ruff check .` の 4 件はノートブックの既存の F401（本 spec は変えていない）。mypy は既存の 7 件。`pyproject.toml` は変更なしで依存は numpy と matplotlib のまま。`DEFAULT_ZORDER_HEATMAP (-1) < DEFAULT_ZORDER_FILL (0.5)`。既存のテストファイルの変更は `tests/test_utils.py` への追記（1.1 の境界）だけ
+- 最終検証（`/kiro-validate-impl`）: GO。要件 57/57。指摘のうち、定数のコメント（heatmapf も含める）と、`tripcolor` のマスク付き配列の `z` を NaN と同じく塗らないこと（`heatmapf` と揃えた。`a33f750`）を直した。下流（user-guide-docs）への申し送りは user-guide-docs の tasks.md の Implementation Notes に書いた。複素数を返す関数を ValueError にする改善と、速度のテストの CI での安定性は今後の課題
