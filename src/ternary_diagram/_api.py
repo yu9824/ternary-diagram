@@ -84,7 +84,7 @@ DEFAULT_ZORDER_SCATTER = 3
 DEFAULT_ZORDER_FILL = 0.5
 # text: in front of scatter, annotations and labels (matplotlib default: 3)
 DEFAULT_ZORDER_TEXT = 4
-# heatmap (tripcolor): behind the contours, the deepest data layer
+# heatmaps (tripcolor, heatmapf): behind the contours, the deepest data layer
 DEFAULT_ZORDER_HEATMAP = -1
 
 #: Reason of the FutureWarning about the formatting of the annotations,
@@ -1751,8 +1751,9 @@ class TernaryDiagram:
 
         z : ArrayLike | shape = (n,)
             Values of the points, one per composition, which determine the
-            colors. A NaN or infinite value leaves every triangle having
-            that point as a vertex unpainted.
+            colors. A NaN or infinite value, or a masked value of a masked
+            array, leaves every triangle having that point as a vertex
+            unpainted.
 
         z_min : Number or None, optional
             Lower limit of the color scale. `vmin` is accepted as an alias,
@@ -2910,6 +2911,10 @@ class _TripcolorPlotter(_MeshPlotter):
         # not passed to matplotlib as kwargs
         triangles = kwargs.pop("triangles", None)
         mask = kwargs.pop("mask", None)
+        if np.ma.isMaskedArray(z):
+            # masked values are not painted, like NaN (and like the masked
+            # values returned by the function of `heatmapf`)
+            z = np.ma.asarray(z, dtype=float).filled(np.nan)
         super().__init__(
             vector,
             ax=ax,

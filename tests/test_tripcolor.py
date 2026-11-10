@@ -265,6 +265,26 @@ def test_tripcolor_skips_triangles_with_non_finite_value(td, shading, bad):
 
 
 @pytest.mark.parametrize("shading", ["flat", "gouraud"])
+def test_tripcolor_masked_value_is_skipped_like_nan(td, shading):
+    x, y = _xy(POINTS)
+    z_nan = np.array(POINTS_Z)
+    z_nan[0] = np.nan
+    expected = _as_set(
+        _painted_triangles(td.tripcolor(POINTS, z_nan, shading=shading), x, y)
+    )
+    # マスクした点の値 (999) では塗らない (the masked value 999 is not used)
+    z_masked = np.ma.masked_array(
+        [999.0, *POINTS_Z[1:]], mask=[True] + [False] * (len(POINTS) - 1)
+    )
+
+    mesh = td.tripcolor(POINTS, z_masked, shading=shading, colorbar=False)
+
+    assert _as_set(_painted_triangles(mesh, x, y)) == expected
+    assert 999.0 not in np.asarray(mesh.get_array().compressed())
+    assert mesh.get_clim()[1] < 999.0
+
+
+@pytest.mark.parametrize("shading", ["flat", "gouraud"])
 def test_tripcolor_all_nan_raises_and_adds_nothing(td, shading):
     n_collections = len(td.ax.collections)
 
