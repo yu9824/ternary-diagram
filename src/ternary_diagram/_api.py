@@ -36,6 +36,16 @@ from ternary_diagram._deprecation import (
     resolve_renamed_parameter,
     warn_external,
 )
+from ternary_diagram._mesh import (
+    MeshCollection,
+    Shading,
+    check_mesh_kwargs,
+    check_shading,
+    default_color_range,
+    duplicate_points_message,
+    triangulate,
+    unpaintable_mask,
+)
 from ternary_diagram._post_draw import (
     COLORBAR_WARNING_KEY,
     LAYOUT_WARNING_KEY,
@@ -70,6 +80,8 @@ DEFAULT_ZORDER_SCATTER = 3
 DEFAULT_ZORDER_FILL = 0.5
 # text: in front of scatter, annotations and labels (matplotlib default: 3)
 DEFAULT_ZORDER_TEXT = 4
+# heatmap (tripcolor): behind the contours, the deepest data layer
+DEFAULT_ZORDER_HEATMAP = -1
 
 #: Reason of the FutureWarning about the formatting of the annotations,
 #: shared by ``annotate`` and ``scatter`` so that it is emitted once per
@@ -1706,6 +1718,179 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    def tripcolor(
+        self,
+        vector: ArrayLike,
+        z: ArrayLike,
+        *,
+        z_min: Optional[Number] = None,
+        z_max: Optional[Number] = None,
+        shading: Shading = "flat",
+        colorbar: Optional[bool] = None,
+        **kwargs: Any,
+    ) -> MeshCollection:
+        """Paint the triangles joining the compositions with their values.
+
+        The compositions are joined into triangles and each triangle is
+        painted from the values `z` of its 3 vertices, without
+        interpolating values elsewhere. This is a wrapper of
+        `matplotlib.pyplot.tripcolor`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tripcolor.html
+
+        Parameters
+        ----------
+        vector : ArrayLike | shape = (n, 3)
+            Compositions of the points, one row per point. Each row
+            represents the ratio of each component (the sum does not have
+            to be 1), in the same order as `materials`.
+
+        z : ArrayLike | shape = (n,)
+            Values of the points, one per composition, which determine the
+            colors. A NaN or infinite value leaves every triangle having
+            that point as a vertex unpainted.
+
+        z_min : Number or None, optional
+            Lower limit of the color scale. `vmin` is accepted as an alias,
+            and passing both raises a ValueError. If None, the minimum of
+            the finite values of `z` is used. Do not pass it together with
+            `norm`: leave both `z_min` and `z_max` as None so that `norm`
+            decides the range, since matplotlib raises a ValueError when
+            `norm` is given with either of them, by default None (the
+            minimum of `z`)
+
+        z_max : Number or None, optional
+            Upper limit of the color scale. `vmax` is accepted as an alias,
+            and passing both raises a ValueError. If None, the maximum of
+            the finite values of `z` is used. Do not pass it together with
+            `norm`: leave both `z_min` and `z_max` as None so that `norm`
+            decides the range, since matplotlib raises a ValueError when
+            `norm` is given with either of them, by default None (the
+            maximum of `z`)
+
+        shading : {'flat', 'gouraud'}, optional
+            How to paint each triangle. ``'flat'`` paints it with one color,
+            that of the mean of `z` at its 3 vertices. ``'gouraud'`` paints
+            it with colors varying linearly between the values of `z` at
+            its 3 vertices, by default 'flat'
+
+        colorbar : bool or None, optional
+            Whether to add a colorbar automatically for the triangles
+            colored by `z`. ``True`` adds one and ``False`` adds none.
+            ``None`` keeps the v3.x behavior: it adds one, and when the
+            diagram already has a colorbar, it also emits a FutureWarning
+            once per diagram. In ternary-diagram 4.0.0, ``None`` will add
+            none to a diagram that already has a colorbar. The colorbars
+            counted are those added through this TernaryDiagram
+            (automatically or with its ``colorbar()`` method) and not
+            removed; colorbars added directly with matplotlib, such as with
+            ``fig.colorbar``, are not counted. The colorbar added is
+            available as the ``colorbar`` attribute of the returned
+            object, by default None
+
+        kwargs : parameter of `matplotlib.pyplot.tripcolor`, optional
+            Passed to matplotlib as they are, such as `cmap`, `norm`,
+            `alpha`, `edgecolors` or `zorder`. They take precedence over
+            the defaults of this method (``cmap="rainbow"`` and
+            ``zorder=-1``). `triangles` (indices of the 3 points of each
+            triangle, shape (ntri, 3)) replaces the automatic
+            triangulation, and `mask` (boolean, shape (ntri,)) leaves the
+            triangles that are true unpainted. `c` and `facecolors` cannot
+            be used because the colors are determined by `z`, and the old
+            name `flag_cbar` is not accepted; use `colorbar` instead.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tripcolor.html
+
+        Returns
+        -------
+        matplotlib.collections.PolyCollection or matplotlib.collections.TriMesh
+            The painted triangles: a ``PolyCollection`` with
+            ``shading='flat'`` and a ``TriMesh`` with ``shading='gouraud'``.
+            It can be passed to :meth:`colorbar` to draw a colorbar with
+            the same color range and colormap.
+
+        Raises
+        ------
+        TypeError
+            If `colorbar` is neither None, True nor False, or if
+            `flag_cbar` is passed.
+        ValueError
+            If `z` is None or does not have one value per composition, if
+            `shading` is neither 'flat' nor 'gouraud', if `c` or
+            `facecolors` is passed, if both `z_min` and `vmin` (or `z_max`
+            and `vmax`) are passed, if the compositions cannot be
+            triangulated automatically (fewer than 3 distinct compositions,
+            or all of them on one straight line), or if no triangle can be
+            painted. Nothing is added to the diagram in these cases.
+
+        Warns
+        -----
+        UserWarning
+            If some compositions are the same after normalization. Only the
+            value of one of them is drawn.
+
+        See Also
+        --------
+        contour : Contours interpolated from the values of the points.
+        scatter : Points colored by their values.
+        heatmapf : A function painted on a regular triangular lattice.
+        ternary_diagram.utils.get_triangular_lattice : The regular
+            triangular lattice used by :meth:`heatmapf`.
+
+        Notes
+        -----
+        Without `triangles`, the compositions are triangulated
+        automatically (Delaunay), so only the inside of their convex hull
+        is painted and nothing is painted outside it. Compositions that
+        are the same after normalization are used only once: aggregate
+        their values (for example, by averaging them) before calling this
+        method.
+
+        With ``shading='flat'``, each triangle shows the mean of the values
+        at its 3 vertices, so no triangle may reach the colors at the ends
+        of the colorbar, whose range is that of `z` itself.
+
+        The triangles are drawn with ``zorder=-1`` by default: behind the
+        contours of :meth:`contour`, the polygons of :meth:`fill`, the
+        grid, the border, the tie lines of :meth:`plot` and the points of
+        :meth:`scatter`, whatever the order of the calls. Pass `zorder` to
+        change it. Thin lines may appear between the triangles depending
+        on the renderer; pass ``edgecolors="face"`` to hide them.
+
+        Examples
+        --------
+        Paint the triangles joining the 3 vertices and a point inside the
+        diagram, which adds a colorbar.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> mesh = td.tripcolor(
+        ...     [[1, 0, 0], [0, 1, 0], [0, 0, 1], [1, 1, 1]],
+        ...     [1.0, 2.0, 3.0, 4.0],
+        ... )
+        >>> type(mesh).__name__
+        'PolyCollection'
+        >>> len(mesh.get_paths())
+        3
+        >>> mesh.colorbar is not None
+        True
+        """  # noqa: E501
+        colorbar = check_optional_bool(colorbar, "colorbar")
+        plotter = _TripcolorPlotter(
+            vector=vector,
+            ax=self.ax,
+            z=z,
+            z_min=z_min,
+            z_max=z_max,
+            shading=shading,
+            colorbar=colorbar,
+            post_draw_context=self.__post_draw_context,
+            **kwargs,
+        )
+        self._append_x_y(plotter)
+        return plotter.collection_
+
     def colorbar(
         self,
         mappable,
@@ -2394,6 +2579,143 @@ class _TextPlotter(_BasePlotter):
     @property
     def name(self) -> str:
         return "text"
+
+
+class _MeshPlotter(_BasePlotter):
+    """Base of the plotters that paint triangles with ``Axes.tripcolor``.
+
+    Subclasses initialize the base class, prepare a triangulation and the
+    values, call ``_draw_mesh`` and then call ``_post_draw`` once at the
+    end of ``__init__``.
+    """
+
+    def _draw_mesh(
+        self,
+        triangulation: Triangulation,
+        values: np.ndarray,
+        *,
+        on_faces: bool,
+        shading: Shading,
+    ) -> MeshCollection:
+        """Paint the paintable triangles of `triangulation`.
+
+        Every exception of this spec is raised before matplotlib is called,
+        so nothing is added to the Axes when one is raised.
+
+        Parameters
+        ----------
+        triangulation : Triangulation
+            A new triangulation created by the plotter. Its mask is
+            replaced by the triangles that cannot be painted.
+        values : np.ndarray
+            Float values that determine the colors, one per triangle if
+            `on_faces` is true, otherwise one per point.
+        on_faces : bool
+            Whether `values` are given per triangle (true) or per point
+            (false).
+        shading : Shading
+            ``'flat'`` or ``'gouraud'``, already checked.
+
+        Returns
+        -------
+        MeshCollection
+            A ``PolyCollection`` for ``'flat'`` and a ``TriMesh`` for
+            ``'gouraud'``.
+        """
+        z_min = self._merge_alias(self.z_min, "z_min", "vmin")
+        z_max = self._merge_alias(self.z_max, "z_max", "vmax")
+        mask = unpaintable_mask(triangulation, values, on_faces=on_faces)
+        if self.kwargs.get("norm") is not None and (
+            z_min is None and z_max is None
+        ):
+            # the range is left to the norm given by the user
+            color_range: dict = {}
+        else:
+            vmin, vmax = default_color_range(values, z_min, z_max)
+            color_range = {"vmin": vmin, "vmax": vmax}
+        self._set_default_params(
+            cmap=DEFAULT_CMAP,
+            zorder=DEFAULT_ZORDER_HEATMAP,
+        )
+
+        triangulation.set_mask(mask)
+        masked = np.ma.masked_invalid(values)
+        if on_faces:
+            return self.ax.tripcolor(
+                triangulation,
+                facecolors=masked,
+                shading=shading,
+                **color_range,
+                **self.kwargs,
+            )
+        return self.ax.tripcolor(
+            triangulation,
+            masked,
+            shading=shading,
+            **color_range,
+            **self.kwargs,
+        )
+
+
+class _TripcolorPlotter(_MeshPlotter):
+    def __init__(
+        self,
+        vector: ArrayLike,
+        ax: Optional[matplotlib.axes.Axes] = None,
+        z: Optional[ArrayLike] = None,
+        z_min: Optional[Number] = None,
+        z_max: Optional[Number] = None,
+        shading: Shading = "flat",
+        colorbar: Optional[bool] = None,  # checked by TernaryDiagram
+        *,
+        post_draw_context: PostDrawContext,
+        **kwargs: Any,
+    ) -> None:
+        shading = check_shading(shading)
+        check_mesh_kwargs(
+            kwargs, func="tripcolor", color_source="z", fixed_lattice=False
+        )
+        # not passed to matplotlib as kwargs
+        triangles = kwargs.pop("triangles", None)
+        mask = kwargs.pop("mask", None)
+        super().__init__(
+            vector,
+            ax=ax,
+            z=z,
+            z_min=z_min,
+            z_max=z_max,
+            post_draw_context=post_draw_context,
+            **kwargs,
+        )
+
+        n_points = len(self.x_)
+        if self.z is None:
+            raise ValueError(
+                "`z` is required to draw `tripcolor`: pass one value per "
+                f"composition ({n_points} values)."
+            )
+        if self.z.size != n_points:
+            raise ValueError(
+                f"`z` must have one value per composition ({n_points}), "
+                f"but got {self.z.size}."
+            )
+        values = self.z.astype(float)
+        triangulation, n_unused = triangulate(
+            self.x_, self.y_, triangles, mask
+        )
+        if n_unused > 0:
+            warn_external(
+                duplicate_points_message(n_unused), category=UserWarning
+            )
+
+        self.collection_ = self._draw_mesh(
+            triangulation, values, on_faces=False, shading=shading
+        )
+        self._post_draw(mappable=self.collection_, colorbar=colorbar)
+
+    @property
+    def name(self) -> str:
+        return "tripcolor"
 
 
 if __name__ == "__main__":

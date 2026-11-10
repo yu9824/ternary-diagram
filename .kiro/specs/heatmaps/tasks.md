@@ -36,7 +36,7 @@
 
 - [ ] 2. 統合: 計算関数を Plotter と公開メソッドに組み込む
   - 2.1 と 2.2 は、共通の描画手順・Plotter・公開メソッド（いずれも design の「描画」層で、同じモジュール）に 1.x の関数と上流の描画後処理をつなぐ統合タスクである
-- [ ] 2.1 共通の描画手順と重なり順の定数を用意し、`tripcolor` を TernaryDiagram に追加する
+- [x] 2.1 共通の描画手順と重なり順の定数を用意し、`tripcolor` を TernaryDiagram に追加する
   - 既存の zorder 定数ブロックの末尾（`region-plots` が先にマージされていればその定数の後ろ）に、等高線より奥（-1）のヒートマップ用の定数を追加する。既存の定数の名前・値・並びは変えない
   - 共通の描画手順を Plotter の基底として用意する: `z_min` / `z_max` と別名 `vmin` / `vmax` の統合（既存の別名統合をそのまま使う）→ 塗れない三角形のマスク → 既定の色の範囲（`norm` だけが指定され範囲が未指定なら範囲を渡さない）→ 既定のカラーマップと zorder の注入（利用者の指定が優先）→ マスクの適用 → 値の位置（点 / 三角形）に応じた matplotlib の `tripcolor` 呼び出し。本 spec の例外はすべて matplotlib を呼ぶ前に出し終える
   - `tripcolor` の Plotter: 塗り方・kwargs の検証 → `triangles` / `mask` の取り出し → 基底の初期化 → `z` の欠落と要素数の検証 → 三角形分割 → 重複があれば `warn_external(..., category=UserWarning)` で利用者のコード位置に警告（roadmap の横断の取り決めで `warn_external` はパッケージ全体の利用者向け警告の入口）→ 描画 → `__init__` の最後で描画後処理を 1 回だけ呼ぶ。`tight_layout` やカラーバーを直接呼ばない。種類名は `"tripcolor"`
@@ -118,3 +118,4 @@
 - 1.1: 頂点番号は design の対応表ではなく閉形式 `row*(row+1)//2 + row - j` で求める（scale 1〜79・123・200 で総当たりと一致）。格子の (i, j) は private の `_lattice_indices` に切り出した
 - 1.2: `Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（matplotlib 3.3.4 でも確認）。`_api.py` の版分岐は private なサブモジュール（`TriContourSet` など）の位置のためで、新しいモジュールには持ち込まない（レビューで差し戻し 1 回）。`unpaintable_mask` は `values` の長さを検証しないので、2.1 の Plotter が呼ぶ前に `z` の要素数を確かめる
 - 1.3: `evaluate_function` は戻り値を常に新しい (m,) 配列にする。複素数を返す関数は numpy の ComplexWarning（発生位置は numpy 内部）が出て虚部が捨てられたまま受け付けられる（design の変換どおり。拒否するなら `np.iscomplexobj` で ValueError にする改善の候補）
+- 2.1: `tripcolor` は `fill` / `text` と同じく `colorbar()` の前に置いた。`_api.py` の `_mesh` からの import は使う名前だけで、2.2 で `DEFAULT_HEATMAPF_SCALE`・`HeatmapFunc`・`evaluate_function` を足す。`norm` だけを渡すと色の範囲は matplotlib の自動調整（flat では三角形の平均の範囲）。`norm` と `z_min` / `z_max` の併用は matplotlib の ValueError。重複の UserWarning は描画前に出るので、その後に「塗れる三角形がない」ValueError が続くことがある。See Also の `heatmapf` は 2.2 で参照先ができる（レビューで差し戻し 1 回: See Also の不足）
