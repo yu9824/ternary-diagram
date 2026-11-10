@@ -34,7 +34,7 @@
   - _Boundary: `src/ternary_diagram/_mesh.py`: `evaluate_function`、`tests/test_mesh.py`: `evaluate_function` のテストの追記_
   - _Requirements: 2.2, 2.6, 2.7, 2.8, 2.9_
 
-- [ ] 2. 統合: 計算関数を Plotter と公開メソッドに組み込む
+- [x] 2. 統合: 計算関数を Plotter と公開メソッドに組み込む
   - 2.1 と 2.2 は、共通の描画手順・Plotter・公開メソッド（いずれも design の「描画」層で、同じモジュール）に 1.x の関数と上流の描画後処理をつなぐ統合タスクである
 - [x] 2.1 共通の描画手順と重なり順の定数を用意し、`tripcolor` を TernaryDiagram に追加する
   - 既存の zorder 定数ブロックの末尾（`region-plots` が先にマージされていればその定数の後ろ）に、等高線より奥（-1）のヒートマップ用の定数を追加する。既存の定数の名前・値・並びは変えない
@@ -49,7 +49,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `DEFAULT_ZORDER_HEATMAP`、`_MeshPlotter`、`_TripcolorPlotter`、`TernaryDiagram.tripcolor`（と `_mesh` の公開名・`check_optional_bool`・`warn_external` の import）、`tests/test_tripcolor.py`（新規: スモークテスト）_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 4.1, 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.6, 6.7, 7.1, 7.2, 7.3, 7.4, 7.8, 7.9, 9.1, 9.5_
 
-- [ ] 2.2 `heatmapf` を TernaryDiagram に追加する
+- [x] 2.2 `heatmapf` を TernaryDiagram に追加する
   - 2.1 と同じモジュールを編集するので、2.1 の後に行う（並行不可）
   - `heatmapf` の Plotter: 塗り方・kwargs（格子固定）の検証 → 格子の生成（分割数の例外はそのまま伝える）→ 評価点の選択（flat は小三角形の重心、gouraud は格子点）→ 関数を 1 回だけ評価 → 評価点と関数値で基底を初期化 → 格子点の座標と小三角形から三角形分割を作る → flat は三角形の値、gouraud は点の値として共通の描画手順に渡す → `__init__` の最後で描画後処理を 1 回だけ呼ぶ。種類名は `"heatmapf"`、記録する座標は評価点
   - 公開メソッド `heatmapf` は関数だけを位置引数にし、`scale`（既定 50）・`z_min`・`z_max`・`shading`・`colorbar` をキーワード専用で受ける。2.1 と同じく Plotter を作る前に `utils.check_optional_bool(colorbar, "colorbar")` で検証し、検証済みの値を Plotter に渡す
@@ -119,3 +119,4 @@
 - 1.2: `Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（matplotlib 3.3.4 でも確認）。`_api.py` の版分岐は private なサブモジュール（`TriContourSet` など）の位置のためで、新しいモジュールには持ち込まない（レビューで差し戻し 1 回）。`unpaintable_mask` は `values` の長さを検証しないので、2.1 の Plotter が呼ぶ前に `z` の要素数を確かめる
 - 1.3: `evaluate_function` は戻り値を常に新しい (m,) 配列にする。複素数を返す関数は numpy の ComplexWarning（発生位置は numpy 内部）が出て虚部が捨てられたまま受け付けられる（design の変換どおり。拒否するなら `np.iscomplexobj` で ValueError にする改善の候補）
 - 2.1: `tripcolor` は `fill` / `text` と同じく `colorbar()` の前に置いた。`_api.py` の `_mesh` からの import は使う名前だけで、2.2 で `DEFAULT_HEATMAPF_SCALE`・`HeatmapFunc`・`evaluate_function` を足す。`norm` だけを渡すと色の範囲は matplotlib の自動調整（flat では三角形の平均の範囲）。`norm` と `z_min` / `z_max` の併用は matplotlib の ValueError。重複の UserWarning は描画前に出るので、その後に「塗れる三角形がない」ValueError が続くことがある。See Also の `heatmapf` は 2.2 で参照先ができる（レビューで差し戻し 1 回: See Also の不足）
+- 2.2: `heatmapf` の docstring の速度・ファイルサイズの目安は matplotlib 3.10 での実測（scale=100 の描画は約 0.05 秒、SVG は scale=50 で約 0.4 MB、100 で約 1.5 MB。PDF は圧縮されるので小さい）。`rasterized=True` で SVG は大きく減る
