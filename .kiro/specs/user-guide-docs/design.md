@@ -493,7 +493,7 @@ roadmap の「横断の取り決め」に従う。「上流が書く」列の項
 - `__init__` の Examples 節は、本 spec が担当する引数（`materials`・`ax`・`auto_latex_notation`）を使う例で、本 spec が単独で書く。今ある例（ランナーで xfail の印が付いているもの）は本 spec が書き直す対象。1.1 で、上流が `__init__` に例を足していないことを確かめ、足していれば取り決め違反として担当 spec の課題に記録する
 
 ##### Docstring Contract（担当する docstring の規約）
-- 節の順序: 要約（1 行、命令形）→ 説明（ラップしている関数を `This is a wrapper of ``matplotlib.pyplot.<name>``.` で示し、`https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.<name>.html` を書く。`region-plots`・`heatmaps` の docstring と同じ書き方）→ Parameters → Returns → Raises（送出する例外がある場合）→ See Also → Notes → Examples（1.6）
+- 節の順序: 要約（1 行、命令形）→ 説明（ラップしている関数を `` This is a wrapper of `matplotlib.pyplot.<name>`. ``（一重バッククォート。`region-plots`・`heatmaps` の実装結果）で示し、`https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.<name>.html` を書く。`region-plots`・`heatmaps` の docstring と同じ書き方）→ Parameters → Returns → Raises（送出する例外がある場合）→ See Also → Notes → Examples（1.6）
 - 引数の型の行: `name : type, optional` の形。配列は `array-like of shape (n, 3)` / `array-like of shape (n,)` / `array-like of shape (3,)`、数値は `float`、真偽値は `bool`、`None` を受け付ける場合は説明に書く（1.1、1.6）
 - 既定値: steering の tech.md「Docstring Examples」に従い、各項目に意味を書く文を必ず置き、既定値はその文の後に `, by default X` と添える。既定値のときの挙動が値だけでわからない場合（`None` のときに別の値を使うなど）は、その挙動を説明文に書く（例: 「Axes to draw on. If None, the current Axes (``plt.gca()``) is used, by default None」）。説明文のない `, by default X` だけの項目を書かない（1.1、1.7）
 - 組成の定型文 `VECTOR_TEXT`（1.3）: 「Compositions to plot. Each row gives the amounts of the three components in the same order as ``materials`` (top, bottom-left, bottom-right; counterclockwise from the top vertex). Rows are normalized, so the sum does not have to be 1.」を基本に、1 点だけを受ける `annotate` では shape `(3,)` に合わせる

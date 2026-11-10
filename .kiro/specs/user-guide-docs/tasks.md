@@ -185,3 +185,11 @@
   - _Boundary: `example/**/*.ipynb`（保存済みの出力だけ）、`example/**/*.png`（同じファイル名での上書きだけ）。コードのセルと CSV は変えない_
   - _Depends: 4.1_
   - _Requirements: 11.2, 11.3, 11.4, 12.5_
+
+## Implementation Notes
+
+- 上流からの申し送り（heatmaps の最終検証、2026-11-10）:
+  - 上流が所有する docstring（`fill` / `text` / `tripcolor` / `heatmapf`）は、kwargs の項目名が `kwargs : parameter of ...`、型の行が `ArrayLike | shape = (n, 3)` や `Number or None` のままである。本 spec が既存メソッドを `**kwargs`・`array-like of shape (n, 3)`・`float` に揃えると書き方が混在するので、混在を許すか、上流の docstring も揃えるか（担当表の見直し）を 1.1 で決める
+  - HeatmapsPage の「Choosing a colormap」で `norm` を使う例には、`z_min` / `z_max`（`vmin` / `vmax`）と同時に渡すと matplotlib が ValueError を出すことを添える（`tripcolor` / `heatmapf` の docstring には書いてある）
+  - `tripcolor` の `z` にマスク付き配列を渡すと、マスクした点は NaN と同じく塗られない（heatmaps の最終検証で揃えた）
+
