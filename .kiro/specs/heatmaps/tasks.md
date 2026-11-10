@@ -86,7 +86,7 @@
   - _Boundary: `tests/test_heatmapf.py`_
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9, 3.6, 4.2, 4.3, 7.1, 7.7, 7.8, 8.1_
 
-- [ ] 3.3 (P) 両メソッドに共通の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 3.3 (P) 両メソッドに共通の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - `tripcolor` と `heatmapf` でパラメータ化する
   - 値の範囲: `z_min` / `z_max` と `vmin` / `vmax` で同じ範囲になり、同時指定は `scatter` と同じ文面の `ValueError`。未指定なら有限な値の最小・最大（`tripcolor` の flat では三角形の平均の範囲より広いこと）、片側だけの指定、`norm` の指定で例外が出ず渡した `norm` が使われること、既定のカラーマップが `scatter` / `contour` と同じであることを確認する
   - カラーバー: 既定で 1 本追加されて戻り値から参照できること、同じ三角図での 2 回目の既定の描画で追加かつ FutureWarning が 1 回（文面は `plot-side-effects` の所有物なので、`match=` は `"colorbar"` かメソッド名などの変わりにくい断片だけにする）、`colorbar=False` で増えず `colorbar=True` で増えること、`colorbar=1` で `TypeError` になり描画オブジェクトが増えないこと、`flag_cbar=False` で `TypeError` になること、戻り値を `TernaryDiagram.colorbar()` に渡したカラーバーの範囲とカラーマップが戻り値と一致することを確認する
@@ -122,3 +122,4 @@
 - 2.2: `heatmapf` の docstring の速度・ファイルサイズの目安は matplotlib 3.10 での実測（scale=100 の描画は約 0.05 秒、SVG は scale=50 で約 0.4 MB、100 で約 1.5 MB。PDF は圧縮されるので小さい）。`rasterized=True` で SVG は大きく減る
 - 3.1: 塗った三角形は flat（PolyCollection）でも gouraud（TriMesh）でも公開の `get_paths()` で取り出せる（マスクした三角形にはパスがない）。private の `TriMesh._triangulation` には頼らない（レビューの提案で置き換えた）
 - 3.2: 既定の scale で多角形 2,500 個（flat）と格子点 1,326 個・三角形 2,500 個（gouraud）はスモークテストで確かめる。速度のテストは関数の評価・tight_layout・既定のカラーバーを含めて計測し、実測 0.08〜0.17 秒に対して閾値 1 秒。遅い CI で不安定になったら、閾値を変えずに 2 回目の呼び出しを測る案がある
+- 3.3: 範囲を持たない `norm` だけでは、既定の範囲を書き込む誤りを `tripcolor` の flat でしか判別できない。範囲を持つ `LogNorm(vmin=0.5, vmax=10)` が描画後も変わらないことを確かめるテストを足し、4 通りすべてで判別できるようにした（mutant で確認）
