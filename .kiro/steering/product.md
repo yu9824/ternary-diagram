@@ -8,6 +8,7 @@
 - **組成データのプロット**: 散布図（物性値によるカラーマップ付き）、等高線図（塗りつぶし / 線）、タイライン、注釈
 - **化学式の自動整形**: `Li2O` → `Li$_{2}$O` のように数字を下付きの LaTeX 表記へ変換（`auto_latex_notation=False` で無効化）。頂点ラベル以外の文字（`text`、`annotate` の明示指定）は、空白で区切った語のうち化学式の形をしたものだけを整形し、`"Sample 1"` や mathtext はそのまま表示する
 - **相図の描画**: 組成で指定した多角形を塗る `fill` と、組成点にちょうど文字を置く `text`
+- **ヒートマップ**: 散布した組成の間の三角形を補間せずに塗る `tripcolor` と、組成の関数 `f(a, b, c)` を正則な三角格子でまとめて評価して塗る `heatmapf`（機械学習モデルの予測などを想定）
 - **matplotlib との透過的な統合**: 任意の `Axes` に描画でき、`**kwargs` はそのまま matplotlib に渡り、戻り値も matplotlib のネイティブオブジェクト
 
 ## Target Use Cases
@@ -35,3 +36,4 @@ _Focus on patterns and purpose, not exhaustive feature lists_
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
 _updated_at: 2026-11-09 — annotate-plain-text と region-plots（`fill` / `text`）を反映_
+_updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
