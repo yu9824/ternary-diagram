@@ -61,7 +61,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `_HeatmapfPlotter`、`TernaryDiagram.heatmapf`（と `get_triangular_lattice` の import）、`tests/test_heatmapf.py`（新規: スモークテスト）_
   - _Requirements: 2.1, 2.3, 2.4, 2.5, 3.6, 4.2, 6.1, 6.2, 6.3, 6.4, 7.1, 7.7, 7.8, 7.9, 9.1, 9.2, 9.5_
 
-- [ ] 3. 検証と変更履歴
+- [x] 3. 検証と変更履歴
 - [x] 3.1 (P) `tripcolor` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - flat の色の値が各三角形の 3 頂点の `z` の平均、gouraud の色の値が `z` そのものであることを確認する
   - 三角形の 3 頂点と内部の点では塗った面積の合計が三角図全体、内側の小さな三角形の頂点と内部の点ではその小さな三角形の面積に一致すること（凸包の外を塗らない）を確認する
@@ -105,7 +105,7 @@
   - _Boundary: `CHANGELOG.md`: Unreleased の New features の `tripcolor` / `heatmapf` / `get_triangular_lattice` の項目_
   - _Requirements: 9.4_
 
-- [ ] 3.5 全体の回帰確認を行う
+- [x] 3.5 全体の回帰確認を行う
   - テスト全体（`pytest -xs .`。共通 doctest ランナー `tests/test_doctests.py` を含む）、`ruff check .`、`ruff format --check .` を実行する。mypy は環境にあれば実行し、なければインストールせずに確認できなかったことを報告する
   - 既存のテスト（`scatter`・`contour`・`plot`・`annotate`・三角図の土台）を変更せずに通ること、ランタイム依存（`pyproject.toml` の dependencies）が numpy と matplotlib のままであることを確認する
   - `region-plots` が先にマージされている場合は、`DEFAULT_ZORDER_HEATMAP (-1) < DEFAULT_ZORDER_FILL (0.5)` であることを確認する
@@ -124,3 +124,4 @@
 - 3.2: 既定の scale で多角形 2,500 個（flat）と格子点 1,326 個・三角形 2,500 個（gouraud）はスモークテストで確かめる。速度のテストは関数の評価・tight_layout・既定のカラーバーを含めて計測し、実測 0.08〜0.17 秒に対して閾値 1 秒。遅い CI で不安定になったら、閾値を変えずに 2 回目の呼び出しを測る案がある
 - 3.3: 範囲を持たない `norm` だけでは、既定の範囲を書き込む誤りを `tripcolor` の flat でしか判別できない。範囲を持つ `LogNorm(vmin=0.5, vmax=10)` が描画後も変わらないことを確かめるテストを足し、4 通りすべてで判別できるようにした（mutant で確認）
 - 3.4: CHANGELOG の New features への追記だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、他の spec の項目を並べ替えない、要件 9.4 の 3 項目）でその場でレビューした。`tripcolor` / `heatmapf` / `get_triangular_lattice` に加え、両方に共通する既定の重なり順とカラーバーの扱いを 1 項目にまとめた
+- 3.5: テスト一式 1965 passed, 1 xfailed（-W error::FutureWarning）。共通 doctest ランナーで `tripcolor`・`heatmapf`・`get_triangular_lattice` が PASSED。`ruff format --check .` は通過、`ruff check .` の 4 件はノートブックの既存の F401（本 spec は変えていない）。mypy は既存の 7 件。`pyproject.toml` は変更なしで依存は numpy と matplotlib のまま。`DEFAULT_ZORDER_HEATMAP (-1) < DEFAULT_ZORDER_FILL (0.5)`。既存のテストファイルの変更は `tests/test_utils.py` への追記（1.1 の境界）だけ
