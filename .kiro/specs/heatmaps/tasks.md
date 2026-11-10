@@ -62,7 +62,7 @@
   - _Requirements: 2.1, 2.3, 2.4, 2.5, 3.6, 4.2, 6.1, 6.2, 6.3, 6.4, 7.1, 7.7, 7.8, 7.9, 9.1, 9.2, 9.5_
 
 - [ ] 3. 検証と変更履歴
-- [ ] 3.1 (P) `tripcolor` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
+- [x] 3.1 (P) `tripcolor` 固有の挙動を TernaryDiagram 経由で検証する結合テストを書く
   - flat の色の値が各三角形の 3 頂点の `z` の平均、gouraud の色の値が `z` そのものであることを確認する
   - 三角形の 3 頂点と内部の点では塗った面積の合計が三角図全体、内側の小さな三角形の頂点と内部の点ではその小さな三角形の面積に一致すること（凸包の外を塗らない）を確認する
   - kwargs の `triangles` で指定どおりの三角形になり、`mask` で塗る三角形が減ることを確認する
@@ -120,3 +120,4 @@
 - 1.3: `evaluate_function` は戻り値を常に新しい (m,) 配列にする。複素数を返す関数は numpy の ComplexWarning（発生位置は numpy 内部）が出て虚部が捨てられたまま受け付けられる（design の変換どおり。拒否するなら `np.iscomplexobj` で ValueError にする改善の候補）
 - 2.1: `tripcolor` は `fill` / `text` と同じく `colorbar()` の前に置いた。`_api.py` の `_mesh` からの import は使う名前だけで、2.2 で `DEFAULT_HEATMAPF_SCALE`・`HeatmapFunc`・`evaluate_function` を足す。`norm` だけを渡すと色の範囲は matplotlib の自動調整（flat では三角形の平均の範囲）。`norm` と `z_min` / `z_max` の併用は matplotlib の ValueError。重複の UserWarning は描画前に出るので、その後に「塗れる三角形がない」ValueError が続くことがある。See Also の `heatmapf` は 2.2 で参照先ができる（レビューで差し戻し 1 回: See Also の不足）
 - 2.2: `heatmapf` の docstring の速度・ファイルサイズの目安は matplotlib 3.10 での実測（scale=100 の描画は約 0.05 秒、SVG は scale=50 で約 0.4 MB、100 で約 1.5 MB。PDF は圧縮されるので小さい）。`rasterized=True` で SVG は大きく減る
+- 3.1: 塗った三角形は flat（PolyCollection）でも gouraud（TriMesh）でも公開の `get_paths()` で取り出せる（マスクした三角形にはパスがない）。private の `TriMesh._triangulation` には頼らない（レビューの提案で置き換えた）
