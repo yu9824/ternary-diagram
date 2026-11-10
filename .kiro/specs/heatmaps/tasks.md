@@ -98,7 +98,7 @@
   - _Boundary: `tests/test_heatmaps.py`（新規）_
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 6.7, 7.2, 7.3, 7.4, 7.5, 7.6, 7.8, 7.9, 7.10_
 
-- [ ] 3.4 (P) CHANGELOG の Unreleased に追加機能を記載する
+- [x] 3.4 (P) CHANGELOG の Unreleased に追加機能を記載する
   - `plot-side-effects` がそろえた Unreleased の見出しの組（Breaking changes / New features / Deprecations / Bug fixes / Other changes）のうち New features に、`TernaryDiagram.tripcolor`、`TernaryDiagram.heatmapf`、`ternary_diagram.utils.get_triangular_lattice` を、既存の項目の書式（英語、箇条書き）で追記する
   - 見出しは足さず、他の spec が追記した項目は並べ替えない
   - 完了時: CHANGELOG の Unreleased の New features に 3 項目があり、既存の書式に揃っている
@@ -123,3 +123,4 @@
 - 3.1: 塗った三角形は flat（PolyCollection）でも gouraud（TriMesh）でも公開の `get_paths()` で取り出せる（マスクした三角形にはパスがない）。private の `TriMesh._triangulation` には頼らない（レビューの提案で置き換えた）
 - 3.2: 既定の scale で多角形 2,500 個（flat）と格子点 1,326 個・三角形 2,500 個（gouraud）はスモークテストで確かめる。速度のテストは関数の評価・tight_layout・既定のカラーバーを含めて計測し、実測 0.08〜0.17 秒に対して閾値 1 秒。遅い CI で不安定になったら、閾値を変えずに 2 回目の呼び出しを測る案がある
 - 3.3: 範囲を持たない `norm` だけでは、既定の範囲を書き込む誤りを `tripcolor` の flat でしか判別できない。範囲を持つ `LogNorm(vmin=0.5, vmax=10)` が描画後も変わらないことを確かめるテストを足し、4 通りすべてで判別できるようにした（mutant で確認）
+- 3.4: CHANGELOG の New features への追記だけなので、親が実装し、kiro-review の観点（見出しの組を変えない、他の spec の項目を並べ替えない、要件 9.4 の 3 項目）でその場でレビューした。`tripcolor` / `heatmapf` / `get_triangular_lattice` に加え、両方に共通する既定の重なり順とカラーバーの扱いを 1 項目にまとめた
