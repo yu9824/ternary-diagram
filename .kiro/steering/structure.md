@@ -9,12 +9,12 @@
 ### Package Source
 **Location**: `src/ternary_diagram/`
 **Purpose**: ライブラリ本体。`__init__.py` はメタデータ（`__version__` など）と公開 API の re-export だけを持つ
-**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。土台の 5 つの部品と、それを束ねる集約は `_skeleton.py`、描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
+**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。土台の 5 つの部品と、それを束ねる集約は `_skeleton.py`、三角形を塗る描画（`tripcolor` / `heatmapf`）の検証・三角形分割・関数の評価は `_mesh.py`（パッケージ内を import しない葉のモジュール）、描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
 
 ### Tests
 **Location**: `tests/`
 **Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く。複数のテストファイルで共有する期待値の計算は `test_` の付かない `_` 接頭辞のモジュール（`_skeleton_expected.py`）に置く
-**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）、`test_mesh.py`（`_mesh` の単体）/ `test_tripcolor.py`・`test_heatmapf.py`（メソッド固有）/ `test_heatmaps.py`（両方に共通する挙動をメソッドでパラメータ化）
 
 ### Examples
 **Location**: `example/<use_case>/`
@@ -136,3 +136,4 @@ _Document patterns, not file trees. New files following patterns shouldn't requi
 _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
 _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
+_updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_

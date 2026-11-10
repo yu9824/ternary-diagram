@@ -12,7 +12,7 @@ matplotlib の薄いラッパーとして作られた純 Python ライブラリ�
 
 ## Key Libraries
 
-- **matplotlib**: 描画のすべて。`Axes.scatter` / `tricontourf` / `tricontour` / `plot` / `annotate`、`Figure.colorbar` を直接呼ぶ
+- **matplotlib**: 描画のすべて。`Axes.scatter` / `tricontourf` / `tricontour` / `tripcolor` / `plot` / `fill` / `text` / `annotate`、`Figure.colorbar` を直接呼ぶ。`Triangulation` は `from matplotlib.tri import Triangulation` で全版から import できる（版の分岐が要るのは `TriContourSet` など private なサブモジュールの位置だけ）
 - **numpy**: 入力ベクトルの検証、正規化、座標変換
 - **pandas**: テストとサンプルでのみ使う（ランタイム依存にはしない）
 
@@ -101,7 +101,7 @@ else:
 
 - **pymatgen 非依存**: 三角図に必要な座標変換と化学式の LaTeX 整形を自前で実装し、依存を最小限に保つ
 - **kwargs の透過とデフォルト注入**: ライブラリ側のデフォルトは `_set_default_params` で「ユーザーが指定していなければ設定」する。ユーザー指定が常に優先される
-- **zorder による描画レイヤーの固定**: 等高線 (0) < 塗りつぶし `fill` (0.5) < グリッド・外枠 (1) < 線 (2) < 散布図・注釈 (3) < 文字 `text` (4) をモジュール定数 `DEFAULT_ZORDER_*` で管理し、呼び出し順や土台の描き直しに関係なく重なり順を保つ。新しい描画種別は既存の値を変えずに、層の間の値（0.5 など）で差し込む
+- **zorder による描画レイヤーの固定**: ヒートマップ `tripcolor` / `heatmapf` (-1) < 等高線 (0) < 塗りつぶし `fill` (0.5) < グリッド・外枠 (1) < 線 (2) < 散布図・注釈 (3) < 文字 `text` (4) をモジュール定数 `DEFAULT_ZORDER_*` で管理し、呼び出し順や土台の描き直しに関係なく重なり順を保つ。新しい描画種別は既存の値を変えずに、層の間の値（0.5 など）で差し込む
 - **入力の自動正規化**: 各行を合計 1 に正規化してから座標変換するので、ユーザーは比率をそのまま渡せる
 - **土台は部品ごとの差し替えで変える**: 外枠・グリッドなど 5 つの部品は、設定（名前付きの項目と matplotlib のプロパティ）を保持し、変更のたびに「検証 → 図形の仕様を純粋に計算 → 新しい artist を作る → 古い artist を消す → 確定」の順で描き直す。途中で失敗したら作りかけを消して元の設定と artist を保つ（全部か無し）。未指定の設定は前回の値を引き継ぎ、非表示の間も設定を保つ。グリッドを描き直したら外枠を `ax.lines` の末尾へ移し、外枠が上に描かれる状態を保つ。利用者が `remove()` / `cla()` で外した artist は飛ばす。描き直しはレイアウト調整もカラーバーの判定もしない（`_post_draw` を呼ばない）
 - **描画後処理の一元化と既存レイアウトの尊重**: 描画後のレイアウト調整とカラーバーの追加は `_BasePlotter._post_draw` だけが行う。図にレイアウトエンジン（constrained など）があれば調整しない、subfigure では調整しない。v3.x の既定（エンジンのない図では `tight_layout()`、`z` 付きの描画ごとにカラーバー追加）は保ち、v4.0.0 で変える既定には FutureWarning で予告する。決定表は未指定の行だけを変えれば v4.0.0 に移れる形にしてある
@@ -113,3 +113,4 @@ _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyS
 _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
 _updated_at: 2026-11-09 — region-plots（`fill` / `text` の zorder）と annotate-plain-text（`utils.to_latex_notation`）を反映_
+_updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
