@@ -1,7 +1,7 @@
 # Implementation Plan
 
 - [ ] 1. 基盤: 前提の確認、ビルド設定、使い方ページの骨組み
-- [ ] 1.1 上流の実装と作業環境を確かめ、ドキュメントに書く名前を照合する
+- [x] 1.1 上流の実装と作業環境を確かめ、ドキュメントに書く名前を照合する
   - 上流（副作用の制御、土台のカスタマイズ、annotate-plain-text、相図、ヒートマップ）がすべてマージ済み（roadmap の Implementation Order で本 spec は最後）で、共通の doctest ランナー `tests/test_doctests.py` を含む既存のテスト一式が通ることを確かめる。未マージなら作業を止めて報告する。上流の docstring の例がランナーで失敗する場合は書き換えず、担当 spec の不具合として記録する
   - ドキュメントのビルド（`docs` extras 一式とカーネル）に使える既存の環境を確かめる。パッケージはインストールせず、使える環境がなければ承認を得る
   - チュートリアルの再実行（Jupyter、pandas、`element_recognition`）に使える既存の環境の有無を確かめて記録する。なくても作業は止めず、7.1 を保留にするかどうかの判断に使う
@@ -73,6 +73,14 @@
   - _Boundary: `tests/test_owned_docstrings.py`（新規）_
   - _Depends: 2.1, 2.2, 2.3, 2.4_
   - _Requirements: 1.1, 1.5, 1.7, 1.10, 9.1, 9.2_
+
+- [ ] 2.6 上流の 4 メソッドの型の行と `**kwargs` の項目名を揃える（1.1 で追加）
+  - `fill`・`text`・`tripcolor`・`heatmapf` の Parameters のうち、型の行（`ArrayLike | shape = (n, 3)` → `array-like of shape (n, 3)`、`Number or None` → `float`、`(3,) or (1, 3)` の形など）と `kwargs : parameter of ...` の項目名（→ `**kwargs`）だけを、design の docstring の規約（2.2・2.3 で既存メソッドに適用するもの）に揃える。`None` を受け付けることが説明文に書かれていなければ、その旨の短い文を足す
+  - 説明文の内容、See Also・Notes・Examples の節、シグネチャと本体のコードは変えない
+  - 完了時: 4 つの docstring の型の行と項目名が既存メソッドと同じ書き方になり、共通の doctest ランナーが通り、型の行と項目名と `None` の文以外に差分がない
+  - _Boundary: `src/ternary_diagram/_api.py`: `TernaryDiagram.fill`・`TernaryDiagram.text`・`TernaryDiagram.tripcolor`・`TernaryDiagram.heatmapf` の docstring の Parameters の型の行と項目名だけ。コードは変えない_
+  - _Depends: 2.2, 2.3_
+  - _Requirements: 1.1, 1.6_
 
 - [ ] 3. 目的別の使い方ページ
 - [ ] 3.1 (P) はじめての三角図のページを書く
@@ -187,6 +195,17 @@
   - _Requirements: 11.2, 11.3, 11.4, 12.5_
 
 ## Implementation Notes
+
+- 1.1 の結果（2026-11-15）:
+  - 上流 4 spec と annotate-plain-text はすべて統合ブランチにマージ済み。テスト一式は 1967 passed, 1 xfailed（xfail は共通の doctest ランナーの `__init__` の印。`reason` は「既存の Examples が repr を出力し、`ax=` を渡さず、`savefig` を呼ぶ」）
+  - design の「上流 API の名前の一覧」は、シグネチャ、既定値、戻り値の型（`fill` → `List[Polygon]`、`text` → `Text`、`tripcolor` / `heatmapf` → `PolyCollection` か `TriMesh`）、重なり順（heatmap -1 < contour 0 < fill 0.5 < 外枠・グリッド 1 < plot 2 < scatter・annotate・頂点ラベル 3 < text 4）、`text` の中央揃えと `auto_latex_notation=None` まで、すべてコードと一致した。`layout="constrained"` の図で全メソッドと `set_*` を 1 回ずつ呼んで、エラーも警告も出なかった
+  - 食い違い（軽微、上流は直さない）: `scatter` の型注釈は `annotations: Optional[List[str]]` だが、実際は str 以外（数値など）も受け付けて `str()` で表示する。ページと docstring はコードの挙動に合わせる
+  - annotate-plain-text の規則: `utils.to_latex_notation` が空白で区切った語のうち `utils.is_chemical_formula` が化学式とみなすもの（大文字で始まる元素記号と数字・括弧の並び。例 `Li2O`、`(LiLa)0.5TiO3`）だけを `get_label` で整形し、`$` を含む文字列はそのまま返す。`"Li2O-La2O3"` のように空白以外で区切った語は整形しない。切り替え引数は `annotate(..., *, auto_latex_notation=None)` と `scatter(..., *, auto_latex_notation=None)`。`None` は v3.x の表示（`get_label` ですべての数字を下付き）を保ち、4.0.0 で表示が変わる文字列（`"Sample 1"` など）にだけ FutureWarning を三角図ごとに 1 回出す。`$` を含む文字列は警告なしでそのまま表示（v3 の出力は描けない mathtext だったためバグ修正扱い）。4.0.0 では作成時の `auto_latex_notation` を引き継ぐ
+  - FutureWarning は 4 種類（レイアウト、カラーバーの重複、`flag_cbar` の改名、annotate の整形）。3.6 の移行ページは annotate の節と表の行も置く。重複の警告は `heatmapf` / `tripcolor` でも同じ形で出る
+  - `__init__` の Examples は上流が足したものではなく v3 からある例（本 spec が書き直す）。`*_kw` の使用例は 5 つの `set_*` の Examples にある。共通の doctest ランナーは本 spec が担当する docstring をすべて対象に含む
+  - ドキュメントのビルドの環境: `fairchem312`（sphinx 9.1.0、myst-nb 1.4.0、sphinx-book-theme 1.2.0、jupyter-sphinx あり）。カーネル `python3` は `py312` の python で動く。`PYTHONPATH=$PWD/src` を付けて、CI と同じくリポジトリの中で `sphinx-apidoc -o ./docs_src` → `sphinx-build ./docs_src <一時ディレクトリ>` を実行する（`docs_src` をコピーするとチュートリアルのシンボリックリンクが切れる）。今のビルドは警告 0 件。生成物 `docs_src/modules.rst`・`docs_src/ternary_diagram.rst` は確認後に消す（1.2 で `.gitignore` に足すまで）
+  - チュートリアルの再実行の環境: `conductivity-prediction-py312`（pandas、`element_recognition`、ipykernel、matplotlib 3.11.2）がある。7.1 は保留にせず実行できる見込み
+  - 上流の docstring の書き方の混在（heatmaps からの申し送り）は、揃える方針に決めた。上流の 4 メソッドの型の行と `**kwargs` の項目名だけを揃えるタスク 2.6 を足した（文面は変えない）
 
 - 上流からの申し送り（heatmaps の最終検証、2026-11-10）:
   - 上流が所有する docstring（`fill` / `text` / `tripcolor` / `heatmapf`）は、kwargs の項目名が `kwargs : parameter of ...`、型の行が `ArrayLike | shape = (n, 3)` や `Number or None` のままである。本 spec が既存メソッドを `**kwargs`・`array-like of shape (n, 3)`・`float` に揃えると書き方が混在するので、混在を許すか、上流の docstring も揃えるか（担当表の見直し）を 1.1 で決める
