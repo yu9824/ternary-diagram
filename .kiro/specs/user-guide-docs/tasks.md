@@ -151,7 +151,7 @@
   - _Boundary: `README.md`_
   - _Requirements: 9.1, 9.2, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6_
 
-- [ ] 5.3 (P) CHANGELOG の Unreleased にドキュメントの変更を書く
+- [x] 5.3 (P) CHANGELOG の Unreleased にドキュメントの変更を書く
   - その他の変更として、使い方ページと移行ページの追加、README の刷新、チュートリアルの更新を英語の箇条書きで書き、移行ページの絶対 URL を含める。上流の項目は変えない
   - 完了時: CHANGELOG の Unreleased に該当の項目と移行ページへのリンクがあり、既存の項目の書式に揃っている
   - _Boundary: `CHANGELOG.md`（Unreleased の Other changes にある本 spec の項目だけ）_
