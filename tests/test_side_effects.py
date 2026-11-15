@@ -12,6 +12,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from _warning_filters import raise_on_warnings
 from matplotlib.colorbar import Colorbar
 
 from ternary_diagram import TernaryDiagram, _api, _post_draw
@@ -133,15 +134,13 @@ def test_tight_layout_true_tightens_without_warnings(draw):
     default = _subplotpars(fig)
     td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         draw(td)
 
     assert _subplotpars(fig) != default
 
     _reset_subplotpars(fig, default)
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         # The duplicate colorbar of `scatter_z` and `contour` is not about
         # the layout.
         warnings.filterwarnings(
@@ -162,8 +161,7 @@ def test_tight_layout_false_leaves_layout_untouched(draw):
     default = _subplotpars(fig)
     td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=False)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         draw(td)
 
     assert _subplotpars(fig) == default
@@ -266,8 +264,7 @@ def test_scatter_with_z_on_subfigure_adds_colorbar():
 def test_scatter_without_z_adds_no_colorbar(td, kwargs):
     n_axes = len(td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         # Even `colorbar=True` adds none: the points are not colored by
         # values.
         collection = td.scatter(VECTOR, **kwargs)
@@ -282,8 +279,7 @@ def test_added_colorbar_is_referable_and_registered(td, method):
     axes_before = list(td.fig.axes)
     n_axes = len(td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         # The first colorbar of the diagram is added without any warning.
         mappable = getattr(td, method)(VECTOR, z=Z)
 
@@ -445,8 +441,7 @@ def test_colorbar_takes_the_sixth_position_formerly_of_flag_cbar(method):
 def test_colorbar_false_adds_no_colorbar(tight_td, method, value):
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         mappable = getattr(tight_td, method)(VECTOR, z=Z, colorbar=value)
 
     assert len(tight_td.fig.axes) == n_axes
@@ -494,8 +489,7 @@ def test_sixth_positional_bool_keeps_its_meaning(
 ):
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         mappable = _draw_with_positional_colorbar(tight_td, method, value)
 
     assert len(tight_td.fig.axes) == n_axes + added
@@ -620,8 +614,7 @@ def test_default_duplicate_colorbar_is_added_with_one_future_warning(
 ):
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         tight_td.contour(VECTOR, z=Z)
     with pytest.warns(
         FutureWarning, match=DUPLICATE_COLORBAR_MATCH.format(method="scatter")
@@ -635,8 +628,7 @@ def test_default_duplicate_colorbar_is_added_with_one_future_warning(
     _assert_located_at_call(record[0], COLORED_DRAWS["scatter"])
     assert "4.0.0" in str(record[0].message)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         mappable = COLORED_DRAWS[third](tight_td)
 
     # The third plot adds a colorbar again, without another warning.
@@ -669,8 +661,7 @@ def test_explicit_colorbar_does_not_use_up_the_duplicate_warning(
     tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         draw(tight_td, colorbar=explicit)
     # The explicit `colorbar` issued no warning, so the first plot with the
     # default still warns.
@@ -704,8 +695,7 @@ def test_colorbar_made_with_fig_colorbar_is_not_counted(tight_td, method):
     tight_td.fig.colorbar(existing, ax=tight_td.ax)
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         mappable = COLORED_DRAWS[method](tight_td)
 
     # Added as the first colorbar of the diagram, without a warning.
@@ -723,8 +713,7 @@ def test_removed_colorbar_is_not_counted(tight_td, method, made_with):
     cbar.remove()
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         mappable = COLORED_DRAWS[method](tight_td)
 
     assert len(tight_td.fig.axes) == n_axes + 1
@@ -752,8 +741,7 @@ def test_scatter_without_z_adds_no_colorbar_to_diagram_with_one(
     tight_td.contour(VECTOR, z=Z)  # the diagram has a colorbar now
     n_axes = len(tight_td.fig.axes)
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("error")
+    with raise_on_warnings():
         collection = tight_td.scatter(VECTOR, colorbar=colorbar)
 
     assert len(tight_td.fig.axes) == n_axes
