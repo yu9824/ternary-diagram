@@ -1316,36 +1316,44 @@ class TernaryDiagram:
         auto_latex_notation: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
-        """
-        Plot scatter points.
+        """Plot compositions as scatter points.
 
         This is a wrapper of `matplotlib.pyplot.scatter`.
 
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
+
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to plot. Each row gives the amounts of the three
+            components in the same order as ``materials`` (top,
+            bottom-left, bottom-right; counterclockwise from the top
+            vertex). Rows are normalized, so the sum does not have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        z : array-like of shape (n,), optional
+            Values of the points, one per composition, which determine
+            their colors through the colormap. It cannot be used together
+            with `c`, which raises a ValueError. If None, the points are
+            not colored by values, by default None
 
-        z : ArrayLike, shape = (n,), optional
-            Values used to color the points. It cannot be used together
-            with `c`. , by default None
+        z_min : float, optional
+            Lower limit of the color scale, used only with `z`. `vmin` is
+            accepted as an alias, and passing both raises a ValueError. If
+            None, the minimum of `z` is used, by default None
 
-        z_min : Optional[Number] , optional
-            Lower limit of the color scale. `vmin` is accepted as an alias.
-            , by default None
+        z_max : float, optional
+            Upper limit of the color scale, used only with `z`. `vmax` is
+            accepted as an alias, and passing both raises a ValueError. If
+            None, the maximum of `z` is used, by default None
 
-        z_max : Optional[Number], optional
-            Upper limit of the color scale. `vmax` is accepted as an alias.
-            , by default None
-
-        annotations : Optional[List[str]], optional
-            instance annotations, by default None
-            if None, nothing is annotated.
+        annotations : list, optional
+            Texts shown next to the points, one per composition in the same
+            order, each 0.02 to the upper right of its point in fontsize 8.
+            Each str is formatted as described in `auto_latex_notation`,
+            the same rule as :meth:`annotate`; items that are not str, such
+            as numbers, are shown as text without formatting. A length
+            different from the number of compositions raises a ValueError.
+            If None, no texts are shown, by default None
 
         colorbar : bool or None, optional
             Whether to add a colorbar automatically when the points are
@@ -1380,16 +1388,68 @@ class TernaryDiagram:
             4.0.0, ``None`` will follow `auto_latex_notation` of
             :class:`TernaryDiagram`, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.scatter`, optional
-            For example, `marker='x'`, `facecolor='blue'` etc.
-
-            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html.
-
+        **kwargs
+            Other arguments of `matplotlib.pyplot.scatter`, such as `s`,
+            `marker`, `c` (without `z`), `cmap`, `alpha` or `label`, passed
+            to matplotlib as they are. They take precedence over the
+            defaults of this method (``zorder=3`` and, with `z`,
+            ``cmap="rainbow"``).
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
 
         Returns
         -------
         matplotlib.collections.PathCollection
-            A collection of scatter points.
+            The scatter points, as returned by
+            `matplotlib.axes.Axes.scatter`. With `z`, it can be passed to
+            :meth:`colorbar` to draw a colorbar of the values.
+
+        See Also
+        --------
+        contour : Contours interpolated from the values of the points.
+        tripcolor : The triangles between the points, painted with their
+            values.
+        annotate : A note at one composition.
+        colorbar : A colorbar of a plot colored by values.
+
+        Notes
+        -----
+        The points are drawn with ``zorder=3`` by default: in front of the
+        contours of :meth:`contour`, the grid, the border and the tie lines
+        of :meth:`plot`, whatever the order of the calls. Pass `zorder` to
+        change it. With `z`, the points are colored with the colormap
+        ``"rainbow"`` unless `cmap` is given.
+
+        Examples
+        --------
+        Plot compositions with a marker of matplotlib and show a text next
+        to each point.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     annotations=["a", "b", "c"],
+        ...     marker="x",
+        ... )
+
+        Color the points by their values on a fixed color scale, which adds
+        a colorbar.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     z_min=0,
+        ...     z_max=1,
+        ...     colorbar=True,
+        ... )
+        >>> len(fig.axes)
+        2
         """  # noqa: E501
 
         colorbar = _resolve_colorbar_arg("scatter", colorbar, kwargs)
@@ -1422,36 +1482,45 @@ class TernaryDiagram:
         colorbar: Optional[bool] = None,
         **kwargs,
     ) -> TriContourSet:
-        """
-        To create a contour map.
+        """Draw a contour map of values given at compositions.
 
-        This is a wrapper of `plt.tricontour` or `plt.tricontourf`.
+        The compositions are triangulated and the values `z` are
+        interpolated between them. This is a wrapper of
+        `matplotlib.pyplot.tricontourf` with ``fill=True`` and of
+        `matplotlib.pyplot.tricontour` with ``fill=False``.
 
-        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
-        or https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
-
-        - When fill is `True`, this is a wrapper of `plt.tricontourf`.
-        - When fill is `False`, this is a wrapper of `plt.tricontour`.
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
+        and https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to plot. Each row gives the amounts of the three
+            components in the same order as ``materials`` (top,
+            bottom-left, bottom-right; counterclockwise from the top
+            vertex). Rows are normalized, so the sum does not have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        z : array-like of shape (n,)
+            Values at the compositions, one per row of `vector`, from which
+            the contours are drawn. It is required: None, the default,
+            raises a ValueError.
 
-        z : Optional[ArrayLike], shape = (n,)
-            , by default None
+        z_min : float, optional
+            Lower limit of the automatic levels. If None, the minimum of
+            `z` is used. With ``fill=True``, the areas whose values are out
+            of the levels are not filled. It cannot be combined with
+            `levels`, which raises a ValueError, by default None
 
-        z_min : Optional[Number], optional
-            Lower limit of the automatic levels. If None, the minimum of `z`.
-            , by default None
+        z_max : float, optional
+            Upper limit of the automatic levels. If None, the maximum of
+            `z` is used. With ``fill=True``, the areas whose values are out
+            of the levels are not filled. It cannot be combined with
+            `levels`, which raises a ValueError, by default None
 
-        z_max : Optional[Number], optional
-            Upper limit of the automatic levels. If None, the maximum of `z`.
-            , by default None
+        fill : bool, optional
+            Whether to fill the areas between the levels. True draws filled
+            contours with ``tricontourf``, and False draws only the contour
+            lines with ``tricontour``, by default True
 
         colorbar : bool or None, optional
             Whether to add a colorbar automatically for the contours
@@ -1472,16 +1541,104 @@ class TernaryDiagram:
             together with `colorbar` raises a ValueError. When it is
             omitted, `colorbar` decides.
 
-        kwargs : parameter of `matplotlib.pyplot.contour`, optional
-            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html.
-
-            If `levels` is given, it is used instead of the automatic
-            levels and cannot be combined with `z_min` or `z_max`.
+        **kwargs
+            Other arguments of `matplotlib.pyplot.tricontourf` (with
+            ``fill=True``) or `matplotlib.pyplot.tricontour` (with
+            ``fill=False``), such as `levels`, `cmap`, `alpha`,
+            `linewidths` or `extend`, passed to matplotlib as they are.
+            They take precedence over the defaults of this method
+            (``cmap="rainbow"`` and ``zorder=0``). `levels` (an int for
+            the number of levels chosen by matplotlib, or the increasing
+            values themselves) is used instead of the automatic levels and
+            cannot be combined with `z_min` or `z_max`, which raises a
+            ValueError. To draw the contours in one color with `colors`,
+            also pass ``cmap=None``, since matplotlib does not accept both.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
+            and https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
 
         Returns
         -------
-        matplotlib.tri.tricontour.TriContourSet
-            A collection of contour lines.
+        matplotlib.tri.TriContourSet
+            The filled contours (``fill=True``) or the contour lines
+            (``fill=False``), as returned by `matplotlib.axes.Axes.tricontourf`
+            or `matplotlib.axes.Axes.tricontour`. Its ``levels`` attribute
+            holds the levels used. It can be passed to :meth:`colorbar` to
+            draw a colorbar of the values.
+
+        See Also
+        --------
+        tripcolor : The triangles between the compositions, painted with
+            their values without interpolation.
+        heatmapf : A function of the composition painted on a regular
+            triangular lattice.
+        scatter : Points colored by their values.
+        colorbar : A colorbar of a plot colored by values.
+
+        Notes
+        -----
+        Without `levels`, 101 levels evenly spaced from `z_min` (or the
+        minimum of `z`) to `z_max` (or the maximum of `z`) are used, so the
+        filled contours look like a continuous color map. When all the
+        values of `z` are the same, the levels are spread slightly around
+        that value.
+
+        The contours are drawn with ``zorder=0`` by default: in front of
+        the heat maps of :meth:`tripcolor` and :meth:`heatmapf`, and behind
+        the polygons of :meth:`fill`, the grid, the border, the tie lines
+        of :meth:`plot` and the points of :meth:`scatter`, whatever the
+        order of the calls. Pass `zorder` to change it.
+
+        Examples
+        --------
+        Fill the contours of values given at 7 compositions, which adds a
+        colorbar. The 101 automatic levels span the range of the values.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> vector = [
+        ...     [1, 0, 0],
+        ...     [0, 1, 0],
+        ...     [0, 0, 1],
+        ...     [1, 1, 1],
+        ...     [2, 1, 1],
+        ...     [1, 2, 1],
+        ...     [1, 1, 2],
+        ... ]
+        >>> z = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        >>> contours = td.contour(vector, z=z, colorbar=True)
+        >>> len(contours.levels)
+        101
+
+        Draw only the contour lines at given levels, in black and without
+        a colorbar.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> vector = [
+        ...     [1, 0, 0],
+        ...     [0, 1, 0],
+        ...     [0, 0, 1],
+        ...     [1, 1, 1],
+        ...     [2, 1, 1],
+        ...     [1, 2, 1],
+        ...     [1, 1, 2],
+        ... ]
+        >>> z = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        >>> lines = td.contour(
+        ...     vector,
+        ...     z=z,
+        ...     fill=False,
+        ...     levels=[2, 4, 6],
+        ...     colors="black",
+        ...     cmap=None,
+        ...     colorbar=False,
+        ... )
+        >>> len(lines.levels)
+        3
         """  # noqa: E501
 
         colorbar = _resolve_colorbar_arg("contour", colorbar, kwargs)

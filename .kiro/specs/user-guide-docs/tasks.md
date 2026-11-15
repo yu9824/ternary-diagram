@@ -41,7 +41,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: docstring だけ（クラス `TernaryDiagram` の要約と説明、`TernaryDiagram.__init__` の担当表の本 spec の項目と Examples 節、プロパティ `TernaryDiagram.ax`・`TernaryDiagram.fig`）。コードは変えない。`tests/test_doctests.py`: `__init__` の例の xfail の印を外すだけ_
   - _Requirements: 1.1, 1.3, 1.5, 1.6, 1.7, 1.9, 9.1, 9.2_
 
-- [ ] 2.2 散布図と等高線図の docstring の担当項目を書く
+- [x] 2.2 散布図と等高線図の docstring の担当項目を書く
   - `vector`・`z`・`z_min`・`z_max`・`annotations`（散布図）・`fill`（等高線図）・追加のキーワード引数の項目、戻り値、See Also、Notes の本 spec の段落、使用例を、規約と組成の定型文に従って書く
   - 等高線図について、`fill` が真なら塗りつぶし、偽なら線だけを描くこと、`z` が必須であること、自動の段階と `levels` の関係を書く。散布図の `annotations` の整形は、1.1 で確かめた annotate-plain-text の規則どおりに書く
   - 副作用の制御の spec が書いた Parameters の `colorbar`・`flag_cbar` の項目と、annotate-plain-text が足した切り替え引数の項目は書き換えず、本 spec の項目と段落はその前後に追記する
@@ -214,3 +214,4 @@
 
 - 1.2: `nb_execution_in_temp` を有効にすると、ビルドしたディレクトリの直下に `jupyter_execute/` ができる（`.gitignore` 済み）。ビルドの確認で `-D autoclass_content=class` にすると `materials` などの説明が消えることで、`autoclass_content="both"` の効果を確かめた
 - 2.1: `fig` の型注釈は `Figure` だが、subfigure の Axes では `SubFigure` を返す（docstring の Returns は両方を書いた。注釈の修正は typing-cleanup の候補）。`__init__` の例の期待出力に str のリストの repr（頂点ラベルの文字列）があるが、版によらず安定しているので許す。2.5 で repr の行を機械的に調べるなら、この形を許す判定にする
+- 2.2: `contour` は既定で `cmap="rainbow"` を入れるので、`colors` を渡すときは `cmap=None` も要る（`**kwargs` の項目に書いた）。`scatter` / `contour` は ValueError を送出するが、担当表に Raises 節がないので各項目の本文に書いた。上流の `tripcolor` / `heatmapf` は Raises 節を持つので、揃えるかどうかを 6.2 のレビューで判断する
