@@ -91,7 +91,7 @@
   - _Boundary: `docs_src/user_guide/getting_started.md`_
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 9.1, 9.2, 9.5_
 
-- [ ] 3.2 (P) 見た目の変え方のページを書く
+- [x] 3.2 (P) 見た目の変え方のページを書く
   - ページの規約に従い、5 つの部品と作成時・作成後の指定の対応表（`border_kw` → `set_border`、`grid_kw` → `set_grid`、`tick_kw` → `set_ticks`、`axis_label_kw` → `set_axis_labels`、`vertex_label_kw` → `set_vertex_labels`）、グリッドと目盛りの間隔、目盛りの書式と両端、軸タイトルと目盛りの配置規約（どの辺がどの成分で、値がどちら向きに増えるか）、非表示と matplotlib のプロパティ、直前の設定の引き継ぎ、artist の取り出し、指定の使い回しの節を書く
   - 完了時: ページがビルド時に実行されて警告 0 件で表示され、各節の例の図が代替テキスト付きで表示され、軸タイトルの節の図で 3 辺のタイトルと目盛りの向きが確認できる
   - _Boundary: `docs_src/user_guide/customizing.md`_
