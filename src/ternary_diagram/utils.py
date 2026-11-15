@@ -18,21 +18,38 @@ TickFormat = Union[str, Callable[[float], str]]
 
 
 def check_ax(ax: Optional[matplotlib.axes.Axes]) -> matplotlib.axes.Axes:
-    """check ax
+    """Return the Axes to draw on.
 
     Parameters
     ----------
-    ax : None or Axes object
-        if None, get current axes
+    ax : matplotlib.axes.Axes or None
+        Axes to draw on. If None, the current Axes (``plt.gca()``) is used,
+        which creates a figure and an Axes when there is none.
 
     Returns
     -------
-    Axes object
+    matplotlib.axes.Axes
+        `ax` itself if it is an Axes, otherwise the current Axes.
 
     Raises
     ------
     TypeError
-        when ax is not None or Axes object
+        If `ax` is neither None nor a ``matplotlib.axes.Axes``.
+
+    Examples
+    --------
+    >>> import matplotlib.pyplot as plt
+    >>> from ternary_diagram.utils import check_ax
+    >>> fig, ax = plt.subplots(layout="constrained")
+    >>> check_ax(ax) is ax
+    True
+    >>> check_ax(None) is ax
+    True
+    >>> check_ax(fig)
+    Traceback (most recent call last):
+        ...
+    TypeError: `ax` is None or Axes object.
+    This `ax` is (<class 'matplotlib.figure.Figure'>).
     """
     if ax is None:
         ax = plt.gca()
@@ -48,23 +65,41 @@ def check_ax(ax: Optional[matplotlib.axes.Axes]) -> matplotlib.axes.Axes:
 
 
 def check_2d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
-    """check 2d vector
+    """Check the shape of compositions and normalize each row.
 
     Parameters
     ----------
-    vector : ArrayLike | shape = (n, 3)
-        ratio
+    vector : array-like of shape (n, 3)
+        Compositions, one per row. Each row gives the amounts of the three
+        components in the order top, bottom-left, bottom-right
+        (counterclockwise from the top vertex).
     scale : bool, optional
-        minmaxscale or not, by default True
+        Whether to divide each row by its sum so that it sums to 1. A row
+        whose sum is 0 becomes NaN. If False, the values are returned as
+        they are, by default True
 
     Returns
     -------
-    numpy.ndarray | shape = (n, 3)
+    numpy.ndarray of shape (n, 3)
+        The compositions, normalized if `scale` is True.
 
     Raises
     ------
     ValueError
-        when shape is not (n, 3)
+        If `vector` is not two-dimensional with three columns.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import check_2d_vector
+    >>> check_2d_vector([[1, 1, 2], [3, 0, 1]])
+    array([[0.25, 0.25, 0.5 ],
+           [0.75, 0.  , 0.25]])
+    >>> check_2d_vector([[1, 1, 2]], scale=False)
+    array([[1, 1, 2]])
+    >>> check_2d_vector([1, 1, 2])
+    Traceback (most recent call last):
+        ...
+    ValueError: `vector`'s shape must be (n, 3), but got (3,).
     """
     arr_vector = np.asarray(vector)
     if arr_vector.ndim != 2 or arr_vector.shape[1] != 3:
@@ -81,26 +116,41 @@ def check_2d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
 
 
 def check_1d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
-    """check 1d vector
+    """Check a single composition and return it as a row of a 2D array.
 
     Parameters
     ----------
-    vector : ArrayLike | shape = (3,)
-        ratio
+    vector : array-like of shape (3,)
+        One composition: the amounts of the three components in the order
+        top, bottom-left, bottom-right (counterclockwise from the top
+        vertex). Any array-like with exactly three elements is accepted,
+        because it is flattened first.
     scale : bool, optional
-        minmaxscale or not, by default True
-
-    Examples
-    --------
-    >>> check_1d_vector([1, 2, 3], scale=False)
-    array([[1, 2, 3]])
-
-    >>> check_1d_vector([2, 2, 4], scale=True)
-    array([[0.25, 0.25, 0.5 ]])
+        Whether to divide the composition by its sum so that it sums to 1.
+        A composition whose sum is 0 becomes NaN. If False, the values are
+        returned as they are, by default True
 
     Returns
     -------
-    np.ndarray | shape = (1, 3)
+    numpy.ndarray of shape (1, 3)
+        The composition as the only row, normalized if `scale` is True.
+
+    Raises
+    ------
+    ValueError
+        If `vector` does not have exactly three elements.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import check_1d_vector
+    >>> check_1d_vector([2, 2, 4])
+    array([[0.25, 0.25, 0.5 ]])
+    >>> check_1d_vector([1, 2, 3], scale=False)
+    array([[1, 2, 3]])
+    >>> check_1d_vector([1, 2])
+    Traceback (most recent call last):
+        ...
+    ValueError: `vector`'s length must be 3.
     """
     vector = np.array(vector).ravel()
     if len(vector) == 3:
@@ -200,22 +250,37 @@ def check_bool(value: object, name: str) -> bool:
 
 
 def three2two(vector: ArrayLike) -> Tuple[np.ndarray, np.ndarray]:
-    """
-    Converted 3D proportions to 2D in order to generate a triangular diagram.
+    """Convert compositions to 2D coordinates on the ternary diagram.
+
+    The triangle has the vertices top ``(0.5, sqrt(3) / 2)``, bottom-left
+    ``(0, 0)`` and bottom-right ``(1, 0)``, which correspond to the first,
+    second and third components.
 
     Parameters
     ----------
-    vector : ArrayLike | shape = (n, 3)
-        ratio
-
-    Examples
-    --------
-    >>> three2two(check_2d_vector([[2, 2, 4]]))
-    (array([0.625]), array([0.21650635]))
+    vector : array-like of shape (n, 3)
+        Compositions whose rows sum to 1, one per row, in the order top,
+        bottom-left, bottom-right (counterclockwise from the top vertex).
+        The rows are not normalized here; pass the output of
+        :func:`check_2d_vector` to convert amounts that do not sum to 1.
 
     Returns
     -------
-    numpy.ndarray | shape = (n, 2)
+    x : numpy.ndarray of shape (n,)
+        Horizontal coordinates of the compositions.
+    y : numpy.ndarray of shape (n,)
+        Vertical coordinates of the compositions.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import check_2d_vector, three2two
+    >>> x, y = three2two([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    >>> x
+    array([0.5, 0. , 1. ])
+    >>> y
+    array([0.8660254, 0.       , 0.       ])
+    >>> three2two(check_2d_vector([[2, 2, 4]]))
+    (array([0.625]), array([0.21650635]))
     """
     arr_vector = np.asarray(vector)
     return (
@@ -225,31 +290,41 @@ def three2two(vector: ArrayLike) -> Tuple[np.ndarray, np.ndarray]:
 
 
 def get_label(compound_name: str) -> str:
-    """
-    Convert the chemical composition to LaTeX notation.
+    """Write every number in a compound name as a LaTeX subscript.
+
+    Each number, a run of digits with an optional decimal part such as
+    ``2`` or ``0.5``, is wrapped in ``$_{`` and ``}$`` wherever it appears.
+    The text is not checked to be a chemical formula, so the numbers of
+    other words (``"Sample 1"``) and of text already written in mathtext
+    are converted as well. The vertex labels are formatted with this
+    function when ``auto_latex_notation`` of ``TernaryDiagram`` is True.
+    To convert only the words that look like chemical formulas, use
+    :func:`to_latex_notation`.
 
     Parameters
     ----------
     compound_name : str
-        A compound name, like 'Li2O'
+        Name of a compound, such as ``"Li2O"`` or ``"(LiLa)0.5TiO3"``.
 
     Returns
     -------
     str
-        Chemical composition converted to LaTeX notation.
-
-    Examples
-    --------
-    >>> get_label('Li2O')
-    'Li$_{2}$O'
-
-    >>> get_label('(LiLa)0.5TiO3')
-    '(LiLa)$_{0.5}$TiO$_{3}$'
+        `compound_name` with every number written as a subscript.
 
     Raises
     ------
     ValueError
-        when `compound_name` is not str.
+        If `compound_name` is not a str.
+
+    Examples
+    --------
+    >>> from ternary_diagram.utils import get_label
+    >>> get_label("Li2O")
+    'Li$_{2}$O'
+    >>> get_label("(LiLa)0.5TiO3")
+    '(LiLa)$_{0.5}$TiO$_{3}$'
+    >>> get_label("Sample 1")
+    'Sample $_{1}$'
     """
     if not isinstance(compound_name, str):
         raise ValueError("The `compound_name` must be string.")

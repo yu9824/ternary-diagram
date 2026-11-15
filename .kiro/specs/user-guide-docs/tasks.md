@@ -57,7 +57,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `TernaryDiagram.plot`・`TernaryDiagram.annotate`・`TernaryDiagram.colorbar` の docstring だけ（`annotate` の annotate-plain-text の切り替え引数の項目を除く）。コードは変えない_
   - _Requirements: 1.1, 1.3, 1.4, 1.5, 1.6, 1.7, 1.9, 9.1, 9.2_
 
-- [ ] 2.4 `utils` の既存の公開関数の docstring を書く
+- [x] 2.4 `utils` の既存の公開関数の docstring を書く
   - `check_ax`・`check_2d_vector`・`check_1d_vector`・`three2two`・`get_label` の要約、各引数の意味・受け付ける値・既定値、戻り値、送出する例外、doctest 形式の使用例を、design の `utils` の規約（節の順序、期待出力、例は自分の import の行から始める、図を扱わない関数の例では図を作らない）に従って書く
   - `get_label` の判定の規則は、1.1 で確かめた annotate-plain-text のマージ時点の挙動どおりに書き、annotate-plain-text が足した項目は書き換えない
   - 上流が `utils` に足した関数（`check_optional_bool`・`check_bool`、配置の関数と `TickFormat`、`get_triangular_lattice`）は変えない
