@@ -142,5 +142,7 @@
 - 4.1 では design「Testing Strategy > 後方互換」に挙げた置き換え（`flag_cbar` → `colorbar`、レイアウト設定の明示）に加え、同じ三角図に `z` 付きで 2 回描く `test_defaults_can_be_overridden` の 2 回目に `colorbar=True` を明示した（従来どおり毎回追加する経路を保つため。assert は不変）
 - 4.3 で足すこと: 要件 7.1「余白が導入前と同じ」を固定する比較。既定のまま `contour(z)` を描いた後の subplotpars が、matplotlib で直接「カラーバー追加 → `tight_layout()`」の順に処理した図と一致すること（`_post_draw` の処理順を入れ替えると余白が変わるが、4.2 のテストでは検出できない。4.2 のレビューでの提案）
 - 要件 7.3 と design「Migration Strategy」は「6 番目の位置引数の厳密化が唯一の非互換」としているが、実際には位置引数の `None` の意味も変わった（旧: `if flag_cbar:` でカラーバーなし → 新: 未指定として扱い、値で色付けした描画なら追加）。実装は要件 3.1・3.7（`None` は未指定）どおり。CHANGELOG の Breaking changes には記載した。spec の文言を直すかはユーザーの判断待ち（4.4 のレビューでの指摘）
+  - 決定（2026-11-15）: 実装はそのままにし、要件 7.3 と design「Migration Strategy」の文言を実装に合わせて直した。`colorbar` をキーワード専用にすることは v4.0.0 の候補として roadmap に記録した
 - 既知の制限（validate-impl で確認）: `PostDrawContext.has_colorbar` は design どおり `cb.mappable.colorbar is cb` で生死を判定するので、登録済みのカラーバーと同じ mappable に利用者が `fig.colorbar` で別のカラーバーを足すと、登録済みのものが「削除済み」と判定される。v3.x では本数は変わらず、重複の FutureWarning が出ないだけ
+  - 決定（2026-11-15）: v3.x では直さず、v4.0.0 で直す（既存ありで自動追加しない既定になると、1 本余分に付くため）。roadmap に記録した
 - validate-impl の残り（軽微）: `TernaryDiagram.__init__` の `tight_layout` の docstring 項目を固定するテストはない（`colorbar`／`flag_cbar` の項目にはある）。user-guide-docs の docstring 整理のときに足すとよい
