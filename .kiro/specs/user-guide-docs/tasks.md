@@ -49,7 +49,7 @@
   - _Boundary: `src/ternary_diagram/_api.py`: `TernaryDiagram.scatter`・`TernaryDiagram.contour` の docstring のうち担当表の本 spec の項目と段落だけ（Parameters の `colorbar`・`flag_cbar` の項目と、annotate-plain-text の切り替え引数の項目を除く）。コードは変えない_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.9, 9.1, 9.2_
 
-- [ ] 2.3 線、注釈、カラーバーのメソッドの docstring を書く
+- [x] 2.3 線、注釈、カラーバーのメソッドの docstring を書く
   - 3 つのメソッドのすべての引数（annotate-plain-text が足した切り替え引数を除く）、戻り値、ラップしている matplotlib 関数の URL、使用例を規約に従って書く
   - 注釈について、1.1 で確かめた annotate-plain-text の整形の規則と、既定の位置と大きさを書く。annotate-plain-text が FutureWarning を出す場合は、例を警告の出ない書き方にする
   - カラーバーのメソッドについて、各引数の既定値と、このメソッドで作ったカラーバーが自動追加の判定で既存のカラーバーに数えられることを書く。散布図・等高線図の `colorbar` 引数の説明は重複させない
@@ -215,3 +215,4 @@
 - 1.2: `nb_execution_in_temp` を有効にすると、ビルドしたディレクトリの直下に `jupyter_execute/` ができる（`.gitignore` 済み）。ビルドの確認で `-D autoclass_content=class` にすると `materials` などの説明が消えることで、`autoclass_content="both"` の効果を確かめた
 - 2.1: `fig` の型注釈は `Figure` だが、subfigure の Axes では `SubFigure` を返す（docstring の Returns は両方を書いた。注釈の修正は typing-cleanup の候補）。`__init__` の例の期待出力に str のリストの repr（頂点ラベルの文字列）があるが、版によらず安定しているので許す。2.5 で repr の行を機械的に調べるなら、この形を許す判定にする
 - 2.2: `contour` は既定で `cmap="rainbow"` を入れるので、`colors` を渡すときは `cmap=None` も要る（`**kwargs` の項目に書いた）。`scatter` / `contour` は ValueError を送出するが、担当表に Raises 節がないので各項目の本文に書いた。上流の `tripcolor` / `heatmapf` は Raises 節を持つので、揃えるかどうかを 6.2 のレビューで判断する
+- 2.3: `TernaryDiagram.colorbar` は既定で `orientation="vertical"` を渡すので、`location="bottom"` / `"top"` だけを渡すと matplotlib が TypeError を出す（横向きは `orientation="horizontal"` も要る。docstring に書いた）。`location` から向きを決める改善は本 spec の範囲外（コードを変えない）なので、今後の課題として残す

@@ -1659,29 +1659,74 @@ class TernaryDiagram:
     def plot(
         self, vector: ArrayLike, **kwargs
     ) -> List[matplotlib.lines.Line2D]:
-        """
-        To draw a tie line.
+        """Draw a line that joins compositions, such as a tie line.
 
-        This is a wrapper of `matplotlib.pyplot.plot`.
+        The compositions are joined by straight segments in the order of
+        the rows. This is a wrapper of `matplotlib.pyplot.plot`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to join, in the order of the rows. Each row gives
+            the amounts of the three components in the same order as
+            ``materials`` (top, bottom-left, bottom-right; counterclockwise
+            from the top vertex). Rows are normalized, so the sum does not
+            have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
-
-        kwargs : parameter of `matplotlib.pyplot.plot`, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.plot`, such as `color`,
+            `linestyle`, `linewidth`, `marker` or `label`, passed to
+            matplotlib as they are. They take precedence over the default
+            of this method (``zorder=2``). A format string such as
+            ``"k--"`` cannot be given; use `color` and `linestyle` instead.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
-
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
-            lines.
+        list of matplotlib.lines.Line2D
+            The line, as returned by `matplotlib.axes.Axes.plot`: a list
+            that holds one `matplotlib.lines.Line2D`.
+
+        See Also
+        --------
+        fill : A polygon of compositions, filled.
+        scatter : Points at compositions.
+
+        Notes
+        -----
+        The line is drawn with ``zorder=2`` by default: in front of the
+        contours of :meth:`contour`, the polygons of :meth:`fill`, the
+        grid and the border, and behind the points of :meth:`scatter`,
+        whatever the order of the calls. Pass `zorder` to change it.
+
+        Examples
+        --------
+        Draw a tie line between two compositions as a black dashed line.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.plot(
+        ...     [[1, 1, 0], [0, 1, 1]],
+        ...     color="black",
+        ...     linestyle="--",
+        ... )
+        >>> len(lines)
+        1
+
+        Join three compositions in order, with a marker at each of them.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.plot(
+        ...     [[2, 1, 1], [1, 2, 1], [1, 1, 2]],
+        ...     marker="o",
+        ... )
         """  # noqa: E501
 
         plotter = _LinePlotter(
@@ -1701,22 +1746,30 @@ class TernaryDiagram:
         auto_latex_notation: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.text.Annotation:
-        """Annotate text.
+        """Annotate a composition with a text.
 
-        This is a wrapper of `matplotlib.pyplot.annotate`.
+        The text is placed slightly to the upper right of the point of the
+        composition by default. This is a wrapper of
+        `matplotlib.pyplot.annotate`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.annotate.html
 
         Parameters
         ----------
         text : str
-            Text to be displayed.
+            Text of the note. A str is formatted as described in
+            `auto_latex_notation`: by default, a chemical formula such as
+            ``"Li2O"`` is shown as ``"Li$_{2}$O"``, and a text containing
+            ``$`` (mathtext) is shown as it is. Objects other than str,
+            such as numbers, are shown as text without formatting.
 
-        vector : 1D ArrayLike, whose length is 3.
-            vector : ArrayLike | shape = (3,)
-            It represents the ratio of
-            each component (the sum does not have to be 1).
-
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        vector : array-like of shape (3,)
+            Composition to annotate: the amounts of the three components in
+            the same order as ``materials`` (top, bottom-left,
+            bottom-right; counterclockwise from the top vertex). It is
+            normalized, so the sum does not have to be 1. Any array-like
+            with exactly three elements, such as one of shape (1, 3), is
+            accepted; other lengths raise a ValueError.
 
         auto_latex_notation : bool or None, optional
             Whether to write the chemical formulas in `text` in LaTeX
@@ -1731,14 +1784,57 @@ class TernaryDiagram:
             4.0.0, ``None`` will follow `auto_latex_notation` of
             :class:`TernaryDiagram`, by default None
 
-        kwargs : parameter of matplotlib.pyplot.annotate, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.annotate`, such as
+            `xytext`, `fontsize`, `color` or `arrowprops`, passed to
+            matplotlib as they are. They take precedence over the defaults
+            of this method: `xytext` is 0.02 to the right of and 0.02 above
+            the point in the data coordinates of the diagram (whose edges
+            have length 1), and `fontsize` is 8.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.annotate.html
-
 
         Returns
         -------
         matplotlib.text.Annotation
-            An annotation.
+            The note, as returned by `matplotlib.axes.Axes.annotate`. Its
+            ``xy`` is the point of the composition.
+
+        See Also
+        --------
+        text : A text centered at a composition.
+        scatter : Points at compositions, with a text next to each with
+            `annotations`.
+
+        Examples
+        --------
+        Annotate a composition with a chemical formula, which is written
+        with subscripts.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> note = td.annotate("Li2O", [2, 1, 1])
+        >>> note.get_text()
+        'Li$_{2}$O'
+
+        Place a plain text away from the composition with an arrow that
+        points to it. ``auto_latex_notation=True`` keeps the number in the
+        text as it is.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> note = td.annotate(
+        ...     "Sample 1",
+        ...     [1, 2, 3],
+        ...     xytext=(0.7, 0.6),
+        ...     arrowprops={"arrowstyle": "->"},
+        ...     auto_latex_notation=True,
+        ... )
+        >>> note.get_text()
+        'Sample 1'
         """  # noqa: E501
         auto_latex_notation = check_optional_bool(
             auto_latex_notation, "auto_latex_notation"
@@ -2368,39 +2464,116 @@ class TernaryDiagram:
         location: str = "right",
         **kwargs,
     ) -> matplotlib.colorbar.Colorbar:
-        """Draw a colorbar.
+        """Add a colorbar of a plot colored by values to the diagram.
 
-        This is a wrapper of `matplotlib.pyplot.colorbar`.
+        The colorbar takes its space from the Axes of the diagram. Use it
+        to add a colorbar with your own settings to a plot drawn with
+        ``colorbar=False``. This is a wrapper of
+        `matplotlib.pyplot.colorbar`, called on the figure of the diagram.
 
         See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
 
         Parameters
         ----------
         mappable : matplotlib.cm.ScalarMappable
-            The object that contains the colorbar data.
+            The plot colored by values that the colorbar describes, such as
+            the return value of :meth:`scatter` with `z`, :meth:`contour`,
+            :meth:`tripcolor` or :meth:`heatmapf`.
 
         shrink : float, optional
-            how much to shrink the colorbar, by default 0.8
+            Fraction by which the length of the colorbar is multiplied,
+            relative to the Axes of the diagram, by default 0.8
 
-        format : str, optional
-            float format, by default '%.1f'
+        format : str, matplotlib.ticker.Formatter or None, optional
+            Format of the tick labels of the colorbar: a ``%``-style format
+            such as ``"%.2f"``, a ``{x}``-style format or a
+            `matplotlib.ticker.Formatter`. If None, matplotlib chooses the
+            format. The default shows one decimal place, by default '%.1f'
 
         label : str, optional
-            bar label, by default ''
+            Label shown along the colorbar. The empty string shows no
+            label, by default ''
 
         orientation : str, optional
-            bar orientation, by default 'vertical'
+            Direction of the colorbar, ``"vertical"`` or ``"horizontal"``.
+            It must agree with `location`, or matplotlib raises a
+            TypeError: a horizontal colorbar needs ``location="bottom"`` or
+            ``"top"``, by default 'vertical'
 
         location : str, optional
-            location, by default 'right'
+            Side of the Axes of the diagram where the colorbar is placed,
+            ``"right"``, ``"left"``, ``"top"`` or ``"bottom"``. It must
+            agree with `orientation` (``"right"`` and ``"left"`` are
+            vertical, ``"top"`` and ``"bottom"`` are horizontal), or
+            matplotlib raises a TypeError, by default 'right'
 
-        kwargs : parameter of `matplotlib.pyplot.colorbar`, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.colorbar` (as
+            `matplotlib.figure.Figure.colorbar`), such as `pad`, `aspect`,
+            `ticks` or `extend`, passed to matplotlib as they are. `ax`
+            cannot be given, since the space is always taken from the Axes
+            of the diagram.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
 
         Returns
         -------
         matplotlib.colorbar.Colorbar
-            colorbar object
+            The colorbar, as returned by `matplotlib.figure.Figure.colorbar`.
+
+        See Also
+        --------
+        scatter : Points, colored by values with `z`.
+        contour : Contours of values.
+        tripcolor : Triangles painted with values.
+        heatmapf : A function of the composition painted as a heat map.
+
+        Notes
+        -----
+        The colorbar is registered to the diagram, so it counts as an
+        existing colorbar when a later plot colored by values decides
+        whether to add a colorbar automatically, as described in the
+        `colorbar` argument of :meth:`scatter`, :meth:`contour`,
+        :meth:`tripcolor` and :meth:`heatmapf`. It stops counting once it
+        is removed with ``Colorbar.remove()``.
+
+        Examples
+        --------
+        Color points by their values without the automatic colorbar, and
+        add a colorbar with a label.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     colorbar=False,
+        ... )
+        >>> cbar = td.colorbar(points, label="Conductivity")
+        >>> len(fig.axes)
+        2
+
+        Place a horizontal colorbar below the diagram, with two decimal
+        places in the tick labels.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     colorbar=False,
+        ... )
+        >>> cbar = td.colorbar(
+        ...     points,
+        ...     format="%.2f",
+        ...     orientation="horizontal",
+        ...     location="bottom",
+        ... )
+        >>> cbar.orientation
+        'horizontal'
         """  # noqa: E501
 
         # draw colorbar
