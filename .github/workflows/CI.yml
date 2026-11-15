@@ -26,7 +26,7 @@ jobs:
   # required にしても安全。そのため paths フィルタは on: から外し、ここで
   # dorny/paths-filter を使って changed job の if 条件として判定する。
   changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # paths-filter は pull_request のとき GitHub REST API で差分を取るので
     # pull-requests: read が要る。workflow レベルで contents: read しか
     # 与えていない (= 他は none) ため、ここで job レベルに補う。
@@ -69,8 +69,7 @@ jobs:
     # 手動実行時は filter を飛ばしていて outputs.code が空になるので、
     # workflow_dispatch を明示的に拾う。
     if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    # runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
