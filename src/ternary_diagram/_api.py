@@ -1862,7 +1862,7 @@ class TernaryDiagram:
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
+        vector : array-like of shape (n, 3)
             Compositions of the vertices of the polygon, one row per
             vertex. Each row represents the ratio of each component (the
             sum does not have to be 1), in the same order as `materials`.
@@ -1870,7 +1870,7 @@ class TernaryDiagram:
             order given and the polygon is closed automatically; they are
             not sorted and no convex hull is computed.
 
-        kwargs : parameter of `matplotlib.pyplot.fill`, optional
+        **kwargs
             Properties of :class:`matplotlib.patches.Polygon`, such as
             `label`, `facecolor`, `edgecolor`, `alpha` or `hatch`, passed
             to matplotlib as they are. They take precedence over the
@@ -1948,7 +1948,7 @@ class TernaryDiagram:
             other than str is not formatted and is converted to a string
             by matplotlib.
 
-        vector : ArrayLike | shape = (3,) or (1, 3)
+        vector : array-like of shape (3,) or (1, 3)
             Composition of the point where the text is placed. It
             represents the ratio of each component (the sum does not have
             to be 1), in the same order as `materials`.
@@ -1969,7 +1969,7 @@ class TernaryDiagram:
             always shown as it is, by default None (the setting of the
             diagram)
 
-        kwargs : parameter of `matplotlib.pyplot.text`, optional
+        **kwargs
             Properties of :class:`matplotlib.text.Text`, such as
             `fontsize`, `color`, `ha` or `fontdict`, passed to matplotlib
             as they are. They take precedence over the defaults of this
@@ -2074,18 +2074,18 @@ class TernaryDiagram:
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
+        vector : array-like of shape (n, 3)
             Compositions of the points, one row per point. Each row
             represents the ratio of each component (the sum does not have
             to be 1), in the same order as `materials`.
 
-        z : ArrayLike | shape = (n,)
+        z : array-like of shape (n,)
             Values of the points, one per composition, which determine the
             colors. A NaN or infinite value, or a masked value of a masked
             array, leaves every triangle having that point as a vertex
             unpainted.
 
-        z_min : Number or None, optional
+        z_min : float, optional
             Lower limit of the color scale. `vmin` is accepted as an alias,
             and passing both raises a ValueError. If None, the minimum of
             the finite values of `z` is used. Do not pass it together with
@@ -2094,7 +2094,7 @@ class TernaryDiagram:
             `norm` is given with either of them, by default None (the
             minimum of `z`)
 
-        z_max : Number or None, optional
+        z_max : float, optional
             Upper limit of the color scale. `vmax` is accepted as an alias,
             and passing both raises a ValueError. If None, the maximum of
             the finite values of `z` is used. Do not pass it together with
@@ -2123,7 +2123,7 @@ class TernaryDiagram:
             available as the ``colorbar`` attribute of the returned
             object, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.tripcolor`, optional
+        **kwargs
             Passed to matplotlib as they are, such as `cmap`, `norm`,
             `alpha`, `edgecolors` or `zorder`. They take precedence over
             the defaults of this method (``cmap="rainbow"`` and
@@ -2264,7 +2264,7 @@ class TernaryDiagram:
             divided. The lattice has ``scale ** 2`` small triangles, by
             default 50
 
-        z_min : Number or None, optional
+        z_min : float, optional
             Lower limit of the color scale. `vmin` is accepted as an alias,
             and passing both raises a ValueError. If None, the minimum of
             the finite values returned by `func` is used. Do not pass it
@@ -2273,7 +2273,7 @@ class TernaryDiagram:
             ValueError when `norm` is given with either of them, by default
             None (the minimum of the values)
 
-        z_max : Number or None, optional
+        z_max : float, optional
             Upper limit of the color scale. `vmax` is accepted as an alias,
             and passing both raises a ValueError. If None, the maximum of
             the finite values returned by `func` is used. Do not pass it
@@ -2306,7 +2306,7 @@ class TernaryDiagram:
             colorbar added is available as the ``colorbar`` attribute of
             the returned object, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.tripcolor`, optional
+        **kwargs
             Passed to matplotlib as they are, such as `cmap`, `norm`,
             `alpha`, `edgecolors` or `zorder`. They take precedence over
             the defaults of this method (``cmap="rainbow"`` and

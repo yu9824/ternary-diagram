@@ -74,7 +74,7 @@
   - _Depends: 2.1, 2.2, 2.3, 2.4_
   - _Requirements: 1.1, 1.5, 1.7, 1.10, 9.1, 9.2_
 
-- [ ] 2.6 上流の 4 メソッドの型の行と `**kwargs` の項目名を揃える（1.1 で追加）
+- [x] 2.6 上流の 4 メソッドの型の行と `**kwargs` の項目名を揃える（1.1 で追加）
   - `fill`・`text`・`tripcolor`・`heatmapf` の Parameters のうち、型の行（`ArrayLike | shape = (n, 3)` → `array-like of shape (n, 3)`、`Number or None` → `float`、`(3,) or (1, 3)` の形など）と `kwargs : parameter of ...` の項目名（→ `**kwargs`）だけを、design の docstring の規約（2.2・2.3 で既存メソッドに適用するもの）に揃える。`None` を受け付けることが説明文に書かれていなければ、その旨の短い文を足す
   - 説明文の内容、See Also・Notes・Examples の節、シグネチャと本体のコードは変えない
   - 完了時: 4 つの docstring の型の行と項目名が既存メソッドと同じ書き方になり、共通の doctest ランナーが通り、型の行と項目名と `None` の文以外に差分がない
@@ -217,3 +217,4 @@
 - 2.2: `contour` は既定で `cmap="rainbow"` を入れるので、`colors` を渡すときは `cmap=None` も要る（`**kwargs` の項目に書いた）。`scatter` / `contour` は ValueError を送出するが、担当表に Raises 節がないので各項目の本文に書いた。上流の `tripcolor` / `heatmapf` は Raises 節を持つので、揃えるかどうかを 6.2 のレビューで判断する
 - 2.3: `TernaryDiagram.colorbar` は既定で `orientation="vertical"` を渡すので、`location="bottom"` / `"top"` だけを渡すと matplotlib が TypeError を出す（横向きは `orientation="horizontal"` も要る。docstring に書いた）。`location` から向きを決める改善は本 spec の範囲外（コードを変えない）なので、今後の課題として残す
 - 3.1: `myst_heading_anchors` が無効（`conf.py` は変えない）なので、ページ内の見出しへのリンクには明示のターゲット（`(getting-started-first-diagram)=` のように、ページ名を接頭辞にした名前）を置く。他のページも同じ方法にする
+- 2.6（レビューは inline。差分が型の行と項目名の 12 行だけのため）: `text` の `vector` は説明文に `(1, 3)` の記述がないので、型の行を `array-like of shape (3,) or (1, 3)` とした（`annotate` は型の行が `(3,)` で、`(1, 3)` は説明文に書いてある）。`fill` の Returns の `List[...]` の書き方も残っている。どちらも 6.2 のレビューで揃えるかを判断する
