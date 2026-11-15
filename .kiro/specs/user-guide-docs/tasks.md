@@ -110,7 +110,7 @@
   - _Boundary: `docs_src/user_guide/heatmaps_and_contours.md`_
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 6.1, 6.2, 6.3, 6.4, 6.5, 6.6, 9.1, 9.2, 9.5_
 
-- [ ] 3.5 (P) レイアウトとカラーバーのページを書く
+- [x] 3.5 (P) レイアウトとカラーバーのページを書く
   - ページの規約に従い、レイアウト自動調整の 3 通りの指定と v3.x・v4.0.0 の挙動の表（未指定のまま FutureWarning を出す例は実行しない）、レイアウトエンジンのある図・複数パネル・subfigure への描き方、カラーバーの自動追加の 3 通りと既存のカラーバーの範囲、カラーバーを後から 1 本だけ付ける方法、移行ページへのリンクの節を書く
   - 完了時: ページがビルド時に実行されて警告 0 件で表示され、subfigure の例と後から付けたカラーバーの例の図が代替テキスト付きで表示され、移行ページへのリンクが機能する
   - _Boundary: `docs_src/user_guide/layout_and_colorbars.md`_
@@ -224,3 +224,4 @@
 - 5.1（レビューは inline）: チュートリアルのノートブックはシンボリックリンクなので、Markdown のリンク `[...](quickstart.ipynb)` は MyST が解決できない（リンク先の実体のパスで探して `myst.xref_missing` になる）。`{doc}` ロールでリンクする
 - 3.3（レビューで 1 回差し戻し。頂点の順序の図の代替テキストが図の番号の付き方と食い違っていた）: 図の上の数字や記号を説明する代替テキストは、コードが実際に描くもの（何に番号を振ったか）から書く。既定の `tab:blue` の上の黒文字はコントラスト比が約 4.4:1 で AA に届かないので、塗りの上の文字には白い半透明の `bbox` を付ける
 - 3.4: `contour` は `z` に NaN があると matplotlib の ValueError（"z array must not contain non-finite values within the triangulation"）を出す。ページには「NaN の点を除いてから渡す」と書いた。上流の `contour` の docstring にはない記述なので、`z` の項目に足すかを 6.2 で判断する
+- 3.5（レビューで 1 回差し戻し）: 三角図は `set_aspect("equal", adjustable="datalim")` なので、Axes の箱は縮まず、`layout="compressed"` は constrained と同じ配置になる（compressed が詰めるのは `adjustable="box"` の Axes だけ）。同じ理由で Axes の箱が三角形より縦に長く、複数パネルのタイトルと三角形の間が空くので、`figsize` の縦を詰めて対処した
