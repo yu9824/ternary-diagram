@@ -143,7 +143,7 @@
   - _Boundary: `docs_src/index.md`（本文。1.3 で作った toctree は保つ）、`docs_src/tutorials/index.md`（各項目の説明と案内だけ。toctree の並びと名前は変えない）_
   - _Requirements: 8.7, 10.1, 10.4, 10.5_
 
-- [ ] 5.2 (P) README を書き直す
+- [x] 5.2 (P) README を書き直す
   - design の README の構成（バッジ、概要と画像、主な機能、インストール、最小の例とその出力画像、ドキュメントへのリンク、変更履歴とライセンス）に絞り、同じ内容のコード例を重複させない
   - 主な機能に上流 4 spec の機能（土台の見た目の変更、相図、ヒートマップ、レイアウトとカラーバーの制御）を含め、使い分け表は載せない
   - 最小の例は 4.1 で確定したコードと同じにし、画像は既存のファイル名（`example/example_on_readme/figure.png`）の raw URL を参照する（画像の中身は 7.1 で更新される）。画像とリンクはすべて `https://` の絶対 URL にし、既存のバッジを残す
@@ -219,3 +219,4 @@
 - 3.1: `myst_heading_anchors` が無効（`conf.py` は変えない）なので、ページ内の見出しへのリンクには明示のターゲット（`(getting-started-first-diagram)=` のように、ページ名を接頭辞にした名前）を置く。他のページも同じ方法にする
 - 2.6（レビューは inline。差分が型の行と項目名の 12 行だけのため）: `text` の `vector` は説明文に `(1, 3)` の記述がないので、型の行を `array-like of shape (3,) or (1, 3)` とした（`annotate` は型の行が `(3,)` で、`(1, 3)` は説明文に書いてある）。`fill` の Returns の `List[...]` の書き方も残っている。どちらも 6.2 のレビューで揃えるかを判断する
 - 4.1（レビューは inline。`source` だけの差分を親が確認）: 最小の例は `example/example_on_readme/example_on_readme.ipynb` のセル 1（`import matplotlib.pyplot as plt` と `from ternary_diagram import TernaryDiagram`）とセル 2 を空行 1 つでつないだコード。README とトップページ（5.1・5.2）はこれと一字一句同じにし、5.4 のテストで一致を確かめる。保存済みの出力と PNG は 7.1 で更新するまで新しいコードと合わない。等高線図のノートブックのセル 2 に以前からある未使用の `import numpy as np`（ruff F401）と、セル 5 の不自然な説明文は範囲外として残した
+- 5.2（レビューは inline）: design は既存のバッジを「10 個」としているが、実際は 9 個（すべて残した）。画像の URL は既存と同じ `github.com/.../blob/main/...?raw=true` の形。`figure.png` の中身は 7.1 で更新するまで古い
