@@ -112,7 +112,7 @@ ternary-diagram の描画メソッド（`scatter`・`contour`・`plot`・`annota
 #### Acceptance Criteria
 1. While 利用者がレイアウト自動調整とカラーバーの自動追加のどちらも指定しておらず、図にレイアウトエンジンが設定されていない, the TernaryDiagram shall 描画後の図の余白とカラーバーの本数を、本機能の導入前と同じにする
 2. The TernaryDiagram shall 既存の描画メソッドの戻り値の型と、matplotlib へそのまま渡す追加のキーワード引数の扱いを変えない
-3. The TernaryDiagram shall `scatter` と `contour` の既存の位置引数の並びで書かれた呼び出しを、本機能の導入前と同じ意味で受け付ける。ただし、6 番目の位置引数（カラーバーの指定）に真偽値以外（`0`・`1` など）を渡す呼び出しは 3.7 により `TypeError` になり、この非互換を CHANGELOG の Breaking changes に記載する
+3. The TernaryDiagram shall `scatter` と `contour` の既存の位置引数の並びで書かれた呼び出しを、本機能の導入前と同じ意味で受け付ける。ただし、6 番目の位置引数（カラーバーの指定）は次の 2 点で意味が変わり、どちらも非互換として CHANGELOG の Breaking changes に記載する: 真偽値以外（`0`・`1` など）は 3.7 により `TypeError` になる。`None` は 3.1 により未指定として扱う（導入前はカラーバーを追加しなかったが、値で色付けした描画では追加する）
 4. The TernaryDiagram shall `colorbar()` メソッドの既存の引数、既定値、戻り値を変えない
 
 ### Requirement 8: ドキュメントと変更履歴
