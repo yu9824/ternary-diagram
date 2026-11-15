@@ -83,7 +83,7 @@
   - _Requirements: 1.1, 1.6_
 
 - [ ] 3. 目的別の使い方ページ
-- [ ] 3.1 (P) はじめての三角図のページを書く
+- [x] 3.1 (P) はじめての三角図のページを書く
   - design のページの規約（推奨の図の作り方、numpy の合成データ、図の代替テキスト、API へのリンク、英語、1 つの図は 1 つのセル）に従う
   - インストール（静的なコマンド）、最初の図を描いて保存する手順、組成の並びと合計が 1 でなくてよいこと（表形式のデータは文章で説明）、既存の Axes への描画と 2 つの三角図の並べ方、描画メソッドの一覧と各ページへの案内の節を書く
   - 化学式の節では、作成時の `auto_latex_notation` が頂点ラベルの整形を決めることとその止め方、`text` が `auto_latex_notation=None` でその設定を引き継ぐこと、注釈（`annotate`・`scatter(annotations=...)`）の整形は 1.1 で確かめた annotate-plain-text の規則に従うことを書く
@@ -216,3 +216,4 @@
 - 2.1: `fig` の型注釈は `Figure` だが、subfigure の Axes では `SubFigure` を返す（docstring の Returns は両方を書いた。注釈の修正は typing-cleanup の候補）。`__init__` の例の期待出力に str のリストの repr（頂点ラベルの文字列）があるが、版によらず安定しているので許す。2.5 で repr の行を機械的に調べるなら、この形を許す判定にする
 - 2.2: `contour` は既定で `cmap="rainbow"` を入れるので、`colors` を渡すときは `cmap=None` も要る（`**kwargs` の項目に書いた）。`scatter` / `contour` は ValueError を送出するが、担当表に Raises 節がないので各項目の本文に書いた。上流の `tripcolor` / `heatmapf` は Raises 節を持つので、揃えるかどうかを 6.2 のレビューで判断する
 - 2.3: `TernaryDiagram.colorbar` は既定で `orientation="vertical"` を渡すので、`location="bottom"` / `"top"` だけを渡すと matplotlib が TypeError を出す（横向きは `orientation="horizontal"` も要る。docstring に書いた）。`location` から向きを決める改善は本 spec の範囲外（コードを変えない）なので、今後の課題として残す
+- 3.1: `myst_heading_anchors` が無効（`conf.py` は変えない）なので、ページ内の見出しへのリンクには明示のターゲット（`(getting-started-first-diagram)=` のように、ページ名を接頭辞にした名前）を置く。他のページも同じ方法にする
