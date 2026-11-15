@@ -32,7 +32,7 @@
   - _Requirements: 2.1, 8.7, 10.2, 10.3, 10.4_
 
 - [ ] 2. 既存の公開 API の docstring
-- [ ] 2.1 クラス、作成時の引数、プロパティの docstring を書く
+- [x] 2.1 クラス、作成時の引数、プロパティの docstring を書く
   - クラスの要約と説明、作成時の要約、`materials`・`ax`・`auto_latex_notation` の項目、描いた座標の記録（`x_`・`y_`）の Attributes 節、プロパティ `ax`・`fig` を、design の docstring の規約と担当表に従って書く
   - `__init__` の Examples 節は本 spec だけが持ち、単独で書き直す。担当する引数（`materials`・`ax`・`auto_latex_notation`）を使い、必要な import の行から始めて推奨の図の作り方で `ax=ax` を渡し、単独で実行でき、repr の出力行を書かず、ファイルに保存せず、FutureWarning を出さない例にする。`*_kw` の使用例は対応する `set_*` の docstring にあるので書かない
   - 書き直した例が共通の doctest ランナーで通ったら、ランナーが今の `__init__` の例に付けている `xfail(strict=True)` の印を外す。ランナーの他の部分は変えない
@@ -213,3 +213,4 @@
   - `tripcolor` の `z` にマスク付き配列を渡すと、マスクした点は NaN と同じく塗られない（heatmaps の最終検証で揃えた）
 
 - 1.2: `nb_execution_in_temp` を有効にすると、ビルドしたディレクトリの直下に `jupyter_execute/` ができる（`.gitignore` 済み）。ビルドの確認で `-D autoclass_content=class` にすると `materials` などの説明が消えることで、`autoclass_content="both"` の効果を確かめた
+- 2.1: `fig` の型注釈は `Figure` だが、subfigure の Axes では `SubFigure` を返す（docstring の Returns は両方を書いた。注釈の修正は typing-cleanup の候補）。`__init__` の例の期待出力に str のリストの repr（頂点ラベルの文字列）があるが、版によらず安定しているので許す。2.5 で repr の行を機械的に調べるなら、この形を許す判定にする

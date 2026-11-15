@@ -241,12 +241,42 @@ def _resolve_colorbar_arg(
 class TernaryDiagram:
     """Ternary diagram drawn on a matplotlib Axes.
 
-    At construction, the diagram draws its skeleton on the Axes in 5
-    parts: the border of the triangle, the grid, the tick labels, the axis
-    titles (none by default) and the vertex labels (the materials). The
-    look of each part can be given at construction with its ``*_kw``
-    argument and changed afterwards with its change method, and the
-    artists that it draws are returned by its read-only accessor:
+    A ternary diagram shows compositions of three components (the
+    materials) as points in a triangle whose vertices are the pure
+    materials, given in the order top, bottom left, bottom right
+    (counterclockwise from the top vertex). The diagram draws on one
+    matplotlib Axes, the ``ax`` given at construction or the current
+    Axes, so it can be one panel of a figure made with
+    ``plt.subplots``. At construction, it sets the aspect of the Axes to
+    equal, hides the ticks and the spines of the Axes and draws the
+    skeleton of the diagram.
+
+    The plotting methods draw on the Axes of the diagram and return the
+    matplotlib objects that they create. Those that take compositions
+    (``vector``) read each row as the amounts of the three materials in
+    the order of ``materials`` and normalize it, so the sum does not have
+    to be 1:
+
+    - :meth:`scatter`: points, optionally colored by a value ``z``.
+    - :meth:`contour`: filled or line contours of a value ``z`` given at
+      scattered compositions.
+    - :meth:`tripcolor`: the triangles between scattered compositions,
+      colored by a value ``z`` without interpolation.
+    - :meth:`heatmapf`: a heat map of a function ``f(a, b, c)`` of the
+      composition, evaluated on a regular triangular lattice.
+    - :meth:`plot`: lines that join compositions, such as tie lines.
+    - :meth:`fill`: a polygon of compositions, such as a phase region.
+    - :meth:`text`: a text centered at a composition.
+    - :meth:`annotate`: a note at a composition, slightly to its upper
+      right by default.
+    - :meth:`colorbar`: a colorbar of a plot colored by a value.
+
+    The skeleton is drawn in 5 parts: the border of the triangle, the
+    grid, the tick labels, the axis titles (none by default) and the
+    vertex labels (the materials). The look of each part can be given at
+    construction with its ``*_kw`` argument and changed afterwards with
+    its change method, and the artists that it draws are returned by its
+    read-only accessor:
 
     ===================  =========================  ==================
     At construction      After construction         Artists
@@ -327,31 +357,35 @@ class TernaryDiagram:
         axis_label_kw: Optional[Mapping[str, Any]] = None,
         vertex_label_kw: Optional[Mapping[str, Any]] = None,
     ) -> None:
-        """
-        Make instance.
-
-        Create borders, etc. for triangulation diagrams.
-
+        """Draw the skeleton of a ternary diagram on an Axes.
 
         Parameters
         ----------
-        materials : Tuple[str, str, str]
-            A one-dimensional list of compounds that constitute an endpoint
-            when generating a ternary_diagram.
+        materials : sequence of str
+            Names of the three components as a list or a tuple, shown at
+            the vertices of the triangle in the order top, bottom left,
+            bottom right (counterclockwise from the top vertex). The
+            columns of the compositions given to the plotting
+            methods follow this order. If more than 3 items are given,
+            only the first 3 are used; fewer than 3 raise a ValueError.
+            With ``auto_latex_notation=True``, each item must be a str.
 
-            Specify counterclockwise from the top vertex of the triangle.
-
-        ax : Optional[matplotlib.axes.Axes], optional
-            Axes object to draw a diagram. If None, automatically generate.
-            , by default None
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw the diagram on. If None, the current Axes
+            (``plt.gca()``) is used, which creates a figure and an Axes if
+            there are none. Anything other than an Axes or None raises a
+            TypeError, by default None
 
         auto_latex_notation : bool, optional
-            If True, the LaTeX notation of the material is automatically
-            generated. If False, the material is displayed as it is. In
-            ternary-diagram 4.0.0, it will also decide whether
-            :meth:`annotate` and the annotations of :meth:`scatter` format
-            the chemical formulas when their own `auto_latex_notation` is
-            not given, by default True
+            Whether to write the numbers in the vertex labels as
+            subscripts in LaTeX notation (``"Li2O"`` to
+            ``"Li$_{2}$O"``). ``False`` shows `materials` as they are. The
+            setting is fixed at construction and also applies to the
+            vertex labels given later with :meth:`set_vertex_labels`. It
+            is also the setting that :meth:`text` follows by default and,
+            from ternary-diagram 4.0.0, :meth:`annotate` and the
+            annotations of :meth:`scatter`; see those methods for their
+            rules, by default True
 
         tight_layout : bool or None, optional
             Whether to adjust the figure margins with
@@ -400,28 +434,51 @@ class TernaryDiagram:
             draws the vertex labels with the default appearance,
             by default None
 
+        Attributes
+        ----------
+        x_ : dict of str to list of numpy.ndarray
+            The x coordinates of the points drawn by the plotting methods,
+            keyed by the name of the method (such as ``"scatter"``). Each
+            value is a list with one 1-D array per call, in the order of
+            the calls. The coordinates are those of the Axes, where the
+            bottom left vertex is (0, 0), the bottom right vertex is
+            (1, 0) and the top vertex is (0.5, sqrt(3)/2). It is a
+            ``collections.defaultdict``, so a method not called yet gives
+            an empty list.
+
+        y_ : dict of str to list of numpy.ndarray
+            The y coordinates of the points drawn by the plotting methods,
+            in the same form as `x_`.
 
         Examples
         --------
+        Draw a diagram on an Axes. The numbers in the materials are shown
+        as subscripts, and the coordinates of the plotted points are
+        recorded by the name of the method.
+
+        >>> import matplotlib.pyplot as plt
         >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> [label.get_text() for label in td.vertex_labels_]
+        ['Li$_{2}$O', 'La$_{2}$O$_{3}$', 'TiO$_{2}$']
+        >>> points = td.scatter([[1, 1, 1], [1, 2, 3]])
+        >>> len(td.x_["scatter"])
+        1
 
-        >>> # You can set `ax` to select which axes to draw.
-        >>> # If not, the current axes will be used.
-        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"])
+        Show the materials as they are, such as names that are not
+        chemical formulas.
 
-        >>> # scatter
-        >>> td.scatter(vector=[[1, 1, 1], [1, 2, 3]], z=[0, 1])
-        >>> # You can set some options in `plt.scatter` like `marker`, `c` etc.
-        >>> td.scatter([[2, 1, 3], [3, 2, 1]], marker="s", c="#022c5e", s=30)
-
-        >>> # line plot
-        >>> # You can set some options in `plt.plot` like `lw`, `c`, and so on.
-        >>> td.plot([[1, 1, 1], [1, 2, 3]], color="black")
-
-        >>> # save figure
-        >>> td.fig.savefig("figure.png", dpi=144)
-
-
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Solvent A", "Solvent B", "Polymer 1"],
+        ...     ax=ax,
+        ...     auto_latex_notation=False,
+        ... )
+        >>> [label.get_text() for label in td.vertex_labels_]
+        ['Solvent A', 'Solvent B', 'Polymer 1']
         """
 
         # check `ax`
@@ -504,7 +561,17 @@ class TernaryDiagram:
 
     @property
     def ax(self) -> matplotlib.axes.Axes:
-        """Axes object"""
+        """Axes that the diagram is drawn on.
+
+        It is the ``ax`` given at construction, or the current Axes if
+        ``ax`` was None. It is read-only: assigning to it raises an
+        AttributeError.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The Axes of the diagram.
+        """
         return self.__ax
 
     @ax.setter
@@ -513,7 +580,17 @@ class TernaryDiagram:
 
     @property
     def fig(self) -> matplotlib.figure.Figure:
-        """Figure object"""
+        """Figure that contains the Axes of the diagram.
+
+        It is ``ax.figure`` at construction: the figure of the Axes, or
+        the subfigure if the Axes is in a subfigure. It is read-only:
+        assigning to it raises an AttributeError.
+
+        Returns
+        -------
+        matplotlib.figure.Figure or matplotlib.figure.SubFigure
+            The figure or subfigure that contains `ax`.
+        """
         return self.__fig
 
     @property
