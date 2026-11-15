@@ -31,7 +31,7 @@
   - _Boundary: `docs_src/index.md`（toctree だけ）、`docs_src/user_guide/index.md`（新規）、`docs_src/user_guide/{getting_started,customizing,phase_diagrams,heatmaps_and_contours,layout_and_colorbars,migration_v4}.md`（新規。ヘッダー・H1・導入だけ）_
   - _Requirements: 2.1, 8.7, 10.2, 10.3, 10.4_
 
-- [ ] 2. 既存の公開 API の docstring
+- [x] 2. 既存の公開 API の docstring
 - [x] 2.1 クラス、作成時の引数、プロパティの docstring を書く
   - クラスの要約と説明、作成時の要約、`materials`・`ax`・`auto_latex_notation` の項目、描いた座標の記録（`x_`・`y_`）の Attributes 節、プロパティ `ax`・`fig` を、design の docstring の規約と担当表に従って書く
   - `__init__` の Examples 節は本 spec だけが持ち、単独で書き直す。担当する引数（`materials`・`ax`・`auto_latex_notation`）を使い、必要な import の行から始めて推奨の図の作り方で `ax=ax` を渡し、単独で実行でき、repr の出力行を書かず、ファイルに保存せず、FutureWarning を出さない例にする。`*_kw` の使用例は対応する `set_*` の docstring にあるので書かない
@@ -65,7 +65,7 @@
   - _Boundary: `src/ternary_diagram/utils.py`: `check_ax`・`check_2d_vector`・`check_1d_vector`・`three2two`・`get_label` の docstring だけ（annotate-plain-text が `get_label` に足した項目を除く）。コードと上流が足した関数は変えない_
   - _Requirements: 1.6, 1.7, 1.9, 1.10, 9.1, 9.2_
 
-- [ ] 2.5 担当する docstring の例の有無と不備を確かめるテストを追加する
+- [x] 2.5 担当する docstring の例の有無と不備を確かめるテストを追加する
   - 確かめる範囲は design の docstring の担当表で本 spec のものとした項目と節だけにする: 担当する 11 の Examples 節（作成時、散布図、等高線図、線、注釈、カラーバーのメソッド、`utils` の既存 5 関数）に使用例が 1 つ以上あること、担当する Parameters・Attributes の項目（design の `OWNED_ENTRIES`）がそれぞれ存在し、`, by default X` のほかに意味を書く文を持ち、`semi-clockwise` を含まないことを確かめるテストを書く。例は実行しない（共通の doctest ランナーが実行する）
   - 上流が担当する項目と節（`tight_layout`・`*_kw`・`colorbar`・`flag_cbar`・annotate-plain-text の切り替え引数の項目、クラスの Notes 節など）は確認の対象にしない。これらは steering の tech.md「Docstring Examples」の規約に担当 spec が自分で従うもので、違反に気づいた場合は書き換えず、担当 spec の不具合として記録する（本 spec のテストの合否には含めない）
   - 公開名だけを使い、プライベートモジュールを import しない
