@@ -136,7 +136,7 @@
   - _Requirements: 11.1, 11.5, 12.5_
 
 - [ ] 5. 統合: トップページ、README、変更履歴
-- [ ] 5.1 (P) トップページとチュートリアルの一覧を仕上げる
+- [x] 5.1 (P) トップページとチュートリアルの一覧を仕上げる
   - トップページに、1 段落の概要（ランタイム依存が numpy と matplotlib だけであること）、既存の画像、インストール方法、4.1 で確定した最小の例、使い方ページ 6 つ（移行ページを含む）・チュートリアル・API リファレンスへの案内の節を置く
   - チュートリアルの一覧に、既存の目次の並びと URL を保ったまま各ノートブックの 1 行の説明と、目的別の説明は使い方ページにある旨の案内を足す
   - 完了時: ビルドが警告 0 件で終わり、トップページから移行ページを含むすべての使い方ページへ 1 回の移動でたどれ、チュートリアルの一覧の各項目に説明がある
@@ -221,3 +221,4 @@
 - 4.1（レビューは inline。`source` だけの差分を親が確認）: 最小の例は `example/example_on_readme/example_on_readme.ipynb` のセル 1（`import matplotlib.pyplot as plt` と `from ternary_diagram import TernaryDiagram`）とセル 2 を空行 1 つでつないだコード。README とトップページ（5.1・5.2）はこれと一字一句同じにし、5.4 のテストで一致を確かめる。保存済みの出力と PNG は 7.1 で更新するまで新しいコードと合わない。等高線図のノートブックのセル 2 に以前からある未使用の `import numpy as np`（ruff F401）と、セル 5 の不自然な説明文は範囲外として残した
 - 5.2（レビューは inline）: design は既存のバッジを「10 個」としているが、実際は 9 個（すべて残した）。画像の URL は既存と同じ `github.com/.../blob/main/...?raw=true` の形。`figure.png` の中身は 7.1 で更新するまで古い
 - 7.1（レビューは inline。stderr とエラーの出力がないこと、source と metadata が HEAD と同じことを確認）: 5 つは `conductivity-prediction-py312`（matplotlib 3.11.2、`element_recognition` あり）、README のノートブックは `py312`（matplotlib 3.10.8）で再実行した。matplotlib 3.11.2 では README の例（constrained layout にカラーバーが付く図）で左下の頂点ラベルが左端から約 3px はみ出したため。縦横比を固定した三角図（`adjustable="datalim"`）と constrained layout の組み合わせで頂点ラベルが図の端に近づく件は、ライブラリ側の今後の課題として残す（本 spec はコードを変えない）
+- 5.1（レビューは inline）: チュートリアルのノートブックはシンボリックリンクなので、Markdown のリンク `[...](quickstart.ipynb)` は MyST が解決できない（リンク先の実体のパスで探して `myst.xref_missing` になる）。`{doc}` ロールでリンクする
