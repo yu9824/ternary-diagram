@@ -80,6 +80,14 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
   - 実装結果: 整形の入口は `utils.to_latex_notation`（空白で区切った語のうち、`utils.is_chemical_formula` が化学式とみなすものだけを `get_label` で整形する。`$` を含む文字列はそのまま）。`annotate` と `scatter` の切り替え引数は `auto_latex_notation: bool | None = None`（キーワード専用）。`None` は v3.x の表示を保ち、表示が変わる文字列にだけ FutureWarning を出す（三角図ごとに 1 回）。`TernaryDiagram.__auto_latex_notation` は本件が `__init__` に足した。`region-plots` の `text` は `None` を三角図の設定で解決し、`to_latex_notation` を呼ぶ（警告の経路は通らない）
 - [ ] typing-cleanup -- `TernaryDiagram.x_` / `y_` に残っている `# FIXME: mypy` を型注釈で解消する。挙動は変えない
 
+## Deferred to v4.0.0
+
+v3.x では直さず、v4.0.0 の準備で扱う項目。
+
+- 既定値の切り替えと `flag_cbar` の削除（CHANGELOG の Deprecations のとおり）
+- `PostDrawContext.has_colorbar` の判定を直す。登録済みのカラーバーと同じ mappable に利用者が `fig.colorbar` で別のカラーバーを足すと、登録済みのものが削除済みと判定される。v3.x では重複の FutureWarning が出ないだけだが、v4.0.0 の既定（既存ありなら自動追加しない）では 1 本余分に付く
+- `scatter` / `contour` の `colorbar` をキーワード専用にする（候補）。6 番目の位置引数は v3.2.1 から意味が変わった（`0` / `1` は `TypeError`、`None` は未指定）。v3.x で位置引数での指定に FutureWarning を出すかは、v4.0.0 の準備で決める
+
 ## Specs (dependency order)
 
 - [x] plot-side-effects -- 毎回の tight_layout とカラーバーの自動追加を切り替え可能にし、既存のレイアウトエンジンを上書きしないようにする。将来の既定値変更に向けて FutureWarning を出す共通の仕組みを作る。Dependencies: none

@@ -747,7 +747,7 @@ def check_bool(value: object, name: str) -> bool:
 - 警告の文面に依存する assert は `match=` で要点（`"4.0.0"`、`"tight_layout=True"` など）だけを確認し、全文一致にしない
 
 ## Migration Strategy
-- v3.x（本 spec）: 新しい引数を追加し、既定のまま結果が変わる呼び出しに FutureWarning を出す。`flag_cbar` は動作するが FutureWarning を出す。6 番目の位置引数（カラーバーの指定）は `None` / 真偽値に限り、`0` / `1` などは `TypeError` になる（唯一の非互換。CHANGELOG の Breaking changes）
+- v3.x（本 spec）: 新しい引数を追加し、既定のまま結果が変わる呼び出しに FutureWarning を出す。`flag_cbar` は動作するが FutureWarning を出す。6 番目の位置引数（カラーバーの指定）は `None` / 真偽値に限り、`0` / `1` などは `TypeError` になる。位置引数の `None` は未指定として扱うので、導入前と違い、値で色付けした描画ではカラーバーを追加する（この 2 点が非互換。CHANGELOG の Breaking changes）
 - v4.0.0（本 spec の範囲外）: 決定表の `None` 行を `SKIP` に変え、`flag_cbar` を削除する。`FUTURE_VERSION` を次の予定に更新する
 - 利用者の移行: 警告文の `keep` / `adopt` のどちらかを書く。具体的な手順は `user-guide-docs` の移行ページにまとめる
 
