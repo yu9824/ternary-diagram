@@ -5,8 +5,9 @@
 announces the texts whose display will change.
 """
 
+import warnings
+
 import pytest
-from _warning_filters import raise_on_warnings
 from matplotlib.text import Annotation
 
 from ternary_diagram import TernaryDiagram
@@ -58,7 +59,8 @@ def test_true_formats_only_the_chemical_formulas(
         auto_latex_notation=diagram_setting,
         tight_layout=True,
     )
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert _draw(method, td, text, auto_latex_notation=True) == expected
 
 
@@ -72,7 +74,8 @@ def test_false_shows_the_text_as_it_is(ax, method, diagram_setting, text):
         auto_latex_notation=diagram_setting,
         tight_layout=True,
     )
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert _draw(method, td, text, auto_latex_notation=False) == text
 
 
@@ -90,7 +93,8 @@ def test_invalid_value_raises_type_error(td, method, value):
 @pytest.mark.parametrize("method", METHODS)
 @pytest.mark.parametrize("text", ["Li2O", "(LiLa)0.5TiO3", "LiF", "A"])
 def test_default_keeps_formulas_without_warning(td, method, text):
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         shown = _draw(method, td, text)
     assert shown == _draw(method, td, text, auto_latex_notation=True)
 
@@ -132,7 +136,8 @@ def test_default_follows_the_diagram_setting_in_the_warning(ax, method):
 @pytest.mark.parametrize("text", ["$x_1$", "Li2O at $T_1$"])
 def test_default_shows_mathtext_as_it_is(td, method, text):
     # v3.x inserted subscripts into the mathtext, which could not be drawn.
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert _draw(method, td, text) == text
     td.fig.canvas.draw()
 
@@ -142,7 +147,8 @@ def test_default_without_numbers_does_not_warn(ax, method):
     td = TernaryDiagram(
         MATERIALS, ax=ax, auto_latex_notation=False, tight_layout=True
     )
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         assert _draw(method, td, "Sample") == "Sample"
 
 
@@ -165,13 +171,15 @@ def test_warning_is_emitted_once_per_diagram(ax):
 
 @pytest.mark.parametrize("auto_latex_notation", [None, True, False])
 def test_scatter_annotations_that_are_not_str(td, auto_latex_notation):
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         shown = _scatter(td, [1, 2.5], auto_latex_notation=auto_latex_notation)
     assert shown == ["1", "2.5"]
 
 
 @pytest.mark.parametrize("auto_latex_notation", [None, True, False])
 def test_annotate_text_that_is_not_str(td, auto_latex_notation):
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         shown = _annotate(td, 5, auto_latex_notation=auto_latex_notation)
     assert shown == "5"

@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import matplotlib.text
 import numpy as np
 import pytest
-from _warning_filters import raise_on_warnings
 from matplotlib.colors import to_rgba
 from matplotlib.patches import Polygon
 
@@ -296,7 +295,8 @@ def test_fill_follows_layout_setting_without_colorbar(tight_layout):
     td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=tight_layout)
     n_axes = len(fig.axes)
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         td.fill(TRIANGLE)
 
     # カラーバーが増えない (no colorbar is added)

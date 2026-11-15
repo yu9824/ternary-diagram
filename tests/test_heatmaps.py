@@ -12,7 +12,6 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from _warning_filters import raise_on_warnings
 from matplotlib.colorbar import Colorbar
 from matplotlib.colors import LogNorm
 
@@ -193,7 +192,8 @@ def test_only_z_max_keeps_the_default_minimum(td, method, alias):
 def test_norm_is_used_without_the_default_range(td, method, shading):
     norm = LogNorm()
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         mesh, _, _ = _paint(td, method, norm=norm, shading=shading)
 
     assert mesh.norm is norm
@@ -211,7 +211,8 @@ def test_range_of_the_given_norm_is_kept(td, method, shading):
     # has one is not replaced by the default range)
     norm = LogNorm(vmin=0.5, vmax=10.0)
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         mesh, _, _ = _paint(td, method, norm=norm, shading=shading)
 
     assert mesh.norm is norm
@@ -246,7 +247,8 @@ def test_default_adds_one_colorbar_referable_from_the_result(
 ):
     axes_before = list(td.fig.axes)
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         mesh, _, _ = _paint(td, method, shading=shading)
 
     assert isinstance(mesh.colorbar, Colorbar)
@@ -281,7 +283,8 @@ def test_explicit_colorbar_adds_or_not_without_warnings(
         td.contour(VECTOR, z=Z)
     n_axes = len(td.fig.axes)
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         mesh, _, _ = _paint(td, method, colorbar=colorbar)
 
     assert len(td.fig.axes) == n_axes + added
@@ -344,7 +347,8 @@ def test_tight_layout_false_leaves_layout_untouched(method):
     default = _subplotpars(fig)
     td = TernaryDiagram(MATERIALS, ax=ax, tight_layout=False)
 
-    with raise_on_warnings():
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
         _paint(td, method)
 
     assert _subplotpars(fig) == default
