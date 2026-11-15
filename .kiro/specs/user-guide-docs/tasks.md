@@ -157,7 +157,7 @@
   - _Boundary: `CHANGELOG.md`（Unreleased の Other changes にある本 spec の項目だけ）_
   - _Requirements: 14.1_
 
-- [ ] 5.4 README とトップページの最小の例を確かめるテストを追加する
+- [x] 5.4 README とトップページの最小の例を確かめるテストを追加する
   - README とトップページの最初の Python のコードブロックが同じであることと、そのコードが一時ディレクトリで FutureWarning をエラーとして扱ってもエラーなく実行できることを確かめるテストを、新しいファイルに書く。docstring の例は扱わない（共通の doctest ランナーが実行する）
   - 完了時: 追加したテストと既存のテスト一式がネットワークなしで通る
   - _Boundary: `tests/test_docs_examples.py`（新規）_
