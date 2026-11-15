@@ -125,8 +125,8 @@
   - _Boundary: `docs_src/user_guide/migration_v4.md`_
   - _Requirements: 2.3, 2.4, 2.5, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 9.1, 9.2, 9.5_
 
-- [ ] 4. チュートリアルのコードの更新
-- [ ] 4.1 (P) 6 つのノートブックのコードを推奨の書き方に直す
+- [x] 4. チュートリアルのコードの更新
+- [x] 4.1 (P) 6 つのノートブックのコードを推奨の書き方に直す
   - 等高線図のノートブックの `flag_cbar=False` を `colorbar=False` に置き換える
   - すべてのノートブックで図を `layout="constrained"` で作って三角図に Axes を渡し、利用者側の `fig.tight_layout()` の呼び出しを削除し、複数の図のノートブックの説明文を constrained layout の説明に直す
   - README のノートブックのコードを、README とトップページで共有する新しい最小の例にする
@@ -218,3 +218,4 @@
 - 2.3: `TernaryDiagram.colorbar` は既定で `orientation="vertical"` を渡すので、`location="bottom"` / `"top"` だけを渡すと matplotlib が TypeError を出す（横向きは `orientation="horizontal"` も要る。docstring に書いた）。`location` から向きを決める改善は本 spec の範囲外（コードを変えない）なので、今後の課題として残す
 - 3.1: `myst_heading_anchors` が無効（`conf.py` は変えない）なので、ページ内の見出しへのリンクには明示のターゲット（`(getting-started-first-diagram)=` のように、ページ名を接頭辞にした名前）を置く。他のページも同じ方法にする
 - 2.6（レビューは inline。差分が型の行と項目名の 12 行だけのため）: `text` の `vector` は説明文に `(1, 3)` の記述がないので、型の行を `array-like of shape (3,) or (1, 3)` とした（`annotate` は型の行が `(3,)` で、`(1, 3)` は説明文に書いてある）。`fill` の Returns の `List[...]` の書き方も残っている。どちらも 6.2 のレビューで揃えるかを判断する
+- 4.1（レビューは inline。`source` だけの差分を親が確認）: 最小の例は `example/example_on_readme/example_on_readme.ipynb` のセル 1（`import matplotlib.pyplot as plt` と `from ternary_diagram import TernaryDiagram`）とセル 2 を空行 1 つでつないだコード。README とトップページ（5.1・5.2）はこれと一字一句同じにし、5.4 のテストで一致を確かめる。保存済みの出力と PNG は 7.1 で更新するまで新しいコードと合わない。等高線図のノートブックのセル 2 に以前からある未使用の `import numpy as np`（ruff F401）と、セル 5 の不自然な説明文は範囲外として残した
