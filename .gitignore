@@ -1,6 +1,9 @@
 # custom
 docs/
 jupyter_execute/
+# sphinx-apidoc generates these in CI; do not commit them
+docs_src/modules.rst
+docs_src/ternary_diagram*.rst
 _version.py
 
 # Claude Code の個人設定 (共有する設定は .claude/settings.json と CLAUDE.md)

@@ -14,7 +14,7 @@
   - _Boundary: 変更なし（読み取りと、一時ディレクトリでの試し実行だけ。リポジトリのファイルは変えない）_
   - _Requirements: 1.9, 3.4, 8.3, 9.1_
 
-- [ ] 1.2 使い方ページの実行と作成時の引数の表示を有効にするビルド設定を入れる
+- [x] 1.2 使い方ページの実行と作成時の引数の表示を有効にするビルド設定を入れる
   - 実行できるページを毎回実行し、チュートリアルは保存済みの出力のまま表示し、セルの例外でビルドを失敗させ、stderr の出力を警告にし、実行時の作業ディレクトリを一時ディレクトリにする設定を入れる。実行結果のキャッシュは使わない
   - クラスの docstring に続けて作成時の docstring を API リファレンスに表示する設定を入れる
   - テーマ、テンプレート（フッターの広告スクリプト）、拡張の構成、ドキュメントのワークフローは変えない
@@ -212,3 +212,4 @@
   - HeatmapsPage の「Choosing a colormap」で `norm` を使う例には、`z_min` / `z_max`（`vmin` / `vmax`）と同時に渡すと matplotlib が ValueError を出すことを添える（`tripcolor` / `heatmapf` の docstring には書いてある）
   - `tripcolor` の `z` にマスク付き配列を渡すと、マスクした点は NaN と同じく塗られない（heatmaps の最終検証で揃えた）
 
+- 1.2: `nb_execution_in_temp` を有効にすると、ビルドしたディレクトリの直下に `jupyter_execute/` ができる（`.gitignore` 済み）。ビルドの確認で `-D autoclass_content=class` にすると `materials` などの説明が消えることで、`autoclass_content="both"` の効果を確かめた
