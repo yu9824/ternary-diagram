@@ -97,7 +97,7 @@
   - _Boundary: `docs_src/user_guide/customizing.md`_
   - _Requirements: 2.2, 2.3, 2.4, 2.5, 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 4.7, 9.1, 9.2, 9.5_
 
-- [ ] 3.3 (P) 相図の描き方のページを書く
+- [x] 3.3 (P) 相図の描き方のページを書く
   - ページの規約に従い、架空の例であることを本文に書いたうえで、相領域の塗りと凡例、頂点の順序（並べ替えや凸包の計算をしないこと）、文字の配置と整形（`text` の `auto_latex_notation` は既定の `None` で作成時の設定を引き継ぎ、`False` で止める）、既定の重なり順の表と透明度・重なり順の変え方、色だけに頼らない示し方、等高線図の `fill` 引数と `fill` メソッドの違いの注記の節を書く
   - 完了時: ページがビルド時に実行されて警告 0 件で表示され、相図の例の図で各領域が凡例と文字のラベルの両方で区別でき、図に代替テキストが付いている
   - _Boundary: `docs_src/user_guide/phase_diagrams.md`_
@@ -222,3 +222,4 @@
 - 5.2（レビューは inline）: design は既存のバッジを「10 個」としているが、実際は 9 個（すべて残した）。画像の URL は既存と同じ `github.com/.../blob/main/...?raw=true` の形。`figure.png` の中身は 7.1 で更新するまで古い
 - 7.1（レビューは inline。stderr とエラーの出力がないこと、source と metadata が HEAD と同じことを確認）: 5 つは `conductivity-prediction-py312`（matplotlib 3.11.2、`element_recognition` あり）、README のノートブックは `py312`（matplotlib 3.10.8）で再実行した。matplotlib 3.11.2 では README の例（constrained layout にカラーバーが付く図）で左下の頂点ラベルが左端から約 3px はみ出したため。縦横比を固定した三角図（`adjustable="datalim"`）と constrained layout の組み合わせで頂点ラベルが図の端に近づく件は、ライブラリ側の今後の課題として残す（本 spec はコードを変えない）
 - 5.1（レビューは inline）: チュートリアルのノートブックはシンボリックリンクなので、Markdown のリンク `[...](quickstart.ipynb)` は MyST が解決できない（リンク先の実体のパスで探して `myst.xref_missing` になる）。`{doc}` ロールでリンクする
+- 3.3（レビューで 1 回差し戻し。頂点の順序の図の代替テキストが図の番号の付き方と食い違っていた）: 図の上の数字や記号を説明する代替テキストは、コードが実際に描くもの（何に番号を振ったか）から書く。既定の `tab:blue` の上の黒文字はコントラスト比が約 4.4:1 で AA に届かないので、塗りの上の文字には白い半透明の `bbox` を付ける
