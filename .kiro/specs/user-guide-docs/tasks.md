@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. 基盤: 前提の確認、ビルド設定、使い方ページの骨組み
+- [x] 1. 基盤: 前提の確認、ビルド設定、使い方ページの骨組み
 - [x] 1.1 上流の実装と作業環境を確かめ、ドキュメントに書く名前を照合する
   - 上流（副作用の制御、土台のカスタマイズ、annotate-plain-text、相図、ヒートマップ）がすべてマージ済み（roadmap の Implementation Order で本 spec は最後）で、共通の doctest ランナー `tests/test_doctests.py` を含む既存のテスト一式が通ることを確かめる。未マージなら作業を止めて報告する。上流の docstring の例がランナーで失敗する場合は書き換えず、担当 spec の不具合として記録する
   - ドキュメントのビルド（`docs` extras 一式とカーネル）に使える既存の環境を確かめる。パッケージはインストールせず、使える環境がなければ承認を得る
@@ -23,7 +23,7 @@
   - _Boundary: `docs_src/conf.py`（`nb_execution_mode`・`nb_execution_excludepatterns`・`nb_execution_raise_on_error`・`nb_execution_in_temp`・`nb_output_stderr`・`autoclass_content` の設定だけ）、`.gitignore`（`docs_src/modules.rst`・`docs_src/ternary_diagram*.rst` の行だけ）_
   - _Requirements: 1.8, 9.3, 9.4, 13.3, 13.4, 13.5_
 
-- [ ] 1.3 使い方ページの骨組みと 3 区分の目次を作る
+- [x] 1.3 使い方ページの骨組みと 3 区分の目次を作る
   - 6 ページ（はじめての三角図、見た目の変え方、相図の描き方、ヒートマップと等高線の使い分け、レイアウトとカラーバー、v4.0.0 への移行）を、design の URL 一覧どおりの場所に、実行されるノートブック形式のヘッダー、英語の H1、1 段落の導入だけで作る
   - 使い方ページの一覧ページに、6 ページへのリンク、各ページで何ができるかの 1 行の説明、目次を置く
   - トップページの目次を「User guide」「Tutorials」「API Reference」の 3 区分にする。既存のチュートリアルと API リファレンスの目次と URL は変えない
