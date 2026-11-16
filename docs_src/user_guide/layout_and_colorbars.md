@@ -208,7 +208,7 @@ The points are passed here: a colorbar made from a contour map is divided at its
 By default, `colorbar` places a vertical colorbar on the right with `shrink=0.8` (80 % of the height of the Axes), and shows one decimal place in the tick labels (`format="%.1f"`).
 `label`, `format`, `shrink` and the other arguments of `Figure.colorbar`, such as `ticks`, `extend` or `pad`, change it; `ax` cannot be given, since the space is always taken from the Axes of the diagram.
 
-A horizontal colorbar needs both `orientation="horizontal"` and `location="bottom"` (or `"top"`), because the default `orientation="vertical"` does not match those locations and matplotlib raises a `TypeError`:
+`location` chooses the side of the diagram, and the direction of the colorbar follows it: `location="bottom"` (or `"top"`) gives a horizontal colorbar. An `orientation` given together with `location` must agree with it, or matplotlib raises a `TypeError`.
 
 ```{code-cell} ipython3
 ---
@@ -219,9 +219,7 @@ mystnb:
 fig, ax = plt.subplots(layout="constrained")
 td = TernaryDiagram(materials, ax=ax)
 heatmap = td.heatmapf(property_value, cmap="viridis", colorbar=False)
-cbar = td.colorbar(
-    heatmap, label="Property", orientation="horizontal", location="bottom"
-)
+cbar = td.colorbar(heatmap, label="Property", location="bottom")
 ```
 
 A colorbar added with `colorbar` counts as a colorbar of the diagram, as described in [Automatic colorbars](#layout-and-colorbars-automatic-colorbars).

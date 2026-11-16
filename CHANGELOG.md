@@ -2,6 +2,12 @@
 
 See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for the release notes generated from pull requests.
 
+## Unreleased
+
+### New features
+
+- `TernaryDiagram.colorbar` chooses the direction of the colorbar from `location` when `orientation` is not given, so `location="bottom"` or `"top"` alone draws a horizontal colorbar instead of raising `TypeError`. The default colorbar stays vertical on the right.
+
 ## v3.3.0
 
 ### Breaking changes
