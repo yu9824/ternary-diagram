@@ -1503,7 +1503,9 @@ class TernaryDiagram:
         z : array-like of shape (n,)
             Values at the compositions, one per row of `vector`, from which
             the contours are drawn. It is required: None, the default,
-            raises a ValueError.
+            raises a ValueError. NaN and infinite values make matplotlib
+            raise a ValueError too: drop those compositions first, or
+            use `tripcolor`, which leaves them unpainted.
 
         z_min : float, optional
             Lower limit of the automatic levels. If None, the minimum of
