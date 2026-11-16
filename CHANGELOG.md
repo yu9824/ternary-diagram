@@ -2,7 +2,7 @@
 
 See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for the release notes generated from pull requests.
 
-## Unreleased
+## v3.3.0
 
 ### Breaking changes
 
