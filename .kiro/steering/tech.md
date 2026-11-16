@@ -94,7 +94,7 @@ else:
 - **リリース**: `vX.Y.Z` または `vX.Y.Z-rc.N` タグの push を起点に、PyPI（Trusted Publishing）、TestPyPI、GitHub Release（Sigstore 署名付き）へ自動で公開する。タグに `-` を含むものはプレリリース扱い
 - **バージョン更新**: タグを打つだけ（setuptools-scm）。`__version__` を書き換えるコミットは作らない。手順は `HOW_TO_RELEASE.md`、利用者向けの変更点は `CHANGELOG.md`
 - **Trusted Publishing**: PyPI / TestPyPI の設定はワークフローのファイル名 `release-pypi.yml` に紐づくので、改名するときは PyPI 側の設定も変える
-- **ドキュメント**: Sphinx + MyST-NB + sphinx-book-theme。正式版タグで sphinx-apidoc が API リファレンスを生成し、GitHub Pages にデプロイする。生成された `.rst` はコミットしない。ノートブックは実行せず保存済みの出力を表示する（`nb_execution_mode = "off"`）
+- **ドキュメント**: Sphinx + MyST-NB + sphinx-book-theme。正式版タグで sphinx-apidoc が API リファレンスを生成し、GitHub Pages にデプロイする。生成された `.rst` はコミットしない。使い方ページ（`docs_src/user_guide/`）はビルドのたびに実行し（`nb_execution_mode = "force"`、一時ディレクトリで実行、キャッシュなし）、セルの例外でビルドを失敗させ、stderr（FutureWarning を含む）を Sphinx の警告にする。チュートリアルのノートブックは実行せず保存済みの出力を表示する（`nb_execution_excludepatterns`）。クラスの docstring に続けて `__init__` の docstring を表示する（`autoclass_content = "both"`）。変更したら CI と同じ手順でビルドし、警告 0 件を確かめる
 - **リリースノート**: GitHub の自動生成。PR ラベル `enhancement` / `bug` で分類される
 
 ## Key Technical Decisions
@@ -114,3 +114,4 @@ _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
 _updated_at: 2026-11-09 — region-plots（`fill` / `text` の zorder）と annotate-plain-text（`utils.to_latex_notation`）を反映_
 _updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
+_updated_at: 2026-11-16 — user-guide-docs（使い方ページの実行、`autoclass_content`）を反映_

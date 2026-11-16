@@ -14,7 +14,7 @@
 ### Tests
 **Location**: `tests/`
 **Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く。複数のテストファイルで共有する期待値の計算は `test_` の付かない `_` 接頭辞のモジュール（`_skeleton_expected.py`）に置く
-**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）、`test_mesh.py`（`_mesh` の単体）/ `test_tripcolor.py`・`test_heatmapf.py`（メソッド固有）/ `test_heatmaps.py`（両方に共通する挙動をメソッドでパラメータ化）
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）、`test_mesh.py`（`_mesh` の単体）/ `test_tripcolor.py`・`test_heatmapf.py`（メソッド固有）/ `test_heatmaps.py`（両方に共通する挙動をメソッドでパラメータ化）、ドキュメントの `test_owned_docstrings.py`（docstring の項目と例の有無を静的に確かめる）・`test_docs_examples.py`（README とトップページの最小の例の一致と実行）
 
 ### Examples
 **Location**: `example/<use_case>/`
@@ -23,8 +23,13 @@
 
 ### Documentation
 **Location**: `docs_src/`
-**Purpose**: Sphinx の設定と手書きページ（MyST Markdown）のみ。API リファレンスは CI で sphinx-apidoc が生成する
-- `tutorials/` は `example/` の Notebook へのシンボリックリンク。Notebook を追加したらリンクと `tutorials/index.md` の toctree に足す
+**Purpose**: Sphinx の設定と手書きページ（MyST Markdown）のみ。API リファレンスは CI で sphinx-apidoc が生成する（生成物 `modules.rst`・`ternary_diagram*.rst` は `.gitignore` 済み）。目次は「User guide」「Tutorials」「API Reference」の 3 区分
+- `user_guide/` は目的別の使い方ページ。テキスト形式の MyST Markdown ノートブック（jupytext のヘッダー、`{code-cell} ipython3`）で、ビルドのたびに実行される。ページを足したら `user_guide/index.md` の一覧と toctree に足す
+  - 図は `plt.subplots(layout="constrained")` で作って `ax=ax` を渡し、データは numpy の合成データだけにする（架空であることを本文に書く）。図を出すセルにはセルのメタデータ `mystnb.image.alt` で代替テキストを付け、コードが実際に描くものを書く。1 つの図は 1 つのセルで完結させ、戻り値は変数に代入する
+  - 実行されるセルは警告を出さない（stderr は Sphinx の警告になる）。FutureWarning の文面を見せるのは移行ページの捕捉セル（`warnings.catch_warnings(record=True)` で捕まえて stdout に出し、入力は `hide-input` で折りたたむ）だけ
+  - 見出しのアンカーは自動で作られないので、ページ内・ページ間のリンク先には、ページ名を接頭辞にした明示のターゲット（`(layout-and-colorbars-subfigures)=`）を置く。API へは `{py:meth}` などでリンクする
+- `tutorials/` は `example/` の Notebook へのシンボリックリンク。Notebook を追加したらリンクと `tutorials/index.md` の toctree と一覧の説明に足す。一覧からのリンクは `{doc}` ロールにする（Markdown のリンクではシンボリックリンクの先を解決できない）
+- README の最小の例は、トップページ（`index.md`）と README のノートブックのコードと一字一句同じにする（`tests/test_docs_examples.py` が確かめる）
 - `_templates/layout.html` はフッターに広告スクリプトを差し込んでいる。テーマを変えるときは、ビルド結果に残っているか確認する
 
 ### Release Docs
@@ -137,3 +142,4 @@ _updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyS
 _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
 _updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
+_updated_at: 2026-11-16 — user-guide-docs（使い方ページ `docs_src/user_guide/`、ページの規約、ドキュメントのテスト）を反映_
