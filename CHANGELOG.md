@@ -34,7 +34,7 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - `flag_cbar` of `scatter` and `contour` is deprecated and will be removed in 4.0.0. Use `colorbar` instead.
 - The following defaults will change in 4.0.0. A `FutureWarning` is emitted, once per diagram for each of these changes, when a call made with the default would give a different result under the new default. Pass `tight_layout`, `colorbar` or `auto_latex_notation` explicitly to keep the current behavior or to adopt the new one.
   - `TernaryDiagram` will use `tight_layout=False` and no longer adjust the figure layout after plotting.
-  - `scatter` and `contour` will not add a colorbar automatically to a diagram that already has one.
+  - `scatter`, `contour`, `tripcolor` and `heatmapf` will not add a colorbar automatically to a diagram that already has one.
   - `annotate` and the annotations of `scatter` will format only the words that look like chemical formulas, and only when `auto_latex_notation` of `TernaryDiagram` is true. Now every number in the text is written as a subscript (`"Sample 1"` to `"Sample $_{1}$"`), whatever the setting of the diagram.
 
 ### Bug fixes
