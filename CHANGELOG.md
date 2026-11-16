@@ -34,7 +34,7 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - `flag_cbar` of `scatter` and `contour` is deprecated and will be removed in 4.0.0. Use `colorbar` instead.
 - The following defaults will change in 4.0.0. A `FutureWarning` is emitted, once per diagram for each of these changes, when a call made with the default would give a different result under the new default. Pass `tight_layout`, `colorbar` or `auto_latex_notation` explicitly to keep the current behavior or to adopt the new one.
   - `TernaryDiagram` will use `tight_layout=False` and no longer adjust the figure layout after plotting.
-  - `scatter` and `contour` will not add a colorbar automatically to a diagram that already has one.
+  - `scatter`, `contour`, `tripcolor` and `heatmapf` will not add a colorbar automatically to a diagram that already has one.
   - `annotate` and the annotations of `scatter` will format only the words that look like chemical formulas, and only when `auto_latex_notation` of `TernaryDiagram` is true. Now every number in the text is written as a subscript (`"Sample 1"` to `"Sample $_{1}$"`), whatever the setting of the diagram.
 
 ### Bug fixes
@@ -56,6 +56,10 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 - Rebuild the documentation with MyST-NB and sphinx-book-theme, and publish the example notebooks as tutorials.
 - Run the tests offline and cover every plotting method.
 - Run the docstring examples of the public API in the tests.
+- Add a user guide to the documentation with task-oriented pages on getting started, customizing the diagram, drawing phase diagrams, choosing between heatmaps and contour maps, and controlling the layout and colorbars, and a page on [migrating to v4.0.0](https://yu9824.github.io/ternary-diagram/user_guide/migration_v4.html).
+- Rewrite the docstrings of `TernaryDiagram` and the existing `utils` functions, with runnable examples.
+- Rewrite the README around a minimal example and links to the documentation.
+- Update the tutorial notebooks to create figures with `layout="constrained"` and to use `colorbar` instead of `flag_cbar`.
 
 ## v3.2.2
 

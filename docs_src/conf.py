@@ -55,8 +55,17 @@ html_theme_options = {
 }
 
 # MyST-NB（ノートブック統合）の設定
-nb_execution_mode = "off"  # 実行を無効に（後でonにしてもよい）
-# nb_execution_cache_path = "_build/.jupyter_cache"
+# 使い方ページ（出力を持たない MyST Markdown ノートブック）はビルドのたびに実行し、
+# チュートリアルは保存済みの出力をそのまま表示する。キャッシュは使わない。
+nb_execution_mode = "force"
+nb_execution_excludepatterns = ["tutorials/*"]
+nb_execution_raise_on_error = True  # セルの例外でビルドを失敗させる
+nb_execution_in_temp = True  # savefig などがリポジトリにファイルを作らない
+# stderr（FutureWarning を含む）を Sphinx の警告にする
+nb_output_stderr = "warn"
+
+# クラスの docstring に続けて __init__ の docstring（作成時の引数）を表示する
+autoclass_content = "both"
 
 # MyST の拡張（$$で数式など）
 myst_enable_extensions = [

@@ -241,12 +241,42 @@ def _resolve_colorbar_arg(
 class TernaryDiagram:
     """Ternary diagram drawn on a matplotlib Axes.
 
-    At construction, the diagram draws its skeleton on the Axes in 5
-    parts: the border of the triangle, the grid, the tick labels, the axis
-    titles (none by default) and the vertex labels (the materials). The
-    look of each part can be given at construction with its ``*_kw``
-    argument and changed afterwards with its change method, and the
-    artists that it draws are returned by its read-only accessor:
+    A ternary diagram shows compositions of three components (the
+    materials) as points in a triangle whose vertices are the pure
+    materials, given in the order top, bottom left, bottom right
+    (counterclockwise from the top vertex). The diagram draws on one
+    matplotlib Axes, the ``ax`` given at construction or the current
+    Axes, so it can be one panel of a figure made with
+    ``plt.subplots``. At construction, it sets the aspect of the Axes to
+    equal, hides the ticks and the spines of the Axes and draws the
+    skeleton of the diagram.
+
+    The plotting methods draw on the Axes of the diagram and return the
+    matplotlib objects that they create. Those that take compositions
+    (``vector``) read each row as the amounts of the three materials in
+    the order of ``materials`` and normalize it, so the sum does not have
+    to be 1:
+
+    - :meth:`scatter`: points, optionally colored by a value ``z``.
+    - :meth:`contour`: filled or line contours of a value ``z`` given at
+      scattered compositions.
+    - :meth:`tripcolor`: the triangles between scattered compositions,
+      colored by a value ``z`` without interpolation.
+    - :meth:`heatmapf`: a heat map of a function ``f(a, b, c)`` of the
+      composition, evaluated on a regular triangular lattice.
+    - :meth:`plot`: lines that join compositions, such as tie lines.
+    - :meth:`fill`: a polygon of compositions, such as a phase region.
+    - :meth:`text`: a text centered at a composition.
+    - :meth:`annotate`: a note at a composition, slightly to its upper
+      right by default.
+    - :meth:`colorbar`: a colorbar of a plot colored by a value.
+
+    The skeleton is drawn in 5 parts: the border of the triangle, the
+    grid, the tick labels, the axis titles (none by default) and the
+    vertex labels (the materials). The look of each part can be given at
+    construction with its ``*_kw`` argument and changed afterwards with
+    its change method, and the artists that it draws are returned by its
+    read-only accessor:
 
     ===================  =========================  ==================
     At construction      After construction         Artists
@@ -327,31 +357,35 @@ class TernaryDiagram:
         axis_label_kw: Optional[Mapping[str, Any]] = None,
         vertex_label_kw: Optional[Mapping[str, Any]] = None,
     ) -> None:
-        """
-        Make instance.
-
-        Create borders, etc. for triangulation diagrams.
-
+        """Draw the skeleton of a ternary diagram on an Axes.
 
         Parameters
         ----------
-        materials : Tuple[str, str, str]
-            A one-dimensional list of compounds that constitute an endpoint
-            when generating a ternary_diagram.
+        materials : sequence of str
+            Names of the three components as a list or a tuple, shown at
+            the vertices of the triangle in the order top, bottom left,
+            bottom right (counterclockwise from the top vertex). The
+            columns of the compositions given to the plotting
+            methods follow this order. If more than 3 items are given,
+            only the first 3 are used; fewer than 3 raise a ValueError.
+            With ``auto_latex_notation=True``, each item must be a str.
 
-            Specify counterclockwise from the top vertex of the triangle.
-
-        ax : Optional[matplotlib.axes.Axes], optional
-            Axes object to draw a diagram. If None, automatically generate.
-            , by default None
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw the diagram on. If None, the current Axes
+            (``plt.gca()``) is used, which creates a figure and an Axes if
+            there are none. Anything other than an Axes or None raises a
+            TypeError, by default None
 
         auto_latex_notation : bool, optional
-            If True, the LaTeX notation of the material is automatically
-            generated. If False, the material is displayed as it is. In
-            ternary-diagram 4.0.0, it will also decide whether
-            :meth:`annotate` and the annotations of :meth:`scatter` format
-            the chemical formulas when their own `auto_latex_notation` is
-            not given, by default True
+            Whether to write the numbers in the vertex labels as
+            subscripts in LaTeX notation (``"Li2O"`` to
+            ``"Li$_{2}$O"``). ``False`` shows `materials` as they are. The
+            setting is fixed at construction and also applies to the
+            vertex labels given later with :meth:`set_vertex_labels`. It
+            is also the setting that :meth:`text` follows by default and,
+            from ternary-diagram 4.0.0, :meth:`annotate` and the
+            annotations of :meth:`scatter`; see those methods for their
+            rules, by default True
 
         tight_layout : bool or None, optional
             Whether to adjust the figure margins with
@@ -400,28 +434,51 @@ class TernaryDiagram:
             draws the vertex labels with the default appearance,
             by default None
 
+        Attributes
+        ----------
+        x_ : dict of str to list of numpy.ndarray
+            The x coordinates of the points drawn by the plotting methods,
+            keyed by the name of the method (such as ``"scatter"``). Each
+            value is a list with one 1-D array per call, in the order of
+            the calls. The coordinates are those of the Axes, where the
+            bottom left vertex is (0, 0), the bottom right vertex is
+            (1, 0) and the top vertex is (0.5, sqrt(3)/2). It is a
+            ``collections.defaultdict``, so a method not called yet gives
+            an empty list.
+
+        y_ : dict of str to list of numpy.ndarray
+            The y coordinates of the points drawn by the plotting methods,
+            in the same form as `x_`.
 
         Examples
         --------
+        Draw a diagram on an Axes. The numbers in the materials are shown
+        as subscripts, and the coordinates of the plotted points are
+        recorded by the name of the method.
+
+        >>> import matplotlib.pyplot as plt
         >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> [label.get_text() for label in td.vertex_labels_]
+        ['Li$_{2}$O', 'La$_{2}$O$_{3}$', 'TiO$_{2}$']
+        >>> points = td.scatter([[1, 1, 1], [1, 2, 3]])
+        >>> len(td.x_["scatter"])
+        1
 
-        >>> # You can set `ax` to select which axes to draw.
-        >>> # If not, the current axes will be used.
-        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"])
+        Show the materials as they are, such as names that are not
+        chemical formulas.
 
-        >>> # scatter
-        >>> td.scatter(vector=[[1, 1, 1], [1, 2, 3]], z=[0, 1])
-        >>> # You can set some options in `plt.scatter` like `marker`, `c` etc.
-        >>> td.scatter([[2, 1, 3], [3, 2, 1]], marker="s", c="#022c5e", s=30)
-
-        >>> # line plot
-        >>> # You can set some options in `plt.plot` like `lw`, `c`, and so on.
-        >>> td.plot([[1, 1, 1], [1, 2, 3]], color="black")
-
-        >>> # save figure
-        >>> td.fig.savefig("figure.png", dpi=144)
-
-
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(
+        ...     ["Solvent A", "Solvent B", "Polymer 1"],
+        ...     ax=ax,
+        ...     auto_latex_notation=False,
+        ... )
+        >>> [label.get_text() for label in td.vertex_labels_]
+        ['Solvent A', 'Solvent B', 'Polymer 1']
         """
 
         # check `ax`
@@ -504,7 +561,17 @@ class TernaryDiagram:
 
     @property
     def ax(self) -> matplotlib.axes.Axes:
-        """Axes object"""
+        """Axes that the diagram is drawn on.
+
+        It is the ``ax`` given at construction, or the current Axes if
+        ``ax`` was None. It is read-only: assigning to it raises an
+        AttributeError.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The Axes of the diagram.
+        """
         return self.__ax
 
     @ax.setter
@@ -513,7 +580,17 @@ class TernaryDiagram:
 
     @property
     def fig(self) -> matplotlib.figure.Figure:
-        """Figure object"""
+        """Figure that contains the Axes of the diagram.
+
+        It is ``ax.figure`` at construction: the figure of the Axes, or
+        the subfigure if the Axes is in a subfigure. It is read-only:
+        assigning to it raises an AttributeError.
+
+        Returns
+        -------
+        matplotlib.figure.Figure or matplotlib.figure.SubFigure
+            The figure or subfigure that contains `ax`.
+        """
         return self.__fig
 
     @property
@@ -1239,36 +1316,44 @@ class TernaryDiagram:
         auto_latex_notation: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
-        """
-        Plot scatter points.
+        """Plot compositions as scatter points.
 
         This is a wrapper of `matplotlib.pyplot.scatter`.
 
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
+
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to plot. Each row gives the amounts of the three
+            components in the same order as ``materials`` (top,
+            bottom-left, bottom-right; counterclockwise from the top
+            vertex). Rows are normalized, so the sum does not have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        z : array-like of shape (n,), optional
+            Values of the points, one per composition, which determine
+            their colors through the colormap. It cannot be used together
+            with `c`, which raises a ValueError. If None, the points are
+            not colored by values, by default None
 
-        z : ArrayLike, shape = (n,), optional
-            Values used to color the points. It cannot be used together
-            with `c`. , by default None
+        z_min : float, optional
+            Lower limit of the color scale, used only with `z`. `vmin` is
+            accepted as an alias, and passing both raises a ValueError. If
+            None, the minimum of `z` is used, by default None
 
-        z_min : Optional[Number] , optional
-            Lower limit of the color scale. `vmin` is accepted as an alias.
-            , by default None
+        z_max : float, optional
+            Upper limit of the color scale, used only with `z`. `vmax` is
+            accepted as an alias, and passing both raises a ValueError. If
+            None, the maximum of `z` is used, by default None
 
-        z_max : Optional[Number], optional
-            Upper limit of the color scale. `vmax` is accepted as an alias.
-            , by default None
-
-        annotations : Optional[List[str]], optional
-            instance annotations, by default None
-            if None, nothing is annotated.
+        annotations : list, optional
+            Texts shown next to the points, one per composition in the same
+            order, each 0.02 to the upper right of its point in fontsize 8.
+            Each str is formatted as described in `auto_latex_notation`,
+            the same rule as :meth:`annotate`; items that are not str, such
+            as numbers, are shown as text without formatting. A length
+            different from the number of compositions raises a ValueError.
+            If None, no texts are shown, by default None
 
         colorbar : bool or None, optional
             Whether to add a colorbar automatically when the points are
@@ -1303,16 +1388,68 @@ class TernaryDiagram:
             4.0.0, ``None`` will follow `auto_latex_notation` of
             :class:`TernaryDiagram`, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.scatter`, optional
-            For example, `marker='x'`, `facecolor='blue'` etc.
-
-            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html.
-
+        **kwargs
+            Other arguments of `matplotlib.pyplot.scatter`, such as `s`,
+            `marker`, `c` (without `z`), `cmap`, `alpha` or `label`, passed
+            to matplotlib as they are. They take precedence over the
+            defaults of this method (``zorder=3`` and, with `z`,
+            ``cmap="rainbow"``).
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
 
         Returns
         -------
         matplotlib.collections.PathCollection
-            A collection of scatter points.
+            The scatter points, as returned by
+            `matplotlib.axes.Axes.scatter`. With `z`, it can be passed to
+            :meth:`colorbar` to draw a colorbar of the values.
+
+        See Also
+        --------
+        contour : Contours interpolated from the values of the points.
+        tripcolor : The triangles between the points, painted with their
+            values.
+        annotate : A note at one composition.
+        colorbar : A colorbar of a plot colored by values.
+
+        Notes
+        -----
+        The points are drawn with ``zorder=3`` by default: in front of the
+        contours of :meth:`contour`, the grid, the border and the tie lines
+        of :meth:`plot`, whatever the order of the calls. Pass `zorder` to
+        change it. With `z`, the points are colored with the colormap
+        ``"rainbow"`` unless `cmap` is given.
+
+        Examples
+        --------
+        Plot compositions with a marker of matplotlib and show a text next
+        to each point.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     annotations=["a", "b", "c"],
+        ...     marker="x",
+        ... )
+
+        Color the points by their values on a fixed color scale, which adds
+        a colorbar.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     z_min=0,
+        ...     z_max=1,
+        ...     colorbar=True,
+        ... )
+        >>> len(fig.axes)
+        2
         """  # noqa: E501
 
         colorbar = _resolve_colorbar_arg("scatter", colorbar, kwargs)
@@ -1345,36 +1482,47 @@ class TernaryDiagram:
         colorbar: Optional[bool] = None,
         **kwargs,
     ) -> TriContourSet:
-        """
-        To create a contour map.
+        """Draw a contour map of values given at compositions.
 
-        This is a wrapper of `plt.tricontour` or `plt.tricontourf`.
+        The compositions are triangulated and the values `z` are
+        interpolated between them. This is a wrapper of
+        `matplotlib.pyplot.tricontourf` with ``fill=True`` and of
+        `matplotlib.pyplot.tricontour` with ``fill=False``.
 
-        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
-        or https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
-
-        - When fill is `True`, this is a wrapper of `plt.tricontourf`.
-        - When fill is `False`, this is a wrapper of `plt.tricontour`.
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
+        and https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to plot. Each row gives the amounts of the three
+            components in the same order as ``materials`` (top,
+            bottom-left, bottom-right; counterclockwise from the top
+            vertex). Rows are normalized, so the sum does not have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        z : array-like of shape (n,)
+            Values at the compositions, one per row of `vector`, from which
+            the contours are drawn. It is required: None, the default,
+            raises a ValueError. NaN and infinite values make matplotlib
+            raise a ValueError too: drop those compositions first, or
+            use `tripcolor`, which leaves them unpainted.
 
-        z : Optional[ArrayLike], shape = (n,)
-            , by default None
+        z_min : float, optional
+            Lower limit of the automatic levels. If None, the minimum of
+            `z` is used. With ``fill=True``, the areas whose values are out
+            of the levels are not filled. It cannot be combined with
+            `levels`, which raises a ValueError, by default None
 
-        z_min : Optional[Number], optional
-            Lower limit of the automatic levels. If None, the minimum of `z`.
-            , by default None
+        z_max : float, optional
+            Upper limit of the automatic levels. If None, the maximum of
+            `z` is used. With ``fill=True``, the areas whose values are out
+            of the levels are not filled. It cannot be combined with
+            `levels`, which raises a ValueError, by default None
 
-        z_max : Optional[Number], optional
-            Upper limit of the automatic levels. If None, the maximum of `z`.
-            , by default None
+        fill : bool, optional
+            Whether to fill the areas between the levels. True draws filled
+            contours with ``tricontourf``, and False draws only the contour
+            lines with ``tricontour``, by default True
 
         colorbar : bool or None, optional
             Whether to add a colorbar automatically for the contours
@@ -1395,16 +1543,104 @@ class TernaryDiagram:
             together with `colorbar` raises a ValueError. When it is
             omitted, `colorbar` decides.
 
-        kwargs : parameter of `matplotlib.pyplot.contour`, optional
-            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.contour.html.
-
-            If `levels` is given, it is used instead of the automatic
-            levels and cannot be combined with `z_min` or `z_max`.
+        **kwargs
+            Other arguments of `matplotlib.pyplot.tricontourf` (with
+            ``fill=True``) or `matplotlib.pyplot.tricontour` (with
+            ``fill=False``), such as `levels`, `cmap`, `alpha`,
+            `linewidths` or `extend`, passed to matplotlib as they are.
+            They take precedence over the defaults of this method
+            (``cmap="rainbow"`` and ``zorder=0``). `levels` (an int for
+            the number of levels chosen by matplotlib, or the increasing
+            values themselves) is used instead of the automatic levels and
+            cannot be combined with `z_min` or `z_max`, which raises a
+            ValueError. To draw the contours in one color with `colors`,
+            also pass ``cmap=None``, since matplotlib does not accept both.
+            See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
+            and https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
 
         Returns
         -------
-        matplotlib.tri.tricontour.TriContourSet
-            A collection of contour lines.
+        matplotlib.tri.TriContourSet
+            The filled contours (``fill=True``) or the contour lines
+            (``fill=False``), as returned by `matplotlib.axes.Axes.tricontourf`
+            or `matplotlib.axes.Axes.tricontour`. Its ``levels`` attribute
+            holds the levels used. It can be passed to :meth:`colorbar` to
+            draw a colorbar of the values.
+
+        See Also
+        --------
+        tripcolor : The triangles between the compositions, painted with
+            their values without interpolation.
+        heatmapf : A function of the composition painted on a regular
+            triangular lattice.
+        scatter : Points colored by their values.
+        colorbar : A colorbar of a plot colored by values.
+
+        Notes
+        -----
+        Without `levels`, 101 levels evenly spaced from `z_min` (or the
+        minimum of `z`) to `z_max` (or the maximum of `z`) are used, so the
+        filled contours look like a continuous color map. When all the
+        values of `z` are the same, the levels are spread slightly around
+        that value.
+
+        The contours are drawn with ``zorder=0`` by default: in front of
+        the heat maps of :meth:`tripcolor` and :meth:`heatmapf`, and behind
+        the polygons of :meth:`fill`, the grid, the border, the tie lines
+        of :meth:`plot` and the points of :meth:`scatter`, whatever the
+        order of the calls. Pass `zorder` to change it.
+
+        Examples
+        --------
+        Fill the contours of values given at 7 compositions, which adds a
+        colorbar. The 101 automatic levels span the range of the values.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> vector = [
+        ...     [1, 0, 0],
+        ...     [0, 1, 0],
+        ...     [0, 0, 1],
+        ...     [1, 1, 1],
+        ...     [2, 1, 1],
+        ...     [1, 2, 1],
+        ...     [1, 1, 2],
+        ... ]
+        >>> z = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        >>> contours = td.contour(vector, z=z, colorbar=True)
+        >>> len(contours.levels)
+        101
+
+        Draw only the contour lines at given levels, in black and without
+        a colorbar.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> vector = [
+        ...     [1, 0, 0],
+        ...     [0, 1, 0],
+        ...     [0, 0, 1],
+        ...     [1, 1, 1],
+        ...     [2, 1, 1],
+        ...     [1, 2, 1],
+        ...     [1, 1, 2],
+        ... ]
+        >>> z = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        >>> lines = td.contour(
+        ...     vector,
+        ...     z=z,
+        ...     fill=False,
+        ...     levels=[2, 4, 6],
+        ...     colors="black",
+        ...     cmap=None,
+        ...     colorbar=False,
+        ... )
+        >>> len(lines.levels)
+        3
         """  # noqa: E501
 
         colorbar = _resolve_colorbar_arg("contour", colorbar, kwargs)
@@ -1425,29 +1661,74 @@ class TernaryDiagram:
     def plot(
         self, vector: ArrayLike, **kwargs
     ) -> List[matplotlib.lines.Line2D]:
-        """
-        To draw a tie line.
+        """Draw a line that joins compositions, such as a tie line.
 
-        This is a wrapper of `matplotlib.pyplot.plot`.
+        The compositions are joined by straight segments in the order of
+        the rows. This is a wrapper of `matplotlib.pyplot.plot`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
-            vector : ArrayLike | shape = (n, 3)
-            2D vector whose shape is (n, 3). It represents the ratio of
-            each component (the sum does not have to be 1).
+        vector : array-like of shape (n, 3)
+            Compositions to join, in the order of the rows. Each row gives
+            the amounts of the three components in the same order as
+            ``materials`` (top, bottom-left, bottom-right; counterclockwise
+            from the top vertex). Rows are normalized, so the sum does not
+            have to be 1.
 
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
-
-        kwargs : parameter of `matplotlib.pyplot.plot`, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.plot`, such as `color`,
+            `linestyle`, `linewidth`, `marker` or `label`, passed to
+            matplotlib as they are. They take precedence over the default
+            of this method (``zorder=2``). A format string such as
+            ``"k--"`` cannot be given; use `color` and `linestyle` instead.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.plot.html
-
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
-            lines.
+        list of matplotlib.lines.Line2D
+            The line, as returned by `matplotlib.axes.Axes.plot`: a list
+            that holds one `matplotlib.lines.Line2D`.
+
+        See Also
+        --------
+        fill : A polygon of compositions, filled.
+        scatter : Points at compositions.
+
+        Notes
+        -----
+        The line is drawn with ``zorder=2`` by default: in front of the
+        contours of :meth:`contour`, the polygons of :meth:`fill`, the
+        grid and the border, and behind the points of :meth:`scatter`,
+        whatever the order of the calls. Pass `zorder` to change it.
+
+        Examples
+        --------
+        Draw a tie line between two compositions as a black dashed line.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.plot(
+        ...     [[1, 1, 0], [0, 1, 1]],
+        ...     color="black",
+        ...     linestyle="--",
+        ... )
+        >>> len(lines)
+        1
+
+        Join three compositions in order, with a marker at each of them.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> lines = td.plot(
+        ...     [[2, 1, 1], [1, 2, 1], [1, 1, 2]],
+        ...     marker="o",
+        ... )
         """  # noqa: E501
 
         plotter = _LinePlotter(
@@ -1467,22 +1748,30 @@ class TernaryDiagram:
         auto_latex_notation: Optional[bool] = None,
         **kwargs,
     ) -> matplotlib.text.Annotation:
-        """Annotate text.
+        """Annotate a composition with a text.
 
-        This is a wrapper of `matplotlib.pyplot.annotate`.
+        The text is placed slightly to the upper right of the point of the
+        composition by default. This is a wrapper of
+        `matplotlib.pyplot.annotate`.
+
+        See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.annotate.html
 
         Parameters
         ----------
         text : str
-            Text to be displayed.
+            Text of the note. A str is formatted as described in
+            `auto_latex_notation`: by default, a chemical formula such as
+            ``"Li2O"`` is shown as ``"Li$_{2}$O"``, and a text containing
+            ``$`` (mathtext) is shown as it is. Objects other than str,
+            such as numbers, are shown as text without formatting.
 
-        vector : 1D ArrayLike, whose length is 3.
-            vector : ArrayLike | shape = (3,)
-            It represents the ratio of
-            each component (the sum does not have to be 1).
-
-            The vectors are specified in semi-clockwise order starting
-            from the vertex of the triangle.
+        vector : array-like of shape (3,)
+            Composition to annotate: the amounts of the three components in
+            the same order as ``materials`` (top, bottom-left,
+            bottom-right; counterclockwise from the top vertex). It is
+            normalized, so the sum does not have to be 1. Any array-like
+            with exactly three elements, such as one of shape (1, 3), is
+            accepted; other lengths raise a ValueError.
 
         auto_latex_notation : bool or None, optional
             Whether to write the chemical formulas in `text` in LaTeX
@@ -1497,14 +1786,57 @@ class TernaryDiagram:
             4.0.0, ``None`` will follow `auto_latex_notation` of
             :class:`TernaryDiagram`, by default None
 
-        kwargs : parameter of matplotlib.pyplot.annotate, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.annotate`, such as
+            `xytext`, `fontsize`, `color` or `arrowprops`, passed to
+            matplotlib as they are. They take precedence over the defaults
+            of this method: `xytext` is 0.02 to the right of and 0.02 above
+            the point in the data coordinates of the diagram (whose edges
+            have length 1), and `fontsize` is 8.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.annotate.html
-
 
         Returns
         -------
         matplotlib.text.Annotation
-            An annotation.
+            The note, as returned by `matplotlib.axes.Axes.annotate`. Its
+            ``xy`` is the point of the composition.
+
+        See Also
+        --------
+        text : A text centered at a composition.
+        scatter : Points at compositions, with a text next to each with
+            `annotations`.
+
+        Examples
+        --------
+        Annotate a composition with a chemical formula, which is written
+        with subscripts.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> note = td.annotate("Li2O", [2, 1, 1])
+        >>> note.get_text()
+        'Li$_{2}$O'
+
+        Place a plain text away from the composition with an arrow that
+        points to it. ``auto_latex_notation=True`` keeps the number in the
+        text as it is.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> note = td.annotate(
+        ...     "Sample 1",
+        ...     [1, 2, 3],
+        ...     xytext=(0.7, 0.6),
+        ...     arrowprops={"arrowstyle": "->"},
+        ...     auto_latex_notation=True,
+        ... )
+        >>> note.get_text()
+        'Sample 1'
         """  # noqa: E501
         auto_latex_notation = check_optional_bool(
             auto_latex_notation, "auto_latex_notation"
@@ -1532,7 +1864,7 @@ class TernaryDiagram:
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
+        vector : array-like of shape (n, 3)
             Compositions of the vertices of the polygon, one row per
             vertex. Each row represents the ratio of each component (the
             sum does not have to be 1), in the same order as `materials`.
@@ -1540,7 +1872,7 @@ class TernaryDiagram:
             order given and the polygon is closed automatically; they are
             not sorted and no convex hull is computed.
 
-        kwargs : parameter of `matplotlib.pyplot.fill`, optional
+        **kwargs
             Properties of :class:`matplotlib.patches.Polygon`, such as
             `label`, `facecolor`, `edgecolor`, `alpha` or `hatch`, passed
             to matplotlib as they are. They take precedence over the
@@ -1618,7 +1950,7 @@ class TernaryDiagram:
             other than str is not formatted and is converted to a string
             by matplotlib.
 
-        vector : ArrayLike | shape = (3,) or (1, 3)
+        vector : array-like of shape (3,) or (1, 3)
             Composition of the point where the text is placed. It
             represents the ratio of each component (the sum does not have
             to be 1), in the same order as `materials`.
@@ -1639,7 +1971,7 @@ class TernaryDiagram:
             always shown as it is, by default None (the setting of the
             diagram)
 
-        kwargs : parameter of `matplotlib.pyplot.text`, optional
+        **kwargs
             Properties of :class:`matplotlib.text.Text`, such as
             `fontsize`, `color`, `ha` or `fontdict`, passed to matplotlib
             as they are. They take precedence over the defaults of this
@@ -1744,18 +2076,18 @@ class TernaryDiagram:
 
         Parameters
         ----------
-        vector : ArrayLike | shape = (n, 3)
+        vector : array-like of shape (n, 3)
             Compositions of the points, one row per point. Each row
             represents the ratio of each component (the sum does not have
             to be 1), in the same order as `materials`.
 
-        z : ArrayLike | shape = (n,)
+        z : array-like of shape (n,)
             Values of the points, one per composition, which determine the
             colors. A NaN or infinite value, or a masked value of a masked
             array, leaves every triangle having that point as a vertex
             unpainted.
 
-        z_min : Number or None, optional
+        z_min : float, optional
             Lower limit of the color scale. `vmin` is accepted as an alias,
             and passing both raises a ValueError. If None, the minimum of
             the finite values of `z` is used. Do not pass it together with
@@ -1764,7 +2096,7 @@ class TernaryDiagram:
             `norm` is given with either of them, by default None (the
             minimum of `z`)
 
-        z_max : Number or None, optional
+        z_max : float, optional
             Upper limit of the color scale. `vmax` is accepted as an alias,
             and passing both raises a ValueError. If None, the maximum of
             the finite values of `z` is used. Do not pass it together with
@@ -1793,7 +2125,7 @@ class TernaryDiagram:
             available as the ``colorbar`` attribute of the returned
             object, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.tripcolor`, optional
+        **kwargs
             Passed to matplotlib as they are, such as `cmap`, `norm`,
             `alpha`, `edgecolors` or `zorder`. They take precedence over
             the defaults of this method (``cmap="rainbow"`` and
@@ -1934,7 +2266,7 @@ class TernaryDiagram:
             divided. The lattice has ``scale ** 2`` small triangles, by
             default 50
 
-        z_min : Number or None, optional
+        z_min : float, optional
             Lower limit of the color scale. `vmin` is accepted as an alias,
             and passing both raises a ValueError. If None, the minimum of
             the finite values returned by `func` is used. Do not pass it
@@ -1943,7 +2275,7 @@ class TernaryDiagram:
             ValueError when `norm` is given with either of them, by default
             None (the minimum of the values)
 
-        z_max : Number or None, optional
+        z_max : float, optional
             Upper limit of the color scale. `vmax` is accepted as an alias,
             and passing both raises a ValueError. If None, the maximum of
             the finite values returned by `func` is used. Do not pass it
@@ -1976,7 +2308,7 @@ class TernaryDiagram:
             colorbar added is available as the ``colorbar`` attribute of
             the returned object, by default None
 
-        kwargs : parameter of `matplotlib.pyplot.tripcolor`, optional
+        **kwargs
             Passed to matplotlib as they are, such as `cmap`, `norm`,
             `alpha`, `edgecolors` or `zorder`. They take precedence over
             the defaults of this method (``cmap="rainbow"`` and
@@ -2134,39 +2466,116 @@ class TernaryDiagram:
         location: str = "right",
         **kwargs,
     ) -> matplotlib.colorbar.Colorbar:
-        """Draw a colorbar.
+        """Add a colorbar of a plot colored by values to the diagram.
 
-        This is a wrapper of `matplotlib.pyplot.colorbar`.
+        The colorbar takes its space from the Axes of the diagram. Use it
+        to add a colorbar with your own settings to a plot drawn with
+        ``colorbar=False``. This is a wrapper of
+        `matplotlib.pyplot.colorbar`, called on the figure of the diagram.
 
         See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
 
         Parameters
         ----------
         mappable : matplotlib.cm.ScalarMappable
-            The object that contains the colorbar data.
+            The plot colored by values that the colorbar describes, such as
+            the return value of :meth:`scatter` with `z`, :meth:`contour`,
+            :meth:`tripcolor` or :meth:`heatmapf`.
 
         shrink : float, optional
-            how much to shrink the colorbar, by default 0.8
+            Fraction by which the length of the colorbar is multiplied,
+            relative to the Axes of the diagram, by default 0.8
 
-        format : str, optional
-            float format, by default '%.1f'
+        format : str, matplotlib.ticker.Formatter or None, optional
+            Format of the tick labels of the colorbar: a ``%``-style format
+            such as ``"%.2f"``, a ``{x}``-style format or a
+            `matplotlib.ticker.Formatter`. If None, matplotlib chooses the
+            format. The default shows one decimal place, by default '%.1f'
 
         label : str, optional
-            bar label, by default ''
+            Label shown along the colorbar. The empty string shows no
+            label, by default ''
 
         orientation : str, optional
-            bar orientation, by default 'vertical'
+            Direction of the colorbar, ``"vertical"`` or ``"horizontal"``.
+            It must agree with `location`, or matplotlib raises a
+            TypeError: a horizontal colorbar needs ``location="bottom"`` or
+            ``"top"``, by default 'vertical'
 
         location : str, optional
-            location, by default 'right'
+            Side of the Axes of the diagram where the colorbar is placed,
+            ``"right"``, ``"left"``, ``"top"`` or ``"bottom"``. It must
+            agree with `orientation` (``"right"`` and ``"left"`` are
+            vertical, ``"top"`` and ``"bottom"`` are horizontal), or
+            matplotlib raises a TypeError, by default 'right'
 
-        kwargs : parameter of `matplotlib.pyplot.colorbar`, optional
+        **kwargs
+            Other arguments of `matplotlib.pyplot.colorbar` (as
+            `matplotlib.figure.Figure.colorbar`), such as `pad`, `aspect`,
+            `ticks` or `extend`, passed to matplotlib as they are. `ax`
+            cannot be given, since the space is always taken from the Axes
+            of the diagram.
             See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
 
         Returns
         -------
         matplotlib.colorbar.Colorbar
-            colorbar object
+            The colorbar, as returned by `matplotlib.figure.Figure.colorbar`.
+
+        See Also
+        --------
+        scatter : Points, colored by values with `z`.
+        contour : Contours of values.
+        tripcolor : Triangles painted with values.
+        heatmapf : A function of the composition painted as a heat map.
+
+        Notes
+        -----
+        The colorbar is registered to the diagram, so it counts as an
+        existing colorbar when a later plot colored by values decides
+        whether to add a colorbar automatically, as described in the
+        `colorbar` argument of :meth:`scatter`, :meth:`contour`,
+        :meth:`tripcolor` and :meth:`heatmapf`. It stops counting once it
+        is removed with ``Colorbar.remove()``.
+
+        Examples
+        --------
+        Color points by their values without the automatic colorbar, and
+        add a colorbar with a label.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     colorbar=False,
+        ... )
+        >>> cbar = td.colorbar(points, label="Conductivity")
+        >>> len(fig.axes)
+        2
+
+        Place a horizontal colorbar below the diagram, with two decimal
+        places in the tick labels.
+
+        >>> import matplotlib.pyplot as plt
+        >>> from ternary_diagram import TernaryDiagram
+        >>> fig, ax = plt.subplots(layout="constrained")
+        >>> td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
+        >>> points = td.scatter(
+        ...     [[1, 1, 1], [1, 2, 3], [3, 1, 2]],
+        ...     z=[0.2, 0.5, 0.8],
+        ...     colorbar=False,
+        ... )
+        >>> cbar = td.colorbar(
+        ...     points,
+        ...     format="%.2f",
+        ...     orientation="horizontal",
+        ...     location="bottom",
+        ... )
+        >>> cbar.orientation
+        'horizontal'
         """  # noqa: E501
 
         # draw colorbar

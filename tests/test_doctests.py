@@ -32,14 +32,9 @@ import ternary_diagram
 
 OPTIONFLAGS = doctest.ELLIPSIS | doctest.NORMALIZE_WHITESPACE
 
-# Docstrings whose examples are known to fail. Keep this to the one entry
-# below and do not add others.
-KNOWN_FAILURES = {
-    "ternary_diagram._api.TernaryDiagram.__init__": (
-        "The existing Examples section prints reprs, omits `ax=` and calls "
-        "`savefig`. Remove this entry once `user-guide-docs` rewrites it."
-    ),
-}
+# Docstrings whose examples are known to fail, mapped to the reason. Keep
+# this empty: fix a failing example instead of adding it here.
+KNOWN_FAILURES: dict[str, str] = {}
 
 
 def _is_public(name: str) -> bool:
