@@ -5,10 +5,29 @@
 
 version: 2
 updates:
-  - package-ecosystem: "pip" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # Python dependencies
+  - package-ecosystem: "pip"
+    directory: "/"
     schedule:
       interval: "weekly"
     commit-message:
       prefix: "chore: "
     open-pull-requests-limit: 5
+    # ライブラリなので、既存の範囲 (>= 下限) で新版を許容できるなら下限は上げない。
+    # 未指定 (auto) だと PyPI 上の同名パッケージとの照合で app 判定され、
+    # increase (下限の引き上げ) になる。
+    versioning-strategy: increase-if-necessary
+
+  # GitHub Actions (.github/workflows 配下を "/" で見に行く)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore: "
+    open-pull-requests-limit: 5
+    # アクションは一括で上げても壊れにくいので 1 PR にまとめる
+    groups:
+      github-actions:
+        patterns:
+          - "*"

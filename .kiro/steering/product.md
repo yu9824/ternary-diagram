@@ -4,9 +4,11 @@
 
 ## Core Capabilities
 
-- **三角図の土台生成**: 外枠、10% 刻みのグリッド、軸目盛り、頂点ラベルをインスタンス生成だけで描画
+- **三角図の土台生成**: 外枠、10% 刻みのグリッド、軸目盛り、頂点ラベルをインスタンス生成だけで描画。5 つの部品（外枠・グリッド・目盛りラベル・軸タイトル・頂点ラベル）は、作成時の `*_kw` か後からの `set_*` で見た目（表示、間隔、書式、matplotlib のプロパティ）を変えられ、描いた artist も取り出せる
 - **組成データのプロット**: 散布図（物性値によるカラーマップ付き）、等高線図（塗りつぶし / 線）、タイライン、注釈
-- **化学式の自動整形**: `Li2O` → `Li$_{2}$O` のように数字を下付きの LaTeX 表記へ変換（`auto_latex_notation=False` で無効化）
+- **化学式の自動整形**: `Li2O` → `Li$_{2}$O` のように数字を下付きの LaTeX 表記へ変換（`auto_latex_notation=False` で無効化）。頂点ラベル以外の文字（`text`、`annotate` の明示指定）は、空白で区切った語のうち化学式の形をしたものだけを整形し、`"Sample 1"` や mathtext はそのまま表示する
+- **相図の描画**: 組成で指定した多角形を塗る `fill` と、組成点にちょうど文字を置く `text`
+- **ヒートマップ**: 散布した組成の間の三角形を補間せずに塗る `tripcolor` と、組成の関数 `f(a, b, c)` を正則な三角格子でまとめて評価して塗る `heatmapf`（機械学習モデルの予測などを想定）
 - **matplotlib との透過的な統合**: 任意の `Axes` に描画でき、`**kwargs` はそのまま matplotlib に渡り、戻り値も matplotlib のネイティブオブジェクト
 
 ## Target Use Cases
@@ -19,14 +21,19 @@
 
 - **軽量**: ランタイム依存は `numpy>=1.20` と `matplotlib` のみ
 - **学習コストが低い**: matplotlib の知識がそのまま使える薄いラッパー
-- **広い互換性**: Python 3.8〜3.13、matplotlib 3.7 前後の API 差異も吸収
+- **広い互換性**: Python 3.9〜3.14、matplotlib 3.7 前後の API 差異も吸収
 - **入手しやすい**: PyPI と conda-forge の両方で配布
 
 ## Product Boundaries
 
 - 描画ライブラリであり、相図計算や熱力学計算は扱わない
 - 公開 API は `TernaryDiagram` クラス 1 つに集約する。新しい描画種別もこのクラスのメソッドとして追加する
-- matplotlib の機能を隠さない。独自オプションは三角図特有のもの（`z_min` / `z_max`、`flag_cbar`、`annotations` など）に限る
+- matplotlib の機能を隠さない。独自オプションは三角図特有のもの（`z_min` / `z_max`、`colorbar`、`annotations`、土台の `step` / `fmt` など）に限り、見た目は matplotlib のプロパティとして素通しする
 
 ---
 _Focus on patterns and purpose, not exhaustive feature lists_
+
+_updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
+_updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
+_updated_at: 2026-11-09 — annotate-plain-text と region-plots（`fill` / `text`）を反映_
+_updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_

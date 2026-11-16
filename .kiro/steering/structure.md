@@ -9,21 +9,32 @@
 ### Package Source
 **Location**: `src/ternary_diagram/`
 **Purpose**: ライブラリ本体。`__init__.py` はメタデータ（`__version__` など）と公開 API の re-export だけを持つ
-**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数
+**Example**: `_api.py` に `TernaryDiagram` と `_XxxPlotter` 群、`utils.py` に入力検証・座標変換・化学式整形の純粋関数、`__main__.py` に CLI（`ternary-diagram --version`）、型情報の公開用に `py.typed`。土台の 5 つの部品と、それを束ねる集約は `_skeleton.py`、三角形を塗る描画（`tripcolor` / `heatmapf`）の検証・三角形分割・関数の評価は `_mesh.py`（パッケージ内を import しない葉のモジュール）、描画後のレイアウトとカラーバーの判定・三角図ごとの状態は `_post_draw.py`、利用者向けの警告の入口と非推奨の文面は `_deprecation.py`（どちらもパッケージ内の葉に近いモジュールで、`_api.py` から使う）
 
 ### Tests
 **Location**: `tests/`
-**Purpose**: pytest のテスト。`test_<描画種別>.py` という命名。`_` で始まるファイルは収集対象外の旧コード。まだ書いていないテストは `tests/TODO.md` に記録する
-**Example**: `test_scatter.py`, `test_mono_scatter.py`
+**Purpose**: pytest のテスト。テスト対象ごとに `test_<対象>.py`（描画メソッド単位、`utils`、三角図の土台、CLI、private モジュールの単体テスト）。`TernaryDiagram` 経由の副作用（レイアウト・カラーバー・警告）の結合テストは `test_side_effects.py`、公開 API の docstring の例は共通ランナー `test_doctests.py` が実行する。共通 fixture は `conftest.py` に置く。複数のテストファイルで共有する期待値の計算は `test_` の付かない `_` 接頭辞のモジュール（`_skeleton_expected.py`）に置く
+**Example**: `test_scatter.py`, `test_contour.py`, `test_utils.py`, `test_ternary_diagram.py`, `test_post_draw.py`, `test_side_effects.py`, `test_skeleton_parts.py`（部品と集約の単体）/ `test_skeleton.py`（公開 API 経由）、`test_mesh.py`（`_mesh` の単体）/ `test_tripcolor.py`・`test_heatmapf.py`（メソッド固有）/ `test_heatmaps.py`（両方に共通する挙動をメソッドでパラメータ化）、ドキュメントの `test_owned_docstrings.py`（docstring の項目と例の有無を静的に確かめる）・`test_docs_examples.py`（README とトップページの最小の例の一致と実行）
 
 ### Examples
 **Location**: `example/<use_case>/`
-**Purpose**: ユースケースごとにディレクトリを作り、Notebook・入力 CSV・出力 PNG を同じ場所に置く。README とテストはこの CSV / PNG を GitHub raw URL で参照する
+**Purpose**: ユースケースごとにディレクトリを作り、Notebook・入力 CSV・出力 PNG を同じ場所に置く。README は PNG を GitHub raw URL で、テストは CSV をリポジトリ内のパスで参照する。Notebook は先頭セルを H1 タイトルにする（ドキュメントのページタイトルになる）
 **Example**: `example/contour/example_contour.{ipynb,csv,png}`
 
 ### Documentation
 **Location**: `docs_src/`
-**Purpose**: Sphinx の設定と手書きページのみ。API リファレンスは CI で sphinx-apidoc が生成する
+**Purpose**: Sphinx の設定と手書きページ（MyST Markdown）のみ。API リファレンスは CI で sphinx-apidoc が生成する（生成物 `modules.rst`・`ternary_diagram*.rst` は `.gitignore` 済み）。目次は「User guide」「Tutorials」「API Reference」の 3 区分
+- `user_guide/` は目的別の使い方ページ。テキスト形式の MyST Markdown ノートブック（jupytext のヘッダー、`{code-cell} ipython3`）で、ビルドのたびに実行される。ページを足したら `user_guide/index.md` の一覧と toctree に足す
+  - 図は `plt.subplots(layout="constrained")` で作って `ax=ax` を渡し、データは numpy の合成データだけにする（架空であることを本文に書く）。図を出すセルにはセルのメタデータ `mystnb.image.alt` で代替テキストを付け、コードが実際に描くものを書く。1 つの図は 1 つのセルで完結させ、戻り値は変数に代入する
+  - 実行されるセルは警告を出さない（stderr は Sphinx の警告になる）。FutureWarning の文面を見せるのは移行ページの捕捉セル（`warnings.catch_warnings(record=True)` で捕まえて stdout に出し、入力は `hide-input` で折りたたむ）だけ
+  - 見出しのアンカーは自動で作られないので、ページ内・ページ間のリンク先には、ページ名を接頭辞にした明示のターゲット（`(layout-and-colorbars-subfigures)=`）を置く。API へは `{py:meth}` などでリンクする
+- `tutorials/` は `example/` の Notebook へのシンボリックリンク。Notebook を追加したらリンクと `tutorials/index.md` の toctree と一覧の説明に足す。一覧からのリンクは `{doc}` ロールにする（Markdown のリンクではシンボリックリンクの先を解決できない）
+- README の最小の例は、トップページ（`index.md`）と README のノートブックのコードと一字一句同じにする（`tests/test_docs_examples.py` が確かめる）
+- `_templates/layout.html` はフッターに広告スクリプトを差し込んでいる。テーマを変えるときは、ビルド結果に残っているか確認する
+
+### Release Docs
+**Location**: リポジトリ直下
+**Purpose**: `HOW_TO_RELEASE.md`（メンテナ向けのリリース手順）、`CHANGELOG.md`（利用者向けの変更点）
 
 ## Naming Conventions
 
@@ -38,7 +49,7 @@
 ## Import Organization
 
 ```python
-# Python 3.8 互換のための typing（isort の対象外としてファイル先頭に固定）
+# Python 3.8 時代の名残の typing（isort の対象外としてファイル先頭に固定）
 from typing import Tuple, List  # isort: skip
 
 # 標準ライブラリ
@@ -61,15 +72,18 @@ from ternary_diagram.utils import check_2d_vector, three2two
 
 ### Plotter パターン（描画種別を追加するとき）
 
-`TernaryDiagram` の描画メソッドは、対応する `_BasePlotter` サブクラスを生成し、座標を記録して、matplotlib のオブジェクトを返すだけにする。
+`TernaryDiagram` の描画メソッドは、対応する `_BasePlotter` サブクラスを生成し、座標を記録して、matplotlib のオブジェクトを返すだけにする。描画後のレイアウト調整とカラーバーの追加は Plotter が直接行わず、`__init__` の最後で `self._post_draw(...)` をちょうど 1 回呼んで任せる（既存のレイアウトエンジンの尊重、カラーバーの重複判定、FutureWarning の 1 回化はそこで行う）。
 
 ```python
 class _NewPlotter(_BasePlotter):
-    def __init__(self, vector, ax=None, **kwargs):
-        super().__init__(vector, ax=ax, **kwargs)  # 検証・正規化・3D→2D 変換
+    def __init__(self, vector, ax=None, *, post_draw_context, **kwargs):
+        super().__init__(  # 検証・正規化・3D→2D 変換
+            vector, ax=ax, post_draw_context=post_draw_context, **kwargs
+        )
         self._set_default_params(zorder=DEFAULT_ZORDER_PLOTS)  # ユーザー指定が優先
         self.collection_ = self.ax.some_mpl_func(self.x_, self.y_, **self.kwargs)
-        self.fig.tight_layout()
+        # 値で色付けした描画なら mappable と colorbar（None/True/False）を渡す
+        self._post_draw()
 
     @property
     def name(self):
@@ -78,10 +92,35 @@ class _NewPlotter(_BasePlotter):
 
 # TernaryDiagram 側
 def new(self, vector: ArrayLike, **kwargs):
-    plotter = _NewPlotter(vector=vector, ax=self.ax, **kwargs)
+    plotter = _NewPlotter(
+        vector=vector,
+        ax=self.ax,
+        post_draw_context=self.__post_draw_context,  # 三角図ごとの状態
+        **kwargs,
+    )
     self._append_x_y(plotter)  # plotter.name ごとに x_ / y_ を記録
     return plotter.collection_  # matplotlib のネイティブオブジェクト
 ```
+
+### 土台の部品パターン（三角図の土台に部品を足すとき）
+
+土台の部品は `_skeleton._SkeletonPart` のサブクラスにし、既定値・検証・図形の仕様の計算だけを持たせる。更新の手順、巻き戻し、プロパティ名の照合は基底が受け持つ。
+
+```python
+class _NewPart(_SkeletonPart):
+    OPTION_DEFAULTS = {"visible": True, "step": 0.1}  # 名前付きの項目
+    STYLE_DEFAULTS = {"color": "black"}  # matplotlib のプロパティ
+    ARTIST_CLASS = matplotlib.lines.Line2D
+
+    def _validate(self, options):  # visible 以外の項目を検証して返す
+        ...
+
+    def _specs(self, options, style):  # Axes を変えずに _LineSpec / _TextSpec を返す
+        ...
+```
+
+- `_Skeleton` に部品を登録し（`PartName` に名前を足す）、`TernaryDiagram` に `set_<part>`・`<part>_kw`・取り出し口 `<part>_` をそろえて足す。`<part>_kw` は作成直後に `set_<part>(**<part>_kw)` を呼ぶのと同じ意味にする
+- 配置の計算（目盛りの値、辺上の点、線分）は図を使わない純粋関数として `utils` に置き、部品から呼ぶ
 
 ### 座標と入力の規約
 
@@ -89,7 +128,8 @@ def new(self, vector: ArrayLike, **kwargs):
 - `vector` は shape `(n, 3)` の ArrayLike。1 点だけを受ける API（`annotate`）は `check_1d_vector` で `(1, 3)` に揃える
 - 3 成分から 2 次元座標への変換は `utils.three2two` に一元化する
 - `ax` を受け取る処理はすべて `check_ax` を通す。未指定なら `plt.gca()`
-- `z`（物性値）を伴う描画は `flag_cbar=True` のとき colorbar を自動で付け、共通実装の `_BasePlotter.colorbar` を使う
+- 値で色付けした描画は `colorbar=None|True|False` を受け、真偽値は `utils.check_optional_bool` / `check_bool` で厳密に検証する（`0`/`1` は `TypeError`）。カラーバーの追加は `_post_draw` が決定表で判断する
+- 内部で matplotlib に渡す引数とユーザーの kwargs が衝突しうるときは、`_merge_alias` で別名を統合するか、`self.kwargs.pop(...)` でユーザー指定を取り出して優先する。kwargs をそのまま `**self.kwargs` で重ねて渡さない
 
 ### Comments
 
@@ -97,3 +137,9 @@ def new(self, vector: ArrayLike, **kwargs):
 
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
+
+_updated_at: 2026-10-20 — Python 3.9+, setuptools-scm, offline test suite, MyST-NB docs への移行を反映_
+_updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_post_draw.py` / `_deprecation.py`、共通 doctest ランナー）を反映_
+_updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
+_updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
+_updated_at: 2026-11-16 — user-guide-docs（使い方ページ `docs_src/user_guide/`、ページの規約、ドキュメントのテスト）を反映_

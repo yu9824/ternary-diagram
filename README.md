@@ -1,5 +1,3 @@
-
-
 # Ternary Diagram
 
 [![python_badge](https://img.shields.io/pypi/pyversions/ternary-diagram)](https://pypi.org/project/ternary-diagram/)
@@ -13,110 +11,71 @@
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/ternary-diagram.svg)](https://anaconda.org/conda-forge/ternary-diagram)
 [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/ternary-diagram.svg)](https://anaconda.org/conda-forge/ternary-diagram)
 
-This package makes it easier for you to draw beautiful ternary diagram **without** [pymatgen](https://pymatgen.org).
+`ternary-diagram` draws ternary diagrams of three-component compositions on matplotlib, **without** [pymatgen](https://pymatgen.org).
+It only requires `numpy>=1.20` and `matplotlib`, and draws on any matplotlib `Axes`.
 
-Specifically, it only requires `numpy>=1.20` and `matplotlib`.
+![A contour map of a ternary system drawn with ternary-diagram](https://github.com/yu9824/ternary-diagram/blob/main/example/contour/example_contour.png?raw=true)
 
-## What you will be able to do with this package
+## Features
 
-- Create beautiful contour maps easily
-- Creating a scatter plot
-- Draw tie lines
-- Automatically format chemical composition using subscripts
-- Most of the matplotlib options are available
+- Contour maps, scatter plots, tie lines and annotations of compositions
+- Automatic formatting of chemical formulas with subscripts (`Li2O` becomes Li<sub>2</sub>O)
+- Customizable diagram parts: border, grid, tick labels, axis titles and vertex labels
+- Phase diagrams: filled regions (`fill`) and labels placed at compositions (`text`)
+- Heatmaps: of scattered data (`tripcolor`) and of a function of the composition (`heatmapf`)
+- Control over the automatic layout adjustment and colorbars, respecting the figure's layout engine
+- Keyword arguments are passed through to matplotlib, and matplotlib objects are returned
 
-![/example/contour/example_contour.png](https://github.com/yu9824/ternary-diagram/blob/main/example/contour/example_contour.png?raw=true "example")
-
-## How to install
-
-### PyPI
+## Installation
 
 ```bash
 pip install ternary-diagram
 ```
 
-PyPI project is [here](https://pypi.org/project/ternary-diagram/).
-
-### Anaconda
+or, from [conda-forge](https://anaconda.org/conda-forge/ternary-diagram):
 
 ```bash
 conda install -c conda-forge ternary-diagram
 ```
 
-Anaconda (conda-forge) package site is [here](https://anaconda.org/conda-forge/ternary-diagram).
-
-## Usage
-
-See [Examples](#examples) and the [documentation](https://yu9824.github.io/ternary-diagram/).
-
-### Examples
-
-An easy example is here.
+## Quick start
 
 ```python
 import matplotlib.pyplot as plt
+
 from ternary_diagram import TernaryDiagram
 
-# You can set `ax` to select which axes to draw. If not, the current axes will be used.
-td = TernaryDiagram(["Li2O", "La2O3", "TiO2"])
-
-# scatter
-td.scatter(vector=[[1, 1, 1], [1, 2, 3]], z=[0, 1])
-# You can set some options in `plt.scatter` like `marker`, `c` etc.
-td.scatter(vector=[[2, 1, 3], [3, 2, 1]], marker="s", c="#022c5e", s=30)
-
-# line plot
-# You can set some options in `plt.plot` like `lw`, `c`, and so on.
-td.plot([[1, 1, 1], [1, 2, 3]], color="black")
-
-# save figure
-td.fig.savefig("figure.png", dpi=144)
-
-```
-
-![/example/example_on_readme/figure.png](https://github.com/yu9824/ternary-diagram/blob/main/example/example_on_readme/figure.png?raw=true)
-
-It can be written like this.
-```python
-# The background color is sometimes transparent in jupyter notebooks, so set facecolor 'white'.
-fig, ax = plt.subplots(facecolor="w")
-
-# You can set `ax` to select which axes to draw. If not, the current axes will be used.
+fig, ax = plt.subplots(layout="constrained")
 td = TernaryDiagram(["Li2O", "La2O3", "TiO2"], ax=ax)
 
-# scatter
+# scatter plot colored by values
 td.scatter(vector=[[1, 1, 1], [1, 2, 3]], z=[0, 1])
-# You can set some options in `plt.scatter` like `marker`, `c` etc.
+# keyword arguments are passed to `Axes.scatter`
 td.scatter(vector=[[2, 1, 3], [3, 2, 1]], marker="s", c="#022c5e", s=30)
 
-# line plot
-# You can set some options in `plt.plot` like `lw`, `c`, and so on.
+# line plot; keyword arguments are passed to `Axes.plot`
 td.plot([[1, 1, 1], [1, 2, 3]], color="black")
 
-# save figure
 fig.savefig("figure.png", dpi=144)
-
 ```
 
-It means that you can draw multiple figures in one figure object.
+![The figure drawn by the quick start example](https://github.com/yu9824/ternary-diagram/blob/main/example/example_on_readme/figure.png?raw=true)
 
-See also the [example](https://github.com/yu9824/ternary-diagram/tree/main/example) folder.
+## Documentation
 
-## Histories
+The documentation is at <https://yu9824.github.io/ternary-diagram/>.
 
-### v3.1.0
+- [User guide](https://yu9824.github.io/ternary-diagram/user_guide/index.html): getting started, customizing the diagram, phase diagrams, heatmaps and contour maps, layout and colorbars
+- [Tutorials](https://yu9824.github.io/ternary-diagram/tutorials/index.html): example notebooks
+- [API reference](https://yu9824.github.io/ternary-diagram/modules.html)
+- [Migrating to v4.0.0](https://yu9824.github.io/ternary-diagram/user_guide/migration_v4.html): changes of the defaults planned for v4.0.0 and how to prepare for them
 
-- Delete `.utils._BasePlotter.get_x_y` (we should access directly).
-- Resolve #10 (Create `fill` argument in `TernaryDiagram.contour`).
-- Resolve #11 (Create `auto_latex_notation` argument in `TernaryDiagram`).
-- Update documentation.
-- Update docstrings and typings.
+## Changelog
 
+See [CHANGELOG.md](https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md) and [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases).
 
-## LICENSE
+## License
 
-See [LICENSE](https://github.com/yu9824/ternary-diagram/tree/main/LICENSE).
-
-MIT Licence
+MIT License. See [LICENSE](https://github.com/yu9824/ternary-diagram/blob/main/LICENSE).
 
 Copyright (c) 2021 yu9824

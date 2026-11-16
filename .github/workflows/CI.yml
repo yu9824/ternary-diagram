@@ -3,25 +3,82 @@
 name: CI
 run-name: ${{ github.workflow }} (${{ github.ref_name }})
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 on:
   workflow_dispatch:
   push:
-    # branches:
-    #   - 'main'
-    #   - 'dev'
+    branches:
+      - main
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
-  build-linux:
+  # GitHub の仕様上、on.push / on.pull_request の paths フィルタで workflow
+  # ごとスキップされると、そのチェックは "Pending" のまま残ってしまい、
+  # required status check に設定していると PR がマージできなくなる。
+  # 一方、job が if 条件でスキップされた場合は "Success" として報告されるため、
+  # required にしても安全。そのため paths フィルタは on: から外し、ここで
+  # dorny/paths-filter を使って changed job の if 条件として判定する。
+  changes:
+    runs-on: ubuntu-24.04
+    # paths-filter は pull_request のとき GitHub REST API で差分を取るので
+    # pull-requests: read が要る。workflow レベルで contents: read しか
+    # 与えていない (= 他は none) ため、ここで job レベルに補う。
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      # push のときは git の履歴を辿って差分を取るため、浅いクローンだと
+      # 比較対象のコミットが手元に無くて失敗しうる。リポジトリが小さいので
+      # 全部取ってしまうのが確実。
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # workflow_dispatch には「比較対象」が存在しないため paths-filter は
+      # 正しく判定できない。手動実行はそもそも「今すぐ全部回したい」ときに
+      # 使うものなので、判定自体を飛ばして下の test を必ず走らせる。
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: github.event_name != 'workflow_dispatch'
+        with:
+          filters: |
+            code:
+              - 'src/**'
+              - '**/*.py'
+              - 'tests/**'
+              # tests read the CSV files under example/
+              - 'example/**'
+              - 'packages/**'
+              - '.github/workflows/CI.yml'
+              - 'pyproject.toml'
+              - 'setup.py'
+              - 'setup.cfg'
+              - 'requirements*.txt'
+              - 'tox.ini'
+
+  test:
+    needs: changes
+    # 手動実行時は filter を飛ばしていて outputs.code が空になるので、
+    # workflow_dispatch を明示的に拾う。
+    if: needs.changes.outputs.code == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-      max-parallel: 6
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+      # max-parallel: 6
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
     - name: Setup Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: ${{ matrix.python-version }}
     # - name: Add conda to system path
@@ -30,7 +87,7 @@ jobs:
     #     echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        pip install .[test,optional]
+        pip install ".[test]"
     - name: Test with pytest
       run: |
         pytest -xs .

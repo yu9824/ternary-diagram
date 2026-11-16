@@ -1,3 +1,17 @@
+# Project
+
+プロジェクト固有の説明は `.kiro/steering/` にだけ書く。
+
+steering は spec の作業に限らず、開発の前提として常に読み込む
+(下の import で読み込み済みなので、読み直さなくてよい):
+
+@.kiro/steering/product.md
+@.kiro/steering/tech.md
+@.kiro/steering/structure.md
+
+個人の設定は `CLAUDE.local.md` と `.claude/settings.local.json` に書く
+(どちらも git の管理外)。
+
 # Agentic SDLC and Spec-Driven Development
 
 Kiro-style Spec-Driven Development on an agentic SDLC

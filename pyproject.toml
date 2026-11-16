@@ -1,45 +1,61 @@
 # https://packaging.python.org/ja/latest/guides/writing-pyproject-toml/
 [build-system]
-requires = ["setuptools"]
+requires = ["setuptools>=77.0.3", "setuptools-scm[toml]>=7"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "ternary-diagram"
 dynamic = ["version"]
 dependencies = ["numpy >=1.20", "matplotlib"]
-requires-python = ">= 3.8"
+requires-python = ">= 3.9"
 authors = [{ name = "yu9824" }]
 maintainers = [{ name = "yu9824" }]
-description = ""
+description = "Draw beautiful ternary diagrams with matplotlib, without pymatgen."
 readme = { file = "README.md", content-type = "text/markdown" }
-license = { file = "LICENSE" }
-keywords = []
+# https://spdx.org/licenses/
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+keywords = [
+    "ternary diagram",
+    "ternary plot",
+    "phase diagram",
+    "composition",
+    "contour",
+    "matplotlib",
+    "materials science",
+    "chemistry",
+    "visualization",
+]
 # https://pypi.org/classifiers/
 classifiers = [
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Chemistry",
     "Topic :: Scientific/Engineering :: Visualization",
 ] # https://pypi.org/classifiers/
 
 [project.optional-dependencies]
-test = ["pytest", "pandas"]
-dev = ["build", "jupyter", "pandas"]
-optional = ["colorlog", "tqdm"]
+test = [
+    "pytest",
+    "pandas",
+    # matplotlib 3.9 (the last for Python 3.9) parses mathtext with method
+    # names that pyparsing 3.3 deprecates, which breaks the tests that count
+    # or forbid warnings.
+    "pyparsing<3.3; python_version < '3.10'",
+]
+dev = ["build", "jupyter", "jupytext", "pandas"]
 docs = [
     "sphinx",
-    "sphinx_rtd_theme",
-    "sphinx-markdown-tables",
-    "recommonmark",
-    "sphinx-multiversion",
+    "myst-parser",
+    "myst-nb",
+    "sphinx-book-theme",
+    "jupyter-sphinx",
 ]
-gui = ["TkEasyGUI"]
 
 [project.urls]
 Homepage = "https://github.com/yu9824/ternary-diagram"
@@ -47,6 +63,8 @@ Documentation = "https://yu9824.github.io/ternary-diagram/"
 PyPI = "https://pypi.org/project/ternary-diagram/"
 Source = "https://github.com/yu9824/ternary-diagram"
 Tracker = "https://github.com/yu9824/ternary-diagram/issues"
+"Release Notes" = "https://github.com/yu9824/ternary-diagram/releases"
+Changelog = "https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ternary-diagram = "ternary_diagram.__main__:entrypoint"
@@ -57,15 +75,8 @@ ternary-diagram = "ternary_diagram.__main__:entrypoint"
 [tool.setuptools]
 package-dir = { "" = "src" }
 
-[tool.setuptools.dynamic]
-version = { attr = "ternary_diagram.__version__" }
-
 [tool.setuptools.packages.find]
 where = ["src/"]
 
-[tool.ruff]
-line-length = 79
-indent-width = 4
-
-[tool.ruff.lint]
-unfixable = ["F401"]
+[tool.setuptools_scm]
+write_to = "src/ternary_diagram/_version.py"
