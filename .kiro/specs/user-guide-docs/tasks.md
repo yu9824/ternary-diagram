@@ -164,7 +164,7 @@
   - _Depends: 5.1, 5.2_
   - _Requirements: 9.1, 9.2, 10.5, 12.5_
 
-- [ ] 6. 検証
+- [x] 6. 検証
 - [x] 6.1 CI と同じ手順でドキュメント全体をビルドして検証する
   - API リファレンスを生成してから一時ディレクトリへビルドし、終了コード 0 と出力の警告 0 件を確かめる
   - 生成されたすべての HTML に広告スクリプトがあること、使い方ページ 5 つと移行ページに空でない代替テキスト付きの図があること、API リファレンスに作成時のすべての引数の説明があること、既存のチュートリアルと API リファレンスの URL が残っていること、出力先に実行結果のキャッシュがなく、ドキュメントのソースに実行による新しいファイルがないことを確かめる
@@ -174,7 +174,7 @@
   - _Boundary: 変更なし（ビルドの出力は一時ディレクトリ。生成される `docs_src/modules.rst`・`docs_src/ternary_diagram*.rst` と、否定の確認で一時的に変える `docs_src/user_guide/*.md` の 1 セルは、確認後に元に戻す）_
   - _Requirements: 1.8, 2.5, 8.3, 9.3, 9.4, 10.2, 10.3, 13.1, 13.2, 13.4, 13.5_
 
-- [ ] 6.2 回帰確認とレビューを行う
+- [x] 6.2 回帰確認とレビューを行う
   - 共通の doctest ランナーを含むテスト一式と、ruff の lint と format の確認を実行する。ruff が使える既存の環境がなければ、インストールせずに確認できなかったことを報告する。上流の docstring の例による失敗は、担当 spec の不具合として記録したうえで本 spec の判定から除く
   - 差分で、上流が担当する docstring の項目（`__init__` の上流の Parameters の項目、`scatter` / `contour` の `colorbar`・`flag_cbar` の項目、annotate-plain-text の項目、上流が `utils` に足した関数を含む）、ライブラリのコード、テーマ・テンプレート・ドキュメントのワークフローが変わっておらず、`tests/test_doctests.py` の差分が `__init__` の xfail の印の削除だけであることを確かめる
   - 各使い方ページが design のページの節をすべて持ち、担当する docstring が規約どおり（例が自分の import の行から始まることを含む）で、`__init__` の Examples 節に `*_kw` の例がないことをレビューする。上流が担当する項目の tech.md の規約違反に気づいた場合は、書き換えずに担当 spec の不具合として記録する
@@ -226,3 +226,5 @@
 - 3.4: `contour` は `z` に NaN があると matplotlib の ValueError（"z array must not contain non-finite values within the triangulation"）を出す。ページには「NaN の点を除いてから渡す」と書いた。上流の `contour` の docstring にはない記述なので、`z` の項目に足すかを 6.2 で判断する
 - 3.5（レビューで 1 回差し戻し）: 三角図は `set_aspect("equal", adjustable="datalim")` なので、Axes の箱は縮まず、`layout="compressed"` は constrained と同じ配置になる（compressed が詰めるのは `adjustable="box"` の Axes だけ）。同じ理由で Axes の箱が三角形より縦に長く、複数パネルのタイトルと三角形の間が空くので、`figsize` の縦を詰めて対処した
 - 3.6: 警告文は 300〜500 字の 1 行で、テーマに `pre-wrap` がなく横スクロールになるので、捕捉セルは `textwrap.fill(text, 79, break_long_words=False, break_on_hyphens=False)` で空白の位置だけ折り返して表示する（design の `print(f"{w.category.__name__}: {w.message}")` とは空白だけが違い、語と語順は同じ。親の判断）。捕捉セルの規則: 静的なブロックを `# Begin` / `# End` の間に 4 字下げでそのまま入れる。`flag_cbar` の警告は三角図ごとに 1 回ではなく呼び出しのたびに出る
+- 6.2 と最終検証（2026-11-16、GO）: テスト 2038 passed（`-W error::FutureWarning`）、ruff は `.` 全体で clean（等高線図のノートブックの未使用の import を消した）、mypy は従来の 7 件、src の差分は docstring だけ、ドキュメントのビルドは警告 0 件。Minor のうち 2 件は今のままにした: `contour` の `z` は必須なので型の行に `optional` を付けない（説明文に「None は ValueError」と書いてある）、担当する docstring に Raises 節を足さない（例外は各項目に書いてあり、要件 1.9 の重複を避ける）。CHANGELOG の Deprecations のカラーバーの行に `tripcolor` / `heatmapf` を足した
+- 他の spec・今後の課題として roadmap に記録したもの: `fill` の Returns の `List[...]` と `text` の `vector` の型の行（region-plots の書き方）、上流の型の行の None の書き方の混在、`fig` の型注釈（`SubFigure` を返す。typing-cleanup）、`colorbar(location="bottom")` だけで TypeError になる件、matplotlib 3.11 で頂点ラベルが図の端からはみ出す件、`autoclass_content="both"` でクラスの Notes 節が `__init__` の Parameters より前に出る件
