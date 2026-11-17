@@ -49,12 +49,12 @@
 ## Import Organization
 
 ```python
-# Python 3.8 時代の名残の typing（isort の対象外としてファイル先頭に固定）
-from typing import Tuple, List  # isort: skip
+# 注釈の評価を遅らせる（Ruff の I002 が必須にしている）
+from __future__ import annotations
 
-# 標準ライブラリ
+# 標準ライブラリ（typing は Any や cast など、組み込みで書けないものだけ）
 from math import sqrt
-from typing import Optional
+from typing import Any, cast
 
 # サードパーティ（matplotlib はサブモジュールを明示的に import する）
 import matplotlib.axes
@@ -143,3 +143,4 @@ _updated_at: 2026-10-24 — plot-side-effects（描画後処理の共通化、`_
 _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleton.py`、`set_*` / `*_kw` / 取り出し口）を反映_
 _updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
 _updated_at: 2026-11-16 — user-guide-docs（使い方ページ `docs_src/user_guide/`、ページの規約、ドキュメントのテスト）を反映_
+_updated_at: 2026-11-17 — future annotations への統一（Ruff の I002 / UP ルールで強制）を反映_
