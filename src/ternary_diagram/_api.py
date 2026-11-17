@@ -1883,7 +1883,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.patches.Polygon]
+        list of matplotlib.patches.Polygon
             A list of one element, the filled polygon, as returned by
             `matplotlib.axes.Axes.fill`.
 
@@ -1952,10 +1952,12 @@ class TernaryDiagram:
             other than str is not formatted and is converted to a string
             by matplotlib.
 
-        vector : array-like of shape (3,) or (1, 3)
+        vector : array-like of shape (3,)
             Composition of the point where the text is placed. It
             represents the ratio of each component (the sum does not have
-            to be 1), in the same order as `materials`.
+            to be 1), in the same order as `materials`. Any array-like
+            with exactly three elements, such as one of shape (1, 3), is
+            accepted; other lengths raise a ValueError.
 
         auto_latex_notation : bool or None, optional
             Whether to write the chemical formulas in `text` in LaTeX
