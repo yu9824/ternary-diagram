@@ -2,7 +2,7 @@
 
 See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for the release notes generated from pull requests.
 
-## Unreleased
+## v3.4.0
 
 ### New features
 
@@ -16,6 +16,11 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
   - `contour`: `z_min`, `z_max`, `fill` and `colorbar` (`vector` and `z` stay positional).
   - `colorbar`: `shrink`, `format`, `label`, `orientation` and `location` (`mappable` stays positional).
 - In 4.0.0, `TernaryDiagram` will keep the aspect of the Axes by shrinking the box of the Axes to the triangle (`adjustable="box"`) instead of widening the data limits (`adjustable="datalim"`). The vertex labels then stay inside the figure with a layout engine and a colorbar, which matplotlib 3.11 can clip now. The box can become smaller than the space given to the Axes, so legends placed with `loc` can move closer to the triangle, and on a figure with a layout engine the colorbars added automatically can become shorter (with `layout="compressed"`, down to about the height of the triangle); without a layout engine their length does not change. No warning is emitted for this change; call `td.ax.set_aspect("equal", adjustable="box")` after creating the diagram to try it now.
+
+### Other changes
+
+- Write the types in the docstrings without `typing` names (`list of X`, `X or None`), as the signatures in the API reference show them.
+- Show the notes of `TernaryDiagram` after the parameters of the constructor in the API reference.
 
 ## v3.3.0
 
