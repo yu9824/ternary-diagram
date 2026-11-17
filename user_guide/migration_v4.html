@@ -1,0 +1,1171 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Migrating to v4.0.0 &#8212; ternary-diagram 3.4.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+
+    <script src="../_static/documentation_options.js?v=2fcb1bbf"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/migration_v4';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Tutorials" href="../tutorials/index.html" />
+    <link rel="prev" title="Layout and colorbars" href="layout_and_colorbars.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">ternary-diagram 3.4.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">User guide</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="customizing.html">Customizing the diagram</a></li>
+<li class="toctree-l2"><a class="reference internal" href="phase_diagrams.html">Drawing phase diagrams</a></li>
+<li class="toctree-l2"><a class="reference internal" href="heatmaps_and_contours.html">Heatmaps and contour maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layout_and_colorbars.html">Layout and colorbars</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Migrating to v4.0.0</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/quickstart.html">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/scatter.html">Scatter plot colored by values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/scatter_with_annotations.html">Scatter plot with annotations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/mono_scatter.html">Scatter plot and tie lines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/contour.html">Contour map</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/multiple_figure.html">Multiple diagrams in one figure</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../modules.html">ternary_diagram</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ternary_diagram.html">ternary_diagram package</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/yu9824/ternary-diagram" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/yu9824/ternary-diagram/issues/new?title=Issue%20on%20page%20%2Fuser_guide/migration_v4.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/user_guide/migration_v4.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Migrating to v4.0.0</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-summary">Summary of changes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-layout">Layout warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-colorbar">Duplicate colorbar warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-flag-cbar"><code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> is renamed to <code class="docutils literal notranslate"><span class="pre">colorbar</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-annotations">Annotation formatting warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-keyword-only">Options passed by position</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-aspect">Aspect of the Axes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-finding">Finding affected code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="migrating-to-v4-0-0">
+<h1>Migrating to v4.0.0<a class="headerlink" href="#migrating-to-v4-0-0" title="Link to this heading">#</a></h1>
+<p>ternary-diagram 4.0.0 will change some defaults, make the options of the older methods keyword-only, change how the aspect of the Axes is kept, and remove a deprecated argument.
+This page lists each change, the <code class="docutils literal notranslate"><span class="pre">FutureWarning</span></code> that announces it in v3.x, the calls that emit it, and how to keep the current behavior or adopt the new one now.
+Code that follows the advice in the warnings runs without warnings in v3.x and draws the same figure in v3.x and v4.0.0, except for the change of the aspect, which emits no warning and is described in <a class="reference internal" href="#migration-v4-aspect">its own section</a>.</p>
+<p>Each section shows the code that emits the warning in a static block, followed by the warning that the code emits when this page is built with the current version of ternary-diagram.
+Expand “Show code cell source” above that output to see how the warning is caught: the code of the block runs unchanged between the <code class="docutils literal notranslate"><span class="pre">Begin</span></code> and <code class="docutils literal notranslate"><span class="pre">End</span></code> comments inside <code class="docutils literal notranslate"><span class="pre">warnings.catch_warnings</span></code>, and the caught warnings are printed, wrapped at spaces to fit the page.</p>
+<p>The values on this page are made up for illustration.
+They come from a smooth function of the composition of Li2O, La2O3 and TiO2, evaluated at 40 random compositions, and are not measured properties of this system.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">ternary_diagram</span> <span class="kn">import</span> <span class="n">TernaryDiagram</span>
+<span class="kn">from</span> <span class="nn">ternary_diagram.utils</span> <span class="kn">import</span> <span class="n">get_label</span>
+
+<span class="n">materials</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">]</span>
+
+
+<span class="k">def</span> <span class="nf">property_value</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A made-up property between 0 and 1, highest near (0.5, 0.3, 0.2).&quot;&quot;&quot;</span>
+    <span class="n">distance2</span> <span class="o">=</span> <span class="p">(</span><span class="n">a</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">b</span> <span class="o">-</span> <span class="mf">0.3</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="n">c</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="n">distance2</span> <span class="o">/</span> <span class="mf">0.08</span><span class="p">)</span>
+
+
+<span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">compositions</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">dirichlet</span><span class="p">([</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">40</span><span class="p">)</span>
+<span class="n">values</span> <span class="o">=</span> <span class="n">property_value</span><span class="p">(</span><span class="o">*</span><span class="n">compositions</span><span class="o">.</span><span class="n">T</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<section id="migration-v4-summary">
+<span id="summary-of-changes"></span><h2>Summary of changes<a class="headerlink" href="#migration-v4-summary" title="Link to this heading">#</a></h2>
+<p>The table compares v3.x and v4.0.0 for each change, and shows the code that keeps the v3.x behavior or adopts the v4.0.0 behavior.
+For the changes of defaults, the v3.x and v4.0.0 columns describe the behavior when the argument named in the first column is not specified.
+The code in the last two columns emits no <code class="docutils literal notranslate"><span class="pre">FutureWarning</span></code> and behaves the same in v3.x and v4.0.0.
+The <a class="reference external" href="https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md">changelog</a> lists these changes under “Deprecations”.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Change</p></th>
+<th class="head"><p>v3.x</p></th>
+<th class="head"><p>v4.0.0</p></th>
+<th class="head"><p>Keep the v3.x behavior</p></th>
+<th class="head"><p>Adopt the v4.0.0 behavior</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="#migration-v4-layout">Layout adjustment</a> (<code class="docutils literal notranslate"><span class="pre">tight_layout</span></code> of <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code>)</p></td>
+<td><p>Calls <code class="docutils literal notranslate"><span class="pre">Figure.tight_layout()</span></code> after each plotting call on a figure without a layout engine</p></td>
+<td><p>Leaves the layout untouched, as with <code class="docutils literal notranslate"><span class="pre">tight_layout=False</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TernaryDiagram(...,</span> <span class="pre">tight_layout=True)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">TernaryDiagram(...,</span> <span class="pre">tight_layout=False)</span></code> and <code class="docutils literal notranslate"><span class="pre">fig.tight_layout()</span></code>, or a figure created with <code class="docutils literal notranslate"><span class="pre">layout=&quot;constrained&quot;</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#migration-v4-colorbar">Colorbar on a diagram that already has one</a> (<code class="docutils literal notranslate"><span class="pre">colorbar</span></code> of <code class="docutils literal notranslate"><span class="pre">scatter</span></code>, <code class="docutils literal notranslate"><span class="pre">contour</span></code>, <code class="docutils literal notranslate"><span class="pre">tripcolor</span></code> and <code class="docutils literal notranslate"><span class="pre">heatmapf</span></code>)</p></td>
+<td><p>Adds another colorbar</p></td>
+<td><p>Adds none</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">colorbar=True</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">colorbar=False</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#migration-v4-flag-cbar"><code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code></a> of <code class="docutils literal notranslate"><span class="pre">scatter</span></code> and <code class="docutils literal notranslate"><span class="pre">contour</span></code></p></td>
+<td><p>Deprecated name of <code class="docutils literal notranslate"><span class="pre">colorbar</span></code></p></td>
+<td><p>Removed</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">colorbar=...</span></code> with the same value</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">colorbar=...</span></code> with the same value</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#migration-v4-annotations">Formatting of annotations</a> (<code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> of <code class="docutils literal notranslate"><span class="pre">annotate</span></code> and of <code class="docutils literal notranslate"><span class="pre">scatter</span></code> with <code class="docutils literal notranslate"><span class="pre">annotations</span></code>)</p></td>
+<td><p>Writes every number as a subscript (<code class="docutils literal notranslate"><span class="pre">&quot;Sample</span> <span class="pre">1&quot;</span></code> is shown as <code class="docutils literal notranslate"><span class="pre">&quot;Sample</span> <span class="pre">$_{1}$&quot;</span></code>), whatever the setting of the diagram</p></td>
+<td><p>Follows <code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> of <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code>, and formats only the words that look like chemical formulas</p></td>
+<td><p>The text formatted with <code class="docutils literal notranslate"><span class="pre">get_label</span></code>, and <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">auto_latex_notation=True</span></code> to format the chemical formulas, or <code class="docutils literal notranslate"><span class="pre">False</span></code> to show the text as it is</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#migration-v4-keyword-only">Options passed by position</a> (<code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code>, <code class="docutils literal notranslate"><span class="pre">scatter</span></code>, <code class="docutils literal notranslate"><span class="pre">contour</span></code> and <code class="docutils literal notranslate"><span class="pre">colorbar</span></code>)</p></td>
+<td><p>Accepted, with a <code class="docutils literal notranslate"><span class="pre">FutureWarning</span></code> since 3.4.0</p></td>
+<td><p>Raises a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code></p></td>
+<td><p>Not possible</p></td>
+<td><p>Pass the options by keyword, as in <code class="docutils literal notranslate"><span class="pre">td.scatter(vector,</span> <span class="pre">z,</span> <span class="pre">z_min=0,</span> <span class="pre">z_max=1)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#migration-v4-aspect">Aspect of the Axes</a></p></td>
+<td><p>Kept by widening the data limits (<code class="docutils literal notranslate"><span class="pre">adjustable=&quot;datalim&quot;</span></code>)</p></td>
+<td><p>Kept by shrinking the box of the Axes to the triangle (<code class="docutils literal notranslate"><span class="pre">adjustable=&quot;box&quot;</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">td.ax.set_aspect(&quot;equal&quot;,</span> <span class="pre">adjustable=&quot;datalim&quot;)</span></code> in v4.0.0</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">td.ax.set_aspect(&quot;equal&quot;,</span> <span class="pre">adjustable=&quot;box&quot;)</span></code> in v3.x</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>The warnings about the defaults are emitted at most once per diagram for each change, and only when the call would give a different result in v4.0.0.
+The warning about <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> is emitted by every call that passes it.
+The warning about the options passed by position is emitted once per diagram for each method, and by every call of <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code> itself, which creates a new diagram.
+The change of the aspect emits no warning.
+Each warning points at the line of your code that made the call.
+Since later calls on the same diagram do not warn again, fix every call of the same kind, not only the first one; <a class="reference internal" href="#migration-v4-finding">Finding affected code</a> shows how to find them all.</p>
+</section>
+<section id="migration-v4-layout">
+<span id="layout-warning"></span><h2>Layout warning<a class="headerlink" href="#migration-v4-layout" title="Link to this heading">#</a></h2>
+<p>A plotting call, such as <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.scatter" title="ternary_diagram.TernaryDiagram.scatter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">scatter()</span></code></a> or <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.plot" title="ternary_diagram.TernaryDiagram.plot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">plot()</span></code></a>, emits this warning when the diagram was created without <code class="docutils literal notranslate"><span class="pre">tight_layout</span></code> and its figure has no layout engine, for example a figure created by <code class="docutils literal notranslate"><span class="pre">plt.subplots()</span></code> without <code class="docutils literal notranslate"><span class="pre">layout</span></code>, or by <code class="docutils literal notranslate"><span class="pre">TernaryDiagram(materials)</span></code> without <code class="docutils literal notranslate"><span class="pre">ax</span></code>.
+A figure with a layout engine, such as <code class="docutils literal notranslate"><span class="pre">layout=&quot;constrained&quot;</span></code>, and a subfigure are never adjusted and never warn.
+Creating the diagram and the <code class="docutils literal notranslate"><span class="pre">set_*</span></code> methods do not adjust the layout either.</p>
+<p>Code that emits the warning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+    <span class="c1"># Begin: the code of the block above, unchanged.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+    <span class="c1"># End</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1"># Wrap at spaces only, so the text of the warning is unchanged.</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">,</span> <span class="mi">79</span><span class="p">,</span> <span class="n">break_long_words</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>FutureWarning: TernaryDiagram called `Figure.tight_layout()` after plotting
+because the figure has no layout engine and `tight_layout` was not specified.
+In ternary-diagram 4.0.0, TernaryDiagram will no longer adjust the figure
+layout by default (tight_layout=False). To keep the current behavior, pass
+`tight_layout=True` to `TernaryDiagram`. To adopt the new behavior now, pass
+`tight_layout=False` and call `fig.tight_layout()` yourself, or create the
+figure with `layout=&quot;constrained&quot;`.
+</pre></div>
+</div>
+</div>
+</div>
+<p>To keep the current behavior, pass <code class="docutils literal notranslate"><span class="pre">tight_layout=True</span></code> to <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram" title="ternary_diagram.TernaryDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">TernaryDiagram</span></code></a>.
+The figure margins are still fitted after each plotting call, without the warning:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">tight_layout</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property, red near 50 % Li2O, 30 % La2O3 and 20 % TiO2 and blue to purple farther from it, and a colorbar from about 0 to 1 on the right." src="../_images/8818096d9ef71152751b12dd41424cf4694acf610cf88778ef913324461ea9d2.png" />
+</div>
+</div>
+<p>To adopt the new behavior now, pass <code class="docutils literal notranslate"><span class="pre">tight_layout=False</span></code> and call <code class="docutils literal notranslate"><span class="pre">fig.tight_layout()</span></code> yourself, once after the last plotting call:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">()</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">tight_layout</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="The same ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property and a colorbar from about 0 to 1 on the right." src="../_images/8818096d9ef71152751b12dd41424cf4694acf610cf88778ef913324461ea9d2.png" />
+</div>
+</div>
+<p>Or create the figure with a layout engine, which arranges the figure every time it is drawn; <code class="docutils literal notranslate"><span class="pre">tight_layout</span></code> does not need to be passed.
+This is the way recommended in this user guide:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="The same ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property and a colorbar from about 0 to 1 on the right, laid out by the constrained layout engine." src="../_images/b96cb83792a8c4ef76258ea1c346c8f7d8670b1243aa221b6325dd059d23cf16.png" />
+</div>
+</div>
+<p><a class="reference internal" href="layout_and_colorbars.html"><span class="std std-doc">Layout and colorbars</span></a> explains the layout engines, multiple panels and subfigures.</p>
+</section>
+<section id="migration-v4-colorbar">
+<span id="duplicate-colorbar-warning"></span><h2>Duplicate colorbar warning<a class="headerlink" href="#migration-v4-colorbar" title="Link to this heading">#</a></h2>
+<p>The plots colored by values, <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.scatter" title="ternary_diagram.TernaryDiagram.scatter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">scatter()</span></code></a> with <code class="docutils literal notranslate"><span class="pre">z</span></code>, <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.contour" title="ternary_diagram.TernaryDiagram.contour"><code class="xref py py-meth docutils literal notranslate"><span class="pre">contour()</span></code></a>, <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.tripcolor" title="ternary_diagram.TernaryDiagram.tripcolor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">tripcolor()</span></code></a> and <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.heatmapf" title="ternary_diagram.TernaryDiagram.heatmapf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">heatmapf()</span></code></a>, emit this warning when they are called without <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> on a diagram that already has a colorbar.
+A diagram already has a colorbar when one was added through this <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code>, automatically or with <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.colorbar" title="ternary_diagram.TernaryDiagram.colorbar"><code class="xref py py-meth docutils literal notranslate"><span class="pre">colorbar()</span></code></a>, and was not removed; see <a class="reference internal" href="layout_and_colorbars.html#layout-and-colorbars-automatic-colorbars"><span class="std std-ref">Automatic colorbars</span></a> for the details.
+The first plot colored by values on a diagram adds a colorbar in both versions and does not warn.</p>
+<p>Code that emits the warning, at the second plot colored by values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">heatmap</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">tripcolor</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+    <span class="c1"># Begin: the code of the block above, unchanged.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">heatmap</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">tripcolor</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+    <span class="c1"># End</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1"># Wrap at spaces only, so the text of the warning is unchanged.</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">,</span> <span class="mi">79</span><span class="p">,</span> <span class="n">break_long_words</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>FutureWarning: `scatter` added another colorbar to this diagram, which already
+has one, because `colorbar` was not specified. In ternary-diagram 4.0.0, a
+colorbar will be added automatically only when the diagram has none. To keep
+the current behavior, pass `colorbar=True`. To adopt the new behavior now, pass
+`colorbar=False`.
+</pre></div>
+</div>
+</div>
+</div>
+<p>To keep the current behavior, pass <code class="docutils literal notranslate"><span class="pre">colorbar=True</span></code> to the second plot, which adds a second colorbar on purpose:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">heatmap</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">tripcolor</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+    <span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 whose inside, within the polygon enclosing 40 compositions, is painted in triangles in the rainbow colormap by the made-up property, with the 40 compositions drawn on top as points with black outlines in the same colors. Two identical colorbars from about 0 to 1 stand side by side on the right." src="../_images/6804d53e7592575bc3bc8b7a33bb7b35d8f3330a6202c50e6531667ca0078812.png" />
+</div>
+</div>
+<p>To adopt the new behavior now, pass <code class="docutils literal notranslate"><span class="pre">colorbar=False</span></code>, and the plots share the colorbar that is already there:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">heatmap</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">tripcolor</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+    <span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">edgecolors</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="The same ternary diagram of Li2O, La2O3 and TiO2 with the triangles painted in the rainbow colormap and the 40 points with black outlines on top, and a single colorbar from about 0 to 1 on the right." src="../_images/bd9cde1dff1c1bc514954f7de5efc2500a6c703c403f66acb941536bb6824fc4.png" />
+</div>
+</div>
+<p>The plots here use the same values, so they have the same color range.
+When plots with different values share a colorbar, give them the same <code class="docutils literal notranslate"><span class="pre">z_min</span></code>, <code class="docutils literal notranslate"><span class="pre">z_max</span></code> and <code class="docutils literal notranslate"><span class="pre">cmap</span></code>, as shown in <a class="reference internal" href="layout_and_colorbars.html#layout-and-colorbars-adding-a-colorbar"><span class="std std-ref">Adding a colorbar yourself</span></a>.</p>
+</section>
+<section id="migration-v4-flag-cbar">
+<span id="flag-cbar-is-renamed-to-colorbar"></span><h2><code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> is renamed to <code class="docutils literal notranslate"><span class="pre">colorbar</span></code><a class="headerlink" href="#migration-v4-flag-cbar" title="Link to this heading">#</a></h2>
+<p>The argument <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> of <code class="docutils literal notranslate"><span class="pre">scatter</span></code> and <code class="docutils literal notranslate"><span class="pre">contour</span></code> is renamed to <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> and will be removed in 4.0.0.
+Every call that passes <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> emits this warning, whatever its value.</p>
+<p>Code that emits the warning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">flag_cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+    <span class="c1"># Begin: the code of the block above, unchanged.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">flag_cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="c1"># End</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1"># Wrap at spaces only, so the text of the warning is unchanged.</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">,</span> <span class="mi">79</span><span class="p">,</span> <span class="n">break_long_words</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>FutureWarning: `flag_cbar` of `scatter` was renamed to `colorbar`. `flag_cbar`
+will be removed in ternary-diagram 4.0.0. Pass `colorbar` instead.
+</pre></div>
+</div>
+</div>
+</div>
+<p>Replace <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> with <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> and keep the value.
+The code below works the same in v3.x and v4.0.0:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">,</span> <span class="n">colorbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property, red near 50 % Li2O, 30 % La2O3 and 20 % TiO2 and blue to purple farther from it, and no colorbar." src="../_images/a9dd2439c1cf6d088c52babdfd8a4c641d7da6f8dd218cd1d618fa9f424a026e.png" />
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> is read as true or false, but <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> accepts only <code class="docutils literal notranslate"><span class="pre">None</span></code>, <code class="docutils literal notranslate"><span class="pre">True</span></code> and <code class="docutils literal notranslate"><span class="pre">False</span></code> and raises a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> for other values, so write <code class="docutils literal notranslate"><span class="pre">flag_cbar=0</span></code> as <code class="docutils literal notranslate"><span class="pre">colorbar=False</span></code> and <code class="docutils literal notranslate"><span class="pre">flag_cbar=1</span></code> as <code class="docutils literal notranslate"><span class="pre">colorbar=True</span></code>.
+Passing both <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> and <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> raises a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.
+Code that passed <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> by position, as the 6th argument of <code class="docutils literal notranslate"><span class="pre">scatter</span></code> or <code class="docutils literal notranslate"><span class="pre">contour</span></code>, now passes <code class="docutils literal notranslate"><span class="pre">colorbar</span></code>, and the same rule applies to it; there, <code class="docutils literal notranslate"><span class="pre">None</span></code> now means that <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> is not specified, so a colorbar is added when <code class="docutils literal notranslate"><span class="pre">z</span></code> is given.</p>
+<p>The new drawing methods do not accept <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code>.
+<a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.tripcolor" title="ternary_diagram.TernaryDiagram.tripcolor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">tripcolor()</span></code></a> and <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.heatmapf" title="ternary_diagram.TernaryDiagram.heatmapf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">heatmapf()</span></code></a> raise a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> that names <code class="docutils literal notranslate"><span class="pre">colorbar</span></code> instead:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">heatmap</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">heatmapf</span><span class="p">(</span><span class="n">property_value</span><span class="p">,</span> <span class="n">flag_cbar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="k">except</span> <span class="ne">TypeError</span> <span class="k">as</span> <span class="n">error</span><span class="p">:</span>
+    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;TypeError: </span><span class="si">{</span><span class="n">error</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig</span><span class="p">)</span>  <span class="c1"># heatmapf drew nothing, so the figure is not shown.</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>TypeError: `heatmapf` does not accept `flag_cbar`. Use `colorbar` instead.
+</pre></div>
+</div>
+</div>
+</div>
+<p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.fill" title="ternary_diagram.TernaryDiagram.fill"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fill()</span></code></a> and <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.text" title="ternary_diagram.TernaryDiagram.text"><code class="xref py py-meth docutils literal notranslate"><span class="pre">text()</span></code></a> never add a colorbar and have neither argument.
+They pass their keyword arguments to matplotlib, which raises an <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code> for <code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> as for any unknown property.</p>
+</section>
+<section id="migration-v4-annotations">
+<span id="annotation-formatting-warning"></span><h2>Annotation formatting warning<a class="headerlink" href="#migration-v4-annotations" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.annotate" title="ternary_diagram.TernaryDiagram.annotate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">annotate()</span></code></a> and <code class="docutils literal notranslate"><span class="pre">scatter</span></code> with <code class="docutils literal notranslate"><span class="pre">annotations</span></code> emit this warning when they are called without <code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> and a text would be shown differently in v4.0.0.
+In v3.x, they write every number in the text as a subscript; in v4.0.0, they will follow <code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> of <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code>, as <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.text" title="ternary_diagram.TernaryDiagram.text"><code class="xref py py-meth docutils literal notranslate"><span class="pre">text()</span></code></a> does, and format only the words that look like chemical formulas.
+So the warning is emitted for a text with numbers that are not part of a chemical formula, such as <code class="docutils literal notranslate"><span class="pre">&quot;Sample</span> <span class="pre">1&quot;</span></code>, for formulas joined without spaces, such as <code class="docutils literal notranslate"><span class="pre">&quot;Li2O-La2O3&quot;</span></code>, and for a chemical formula with numbers, such as <code class="docutils literal notranslate"><span class="pre">&quot;Li2O&quot;</span></code>, on a diagram created with <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code>.
+A text that contains <code class="docutils literal notranslate"><span class="pre">$</span></code> (mathtext) is shown as it is, without the warning.
+The warning names only the first text that changes on each diagram, so check the other texts too.</p>
+<p>Code that emits the warning:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">note</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">&quot;Sample 1&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+</pre></div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+    <span class="c1"># Begin: the code of the block above, unchanged.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">note</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">&quot;Sample 1&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">])</span>
+    <span class="c1"># End</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1"># Wrap at spaces only, so the text of the warning is unchanged.</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">,</span> <span class="mi">79</span><span class="p">,</span> <span class="n">break_long_words</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>FutureWarning: `annotate` formatted &#39;Sample 1&#39; as &#39;Sample $_{1}$&#39;, writing
+every number as a subscript. In ternary-diagram 4.0.0, only the words that look
+like chemical formulas are formatted, and only when `auto_latex_notation` of
+`TernaryDiagram` is True, so it will be shown as &#39;Sample 1&#39;. To keep the
+current behavior, pass the text formatted with
+`ternary_diagram.utils.get_label` together with `auto_latex_notation=False`. To
+adopt the new behavior now, pass `auto_latex_notation=True` to format the
+chemical formulas or `auto_latex_notation=False` to show the text as it is.
+</pre></div>
+</div>
+</div>
+</div>
+<p>To keep the current behavior, format the text with <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.utils.get_label" title="ternary_diagram.utils.get_label"><code class="xref py py-func docutils literal notranslate"><span class="pre">get_label()</span></code></a>, which writes every number as a subscript, and pass <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code> so that it is shown as it is:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">note</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+    <span class="n">get_label</span><span class="p">(</span><span class="s2">&quot;Sample 1&quot;</span><span class="p">),</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="n">auto_latex_notation</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with the annotation Sample 1 in the middle of the triangle, where the number 1 is a subscript." src="../_images/f493e5edc9df8de2c60e8f75f78c6ff955d8dfa0291d2ca265d406c3f010353d.png" />
+</div>
+</div>
+<p>To adopt the new behavior now, pass <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=True</span></code> to format only the chemical formulas, or <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code> to show the text as it is.
+With <code class="docutils literal notranslate"><span class="pre">True</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;Sample</span> <span class="pre">1&quot;</span></code> is shown as it is and the <code class="docutils literal notranslate"><span class="pre">2</span></code> of <code class="docutils literal notranslate"><span class="pre">&quot;LiF</span> <span class="pre">+</span> <span class="pre">Li2O&quot;</span></code> is a subscript:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">note</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s2">&quot;Sample 1&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">],</span> <span class="n">auto_latex_notation</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">formula</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span>
+    <span class="s2">&quot;LiF + Li2O&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mf">0.65</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">],</span> <span class="n">auto_latex_notation</span><span class="o">=</span><span class="kc">True</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with two annotations. In the middle of the triangle, the annotation Sample 1 is in plain text. In the upper part, the annotation LiF + Li2O has the number 2 as a subscript." src="../_images/20b40d586290f9f9f1de06ed5b6dda75fc13b46d8f531bb3ee52fa7563a6df8a.png" />
+</div>
+</div>
+<p>For <code class="docutils literal notranslate"><span class="pre">scatter</span></code>, the same applies to the texts given by <code class="docutils literal notranslate"><span class="pre">annotations</span></code>: pass <code class="docutils literal notranslate"><span class="pre">[get_label(text)</span> <span class="pre">for</span> <span class="pre">text</span> <span class="pre">in</span> <span class="pre">texts]</span></code> with <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code> to keep the current behavior, or pass <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=True</span></code> or <code class="docutils literal notranslate"><span class="pre">False</span></code> to adopt the new one.
+<a class="reference internal" href="getting_started.html#getting-started-formula-labels"><span class="std std-ref">Chemical formula labels</span></a> in Getting started explains which words count as chemical formulas.</p>
+</section>
+<section id="migration-v4-keyword-only">
+<span id="options-passed-by-position"></span><h2>Options passed by position<a class="headerlink" href="#migration-v4-keyword-only" title="Link to this heading">#</a></h2>
+<p>In 4.0.0, the methods that existed before 3.3.0 will accept only their data by position, like the newer methods such as <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.tripcolor" title="ternary_diagram.TernaryDiagram.tripcolor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">tripcolor()</span></code></a> and <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.heatmapf" title="ternary_diagram.TernaryDiagram.heatmapf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">heatmapf()</span></code></a> already do.
+The options after the data will be keyword-only:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Stays positional</p></th>
+<th class="head"><p>Becomes keyword-only</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram" title="ternary_diagram.TernaryDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">TernaryDiagram</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">materials</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ax</span></code>, <code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.scatter" title="ternary_diagram.TernaryDiagram.scatter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">scatter()</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vector</span></code>, <code class="docutils literal notranslate"><span class="pre">z</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">z_min</span></code>, <code class="docutils literal notranslate"><span class="pre">z_max</span></code>, <code class="docutils literal notranslate"><span class="pre">annotations</span></code>, <code class="docutils literal notranslate"><span class="pre">colorbar</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.contour" title="ternary_diagram.TernaryDiagram.contour"><code class="xref py py-meth docutils literal notranslate"><span class="pre">contour()</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">vector</span></code>, <code class="docutils literal notranslate"><span class="pre">z</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">z_min</span></code>, <code class="docutils literal notranslate"><span class="pre">z_max</span></code>, <code class="docutils literal notranslate"><span class="pre">fill</span></code>, <code class="docutils literal notranslate"><span class="pre">colorbar</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.colorbar" title="ternary_diagram.TernaryDiagram.colorbar"><code class="xref py py-meth docutils literal notranslate"><span class="pre">colorbar()</span></code></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">mappable</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">shrink</span></code>, <code class="docutils literal notranslate"><span class="pre">format</span></code>, <code class="docutils literal notranslate"><span class="pre">label</span></code>, <code class="docutils literal notranslate"><span class="pre">orientation</span></code>, <code class="docutils literal notranslate"><span class="pre">location</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Since 3.4.0, passing any of them by position emits this warning, which names the options passed by position; their values keep their meaning.
+Passing them by position will raise a <code class="docutils literal notranslate"><span class="pre">TypeError</span></code> in 4.0.0.</p>
+<p>Code that emits the warning, once for <code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code> and once for <code class="docutils literal notranslate"><span class="pre">scatter</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="cell tag_hide-input docutils container">
+<details class="admonition hide above-input">
+<summary aria-label="Toggle hidden content">
+<p class="collapsed admonition-title">Show code cell source</p>
+<p class="expanded admonition-title">Hide code cell source</p>
+</summary>
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">textwrap</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="k">with</span> <span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+    <span class="c1"># Begin: the code of the block above, unchanged.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">)</span>
+    <span class="c1"># End</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="s2">&quot;all&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">w</span> <span class="ow">in</span> <span class="n">caught</span><span class="p">:</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">w</span><span class="o">.</span><span class="n">message</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="c1"># Wrap at spaces only, so the text of the warning is unchanged.</span>
+    <span class="nb">print</span><span class="p">(</span>
+        <span class="n">textwrap</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+            <span class="n">text</span><span class="p">,</span> <span class="mi">79</span><span class="p">,</span> <span class="n">break_long_words</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">break_on_hyphens</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</details>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>FutureWarning: Passing `ax` of `TernaryDiagram` by position is deprecated. In
+ternary-diagram 4.0.0, it will be keyword-only. Pass it by keyword instead, as
+in `TernaryDiagram(..., ax=...)`.
+FutureWarning: Passing `z_min` and `z_max` of `scatter` by position is
+deprecated. In ternary-diagram 4.0.0, they will be keyword-only. Pass them by
+keyword instead, as in `scatter(..., z_min=..., z_max=...)`.
+</pre></div>
+</div>
+</div>
+</div>
+<p>Pass the options by keyword.
+The code below draws the same figure in v3.x and v4.0.0:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">z_min</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">z_max</span><span class="o">=</span><span class="mf">0.8</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property, with the color range limited to 0.2 to 0.8, so the points near 50 % Li2O, 30 % La2O3 and 20 % TiO2 are red and the far ones purple, and a colorbar from 0.2 to 0.8 on the right." src="../_images/693c5e12a9520a80cf3605caa896a67f9404ae3e8381d9c9718ca7cd441c4791.png" />
+</div>
+</div>
+</section>
+<section id="migration-v4-aspect">
+<span id="aspect-of-the-axes"></span><h2>Aspect of the Axes<a class="headerlink" href="#migration-v4-aspect" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">TernaryDiagram</span></code> keeps the aspect of its Axes equal, so that the triangle is equilateral.
+In v3.x, it does so by widening the data limits (<code class="docutils literal notranslate"><span class="pre">adjustable=&quot;datalim&quot;</span></code>): the Axes keeps the space given to it, and the triangle is drawn in the middle of it.
+In 4.0.0, it will shrink the box of the Axes to the triangle instead (<code class="docutils literal notranslate"><span class="pre">adjustable=&quot;box&quot;</span></code>).
+With a layout engine and a colorbar, the vertex labels then stay inside the figure, which matplotlib 3.11 can clip now.</p>
+<p>This change emits no warning, but it changes how some figures look:</p>
+<ul class="simple">
+<li><p>A legend placed with <code class="docutils literal notranslate"><span class="pre">loc</span></code> is placed in the box of the Axes, so it can move closer to the triangle.</p></li>
+<li><p>On a figure with a layout engine, a colorbar added automatically can become shorter; with <code class="docutils literal notranslate"><span class="pre">layout=&quot;compressed&quot;</span></code>, it can shrink to about the height of the triangle. Without a layout engine, its length does not change.</p></li>
+</ul>
+<p>To see how your figures will look in 4.0.0, change the setting after creating the diagram:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">(</span><span class="n">materials</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">td</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">set_aspect</span><span class="p">(</span><span class="s2">&quot;equal&quot;</span><span class="p">,</span> <span class="n">adjustable</span><span class="o">=</span><span class="s2">&quot;box&quot;</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">compositions</span><span class="p">,</span> <span class="n">z</span><span class="o">=</span><span class="n">values</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property and a colorbar from about 0 to 1 on the right, drawn with the box of the Axes shrunk to the triangle." src="../_images/b938e88c914b60f6c62056415eeeaff47e8f4bb50520276aa2ab16c15517a36c.png" />
+</div>
+</div>
+<p>The diagram never changes this setting after its creation, so the plotting calls and the <code class="docutils literal notranslate"><span class="pre">set_*</span></code> methods keep it.
+In 4.0.0, call <code class="docutils literal notranslate"><span class="pre">td.ax.set_aspect(&quot;equal&quot;,</span> <span class="pre">adjustable=&quot;datalim&quot;)</span></code> in the same place to keep the v3.x look.</p>
+</section>
+<section id="migration-v4-finding">
+<span id="finding-affected-code"></span><h2>Finding affected code<a class="headerlink" href="#migration-v4-finding" title="Link to this heading">#</a></h2>
+<p>Since the warnings about the defaults and about the options passed by position are emitted only once per diagram, and Python shows a warning from the same line of code only once by default, the warnings that you see may not show every call that needs a change.
+Turn <code class="docutils literal notranslate"><span class="pre">FutureWarning</span></code> into an error, so that the first affected call stops the run with a traceback that points at it, fix that call, and run again until no error is raised.</p>
+<p>To run a script:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-W<span class="w"> </span>error::FutureWarning<span class="w"> </span>your_script.py
+</pre></div>
+</div>
+<p>To run a test suite with pytest:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pytest<span class="w"> </span>-W<span class="w"> </span>error::FutureWarning
+</pre></div>
+</div>
+<p>In a notebook, run this at the top, before the cells that draw:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="ne">FutureWarning</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These settings also turn the <code class="docutils literal notranslate"><span class="pre">FutureWarning</span></code> of other libraries into errors, which shows what else your code needs to update.</p>
+<p>The change of the <a class="reference internal" href="#migration-v4-aspect">aspect of the Axes</a> emits no warning, so look at the figures that have a legend, or a colorbar on a figure with a layout engine, to check them.</p>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p>The <a class="reference external" href="https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md">changelog</a> lists all the changes of each version.</p></li>
+<li><p><a class="reference internal" href="layout_and_colorbars.html"><span class="std std-doc">Layout and colorbars</span></a> explains the automatic layout and the automatic colorbars, and how to control them.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="layout_and_colorbars.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Layout and colorbars</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="../tutorials/index.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Tutorials</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-summary">Summary of changes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-layout">Layout warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-colorbar">Duplicate colorbar warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-flag-cbar"><code class="docutils literal notranslate"><span class="pre">flag_cbar</span></code> is renamed to <code class="docutils literal notranslate"><span class="pre">colorbar</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-annotations">Annotation formatting warning</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-keyword-only">Options passed by position</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-aspect">Aspect of the Axes</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#migration-v4-finding">Finding affected code</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By yu9824
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, yu9824.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+
+
+  <footer class="bd-footer">
+  </footer>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9540875478695820"
+    crossorigin="anonymous"></script>
+
+  </body>
+</html>

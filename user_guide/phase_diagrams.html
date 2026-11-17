@@ -1,0 +1,854 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Drawing phase diagrams &#8212; ternary-diagram 3.4.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=90905a2f556bf617f1a9" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/sphinx-book-theme.css?v=4418a689" />
+    <link rel="stylesheet" type="text/css" href="../_static/mystnb.11b39860a7a0cbfd473a3ad8a317855267ff0bd372690045ca344a6b62be495e.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/jupyter-sphinx.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/thebelab.css" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../_static/scripts/fontawesome.js?digest=90905a2f556bf617f1a9"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9" />
+
+    <script src="../_static/documentation_options.js?v=2fcb1bbf"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/scripts/sphinx-book-theme.js?v=fab101a9"></script>
+    <script src="../_static/thebelab-helper.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jupyter-widgets/html-manager@^1.0.1/dist/embed-amd.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user_guide/phase_diagrams';</script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Heatmaps and contour maps" href="heatmaps_and_contours.html" />
+    <link rel="prev" title="Customizing the diagram" href="customizing.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  
+    
+    <script src="../_static/searchtools.js"></script>
+    <script src="../_static/language_data.js"></script>
+    <script src="../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search..."
+         aria-label="Search..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+    
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+  
+    <p class="title logo__title">ternary-diagram 3.4.0 documentation</p>
+  
+</a></div>
+        <div class="sidebar-primary-item">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button></div>
+        <div class="sidebar-primary-item"><nav class="bd-links bd-docs-nav" aria-label="Main">
+    <div class="bd-toc-item navbar-nav active">
+        <p aria-level="2" class="caption" role="heading"><span class="caption-text">User guide</span></p>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="index.html">User guide</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="customizing.html">Customizing the diagram</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">Drawing phase diagrams</a></li>
+<li class="toctree-l2"><a class="reference internal" href="heatmaps_and_contours.html">Heatmaps and contour maps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="layout_and_colorbars.html">Layout and colorbars</a></li>
+<li class="toctree-l2"><a class="reference internal" href="migration_v4.html">Migrating to v4.0.0</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">Tutorials</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../tutorials/index.html">Tutorials</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/quickstart.html">Quick start</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/scatter.html">Scatter plot colored by values</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/scatter_with_annotations.html">Scatter plot with annotations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/mono_scatter.html">Scatter plot and tie lines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/contour.html">Contour map</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../tutorials/multiple_figure.html">Multiple diagrams in one figure</a></li>
+</ul>
+</details></li>
+</ul>
+<p aria-level="2" class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../modules.html">ternary_diagram</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../ternary_diagram.html">ternary_diagram package</a></li>
+</ul>
+</details></li>
+</ul>
+
+    </div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+
+<div class="sbt-scroll-pixel-helper"></div>
+
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item"><button class="sidebar-toggle primary-toggle btn btn-sm" title="Toggle primary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <span class="fa-solid fa-bars"></span>
+</button></div>
+      
+    </div>
+  
+  
+    <div class="header-article-items__end">
+      
+        <div class="header-article-item">
+
+<div class="article-header-buttons">
+
+
+
+
+
+<div class="dropdown dropdown-source-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Source repositories">
+    <i class="fab fa-github"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="https://github.com/yu9824/ternary-diagram" target="_blank"
+   class="btn btn-sm btn-source-repository-button dropdown-item"
+   title="Source repository"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fab fa-github"></i>
+  </span>
+<span class="btn__text-container">Repository</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li><a href="https://github.com/yu9824/ternary-diagram/issues/new?title=Issue%20on%20page%20%2Fuser_guide/phase_diagrams.html&body=Your%20issue%20content%20here." target="_blank"
+   class="btn btn-sm btn-source-issues-button dropdown-item"
+   title="Open an issue"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-lightbulb"></i>
+  </span>
+<span class="btn__text-container">Open issue</span>
+</a>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+
+
+<div class="dropdown dropdown-download-buttons">
+  <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Download this page">
+    <i class="fas fa-download"></i>
+  </button>
+  <ul class="dropdown-menu">
+      
+      
+      
+      <li><a href="../_sources/user_guide/phase_diagrams.md" target="_blank"
+   class="btn btn-sm btn-download-source-button dropdown-item"
+   title="Download source file"
+   data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file"></i>
+  </span>
+<span class="btn__text-container">.md</span>
+</a>
+</li>
+      
+      
+      
+      
+      <li>
+<button onclick="window.print()"
+  class="btn btn-sm btn-download-pdf-button dropdown-item"
+  title="Print to PDF"
+  data-bs-placement="left" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-file-pdf"></i>
+  </span>
+<span class="btn__text-container">.pdf</span>
+</button>
+</li>
+      
+  </ul>
+</div>
+
+
+
+
+<button onclick="toggleFullScreen()"
+  class="btn btn-sm btn-fullscreen-button pst-navbar-icon"
+  title="Fullscreen mode"
+  data-bs-placement="bottom" data-bs-toggle="tooltip"
+>
+  
+
+<span class="btn__icon-container">
+  <i class="fas fa-expand"></i>
+  </span>
+
+</button>
+
+
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg fa-fw" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg fa-fw" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg fa-fw" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg fa-fw me-1"></i>System Settings</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg fa-fw me-1"></i>Light</button></li>
+    <li><button class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg fa-fw me-1"></i>Dark</button></li>
+  </ul>
+</div>
+
+
+<button class="btn btn-sm pst-navbar-icon search-button search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass fa-lg"></i>
+</button>
+<button class="sidebar-toggle secondary-toggle btn btn-sm pst-navbar-icon" title="Toggle secondary sidebar" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="fa-solid fa-list"></span>
+</button>
+</div></div>
+      
+    </div>
+  
+</div>
+</div>
+              
+              
+
+<div id="jb-print-docs-body" class="onlyprint">
+    <h1>Drawing phase diagrams</h1>
+    <!-- Table of contents -->
+    <div id="print-main-content">
+        <div id="jb-print-toc">
+            
+            <div>
+                <h2> Contents </h2>
+            </div>
+            <nav aria-label="Page">
+                <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-filling">Filling phase regions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-vertex-order">Vertex order</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-labeling">Labeling regions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-layering">Layering and transparency</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-not-by-color">Not by color alone</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-contour-fill"><code class="docutils literal notranslate"><span class="pre">contour(fill=...)</span></code> vs <code class="docutils literal notranslate"><span class="pre">fill()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+            </nav>
+        </div>
+    </div>
+</div>
+
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section class="tex2jax_ignore mathjax_ignore" id="drawing-phase-diagrams">
+<h1>Drawing phase diagrams<a class="headerlink" href="#drawing-phase-diagrams" title="Link to this heading">#</a></h1>
+<p>This page shows how to shade phase regions given by their vertex compositions, label them with text placed exactly at a composition, and control how the regions overlap with the grid and the other plots.</p>
+<p>The phase diagram on this page is made up for illustration.
+Its vertices are real compounds, but the regions, their boundaries and the phase names are fictitious and are not the measured phase diagram of the Li2O–La2O3–TiO2 system.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">ternary_diagram</span> <span class="kn">import</span> <span class="n">TernaryDiagram</span>
+<span class="kn">from</span> <span class="nn">ternary_diagram.utils</span> <span class="kn">import</span> <span class="n">to_latex_notation</span>
+</pre></div>
+</div>
+</div>
+</div>
+<section id="phase-diagrams-filling">
+<span id="filling-phase-regions"></span><h2>Filling phase regions<a class="headerlink" href="#phase-diagrams-filling" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.fill" title="ternary_diagram.TernaryDiagram.fill"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fill()</span></code></a> fills a polygon whose vertices are given as compositions, one row per vertex, in the same order of the components as the materials.
+As for the other methods, the rows do not have to sum to 1.
+Pass <code class="docutils literal notranslate"><span class="pre">label</span></code> to show the region in the legend, and call <code class="docutils literal notranslate"><span class="pre">td.ax.legend()</span></code> after drawing the regions.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">regions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Liquid&quot;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.45</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">]],</span>
+    <span class="s2">&quot;La2O3 ss&quot;</span><span class="p">:</span> <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mi">0</span><span class="p">]],</span>
+    <span class="s2">&quot;TiO2 + Li2TiO3&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.45</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span>
+        <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.55</span><span class="p">],</span>
+    <span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">vertices</span> <span class="ow">in</span> <span class="n">regions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">polygons</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">to_latex_notation</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+<span class="n">legend</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper left&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 divided into three filled regions that meet at a point inside the triangle. The top region near Li2O is blue, the bottom left region near La2O3 is orange, and the bottom right region near TiO2 is green. A legend in the upper left corner lists the blue region as Liquid, the orange region as La2O3 ss and the green region as TiO2 + Li2TiO3." src="../_images/34adbbb85c69701950fa3bc2b8cf3b081b96e50a3d331f93eadd479eaebd2a73.png" />
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">fill</span></code> returns a list of one <code class="docutils literal notranslate"><span class="pre">matplotlib.patches.Polygon</span></code>, as <code class="docutils literal notranslate"><span class="pre">Axes.fill</span></code> does, and passes its keyword arguments, such as <code class="docutils literal notranslate"><span class="pre">facecolor</span></code>, <code class="docutils literal notranslate"><span class="pre">edgecolor</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha</span></code> or <code class="docutils literal notranslate"><span class="pre">hatch</span></code>, to matplotlib.
+Without a color, each call takes the next color of matplotlib’s color cycle, so the regions get different colors.
+A polygon needs at least 3 vertices; fewer raise a <code class="docutils literal notranslate"><span class="pre">ValueError</span></code>.</p>
+<p>The legend shows the labels as they are given.
+Here <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.utils.to_latex_notation" title="ternary_diagram.utils.to_latex_notation"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_latex_notation()</span></code></a> writes the numbers of the chemical formulas in the labels as subscripts, like the vertex labels: <code class="docutils literal notranslate"><span class="pre">&quot;La2O3</span> <span class="pre">ss&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">&quot;La$_{2}$O$_{3}$</span> <span class="pre">ss&quot;</span></code>.</p>
+</section>
+<section id="phase-diagrams-vertex-order">
+<span id="vertex-order"></span><h2>Vertex order<a class="headerlink" href="#phase-diagrams-vertex-order" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">fill</span></code> joins the vertices in the order given and closes the polygon from the last vertex back to the first.
+It does not sort the vertices or compute their convex hull, so give them in order along the boundary of the region, clockwise or counterclockwise.
+In the next figure, the same four vertices, marked with black points, are given in two orders, and the number next to each vertex shows its position in the list passed to <code class="docutils literal notranslate"><span class="pre">fill</span></code>.
+On the right, the second and the third vertices trade places, and following the numbers makes the boundary cross itself.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">vertices</span> <span class="o">=</span> <span class="n">regions</span><span class="p">[</span><span class="s2">&quot;Liquid&quot;</span><span class="p">]</span>
+<span class="n">orders</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;In order along the boundary&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+    <span class="s2">&quot;Second and third swapped&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="c1"># put each number a little inside the region, next to its vertex</span>
+<span class="n">center</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">number_positions</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.75</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="o">+</span> <span class="mf">0.25</span> <span class="o">*</span> <span class="n">center</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">vertices</span><span class="p">]</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">order</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">orders</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">polygons</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">fill</span><span class="p">([</span><span class="n">vertices</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">order</span><span class="p">],</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">number</span><span class="p">,</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">order</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="n">label</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">number</span><span class="p">),</span> <span class="n">number_positions</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">fontweight</span><span class="o">=</span><span class="s2">&quot;bold&quot;</span><span class="p">)</span>
+    <span class="n">ax_title</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="Two ternary diagrams of Li2O, La2O3 and TiO2 side by side, each with a translucent blue region drawn from the same four vertices, marked with black points, and a number from 1 to 4 next to each vertex for its position in the given order. Vertex 1 is the Li2O vertex and vertex 4 is on the right edge in both diagrams. On the left, titled In order along the boundary, vertex 2 is on the left edge and vertex 3 is inside the triangle, and joining 1, 2, 3 and 4 gives a four-sided region near the Li2O vertex. On the right, titled Second and third swapped, vertices 2 and 3 trade places, so vertex 2 is inside the triangle and vertex 3 is on the left edge, and joining 1, 2, 3 and 4 makes the boundary cross itself into two triangles that touch at one point." src="../_images/90d9b190faf2c082bc72235772aa9ba98153f0575dd6b156f1193672b6014142.png" />
+</div>
+</div>
+</section>
+<section id="phase-diagrams-labeling">
+<span id="labeling-regions"></span><h2>Labeling regions<a class="headerlink" href="#phase-diagrams-labeling" title="Link to this heading">#</a></h2>
+<p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.text" title="ternary_diagram.TernaryDiagram.text"><code class="xref py py-meth docutils literal notranslate"><span class="pre">text()</span></code></a> places a text so that its center is exactly at a composition, which makes it easy to put the name of a phase inside its region.
+The keyword arguments are properties of <code class="docutils literal notranslate"><span class="pre">matplotlib.text.Text</span></code>, such as <code class="docutils literal notranslate"><span class="pre">fontsize</span></code> or <code class="docutils literal notranslate"><span class="pre">color</span></code>, and <code class="docutils literal notranslate"><span class="pre">ha</span></code> / <code class="docutils literal notranslate"><span class="pre">va</span></code> change the alignment.</p>
+<p><code class="docutils literal notranslate"><span class="pre">text</span></code> formats the chemical formulas in the text with the same rule as <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.utils.to_latex_notation" title="ternary_diagram.utils.to_latex_notation"><code class="xref py py-func docutils literal notranslate"><span class="pre">to_latex_notation()</span></code></a>: only the words separated by white space that look like chemical formulas get subscripts, and a text that contains <code class="docutils literal notranslate"><span class="pre">$</span></code> (matplotlib’s math text) is shown as it is.
+Here each region is labeled with the same name as its legend entry, a line break keeps the longest name inside its region, and a white box behind each label keeps it readable over the colors.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">label_positions</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Liquid&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">],</span>
+    <span class="s2">&quot;La2O3 ss&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.65</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span>
+    <span class="s2">&quot;TiO2 + Li2TiO3&quot;</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.65</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">labels</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">vertices</span> <span class="ow">in</span> <span class="n">regions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">polygons</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">vertices</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="n">to_latex_notation</span><span class="p">(</span><span class="n">name</span><span class="p">))</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; + &quot;</span><span class="p">,</span> <span class="s2">&quot; +</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">labels</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+        <span class="n">text</span><span class="p">,</span>
+        <span class="n">label_positions</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+        <span class="n">bbox</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;boxstyle&quot;</span><span class="p">:</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span> <span class="s2">&quot;fc&quot;</span><span class="p">:</span> <span class="s2">&quot;white&quot;</span><span class="p">,</span> <span class="s2">&quot;ec&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">,</span> <span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.8</span><span class="p">},</span>
+    <span class="p">)</span>
+<span class="n">legend</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper left&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="The same three filled regions on a ternary diagram of Li2O, La2O3 and TiO2, with the legend in the upper left corner and a text label inside each region. The blue top region is labeled Liquid, the orange bottom left region is labeled La2O3 ss, and the green bottom right region is labeled TiO2 + Li2TiO3 on two lines, with the numbers of the formulas as subscripts. Each label is on a translucent white box." src="../_images/0bc994fcc27c8869599811ea1622d14acf4842b2aee61a44910c9b32b066d3e5.png" />
+</div>
+</div>
+<p>The texts of the labels show the formatting; <code class="docutils literal notranslate"><span class="pre">&quot;Liquid&quot;</span></code> and <code class="docutils literal notranslate"><span class="pre">&quot;ss&quot;</span></code> do not look like chemical formulas and stay as they are, and the line break is kept:</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+    <span class="nb">print</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">get_text</span><span class="p">()))</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>&#39;Liquid&#39;
+&#39;La$_{2}$O$_{3}$ ss&#39;
+&#39;TiO$_{2}$ +\nLi$_{2}$TiO$_{3}$&#39;
+</pre></div>
+</div>
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> of <code class="docutils literal notranslate"><span class="pre">text</span></code> decides whether the formulas are formatted.
+With <code class="docutils literal notranslate"><span class="pre">None</span></code> (the default), <code class="docutils literal notranslate"><span class="pre">text</span></code> follows <code class="docutils literal notranslate"><span class="pre">auto_latex_notation</span></code> of <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram" title="ternary_diagram.TernaryDiagram"><code class="xref py py-class docutils literal notranslate"><span class="pre">TernaryDiagram</span></code></a>, the setting chosen when the diagram was created (<code class="docutils literal notranslate"><span class="pre">True</span></code> unless changed, the same setting as the vertex labels).
+Pass <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code> to show a text as it is in one call, for example a sample name such as <code class="docutils literal notranslate"><span class="pre">&quot;S1&quot;</span></code>, which looks like a formula of sulfur.
+<code class="docutils literal notranslate"><span class="pre">True</span></code> formats the text of one call on a diagram created with <code class="docutils literal notranslate"><span class="pre">auto_latex_notation=False</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">samples</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.45</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]]</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">samples</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">)</span>
+<span class="n">formatted</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;S2&quot;</span><span class="p">,</span> <span class="n">samples</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">)</span>
+<span class="n">as_typed</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;S1&quot;</span><span class="p">,</span> <span class="n">samples</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">va</span><span class="o">=</span><span class="s2">&quot;bottom&quot;</span><span class="p">,</span> <span class="n">auto_latex_notation</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">formatted</span><span class="o">.</span><span class="n">get_text</span><span class="p">(),</span> <span class="n">as_typed</span><span class="o">.</span><span class="n">get_text</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<div class="output stream highlight-myst-ansi notranslate"><div class="highlight"><pre><span></span>S$_{2}$ S1
+</pre></div>
+</div>
+<img alt="A ternary diagram of Li2O, La2O3 and TiO2 with two black points, each with a text just above it. The text above the left point reads S2 with the 2 as a subscript, like a chemical formula. The text above the right point reads S1 as typed, with the 1 on the baseline." src="../_images/043e3c6f8e7e1efc3f22f8c3a7b8a23ad12408c3cafa388bf0693cbf6860ed70.png" />
+</div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">va=&quot;bottom&quot;</span></code> puts the bottom of each text at its composition, just above the point, instead of the center.
+For the formatting of the vertex labels and of <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.annotate" title="ternary_diagram.TernaryDiagram.annotate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">annotate()</span></code></a>, see <a class="reference internal" href="getting_started.html#getting-started-formula-labels"><span class="std std-ref">Chemical formula labels</span></a> in Getting started.</p>
+</section>
+<section id="phase-diagrams-layering">
+<span id="layering-and-transparency"></span><h2>Layering and transparency<a class="headerlink" href="#phase-diagrams-layering" title="Link to this heading">#</a></h2>
+<p>Each method draws with a default <code class="docutils literal notranslate"><span class="pre">zorder</span></code>, so the layers stay in the same order whatever order you call the methods in.
+A larger <code class="docutils literal notranslate"><span class="pre">zorder</span></code> is drawn in front; artists with the same <code class="docutils literal notranslate"><span class="pre">zorder</span></code> are drawn in the order they were added.</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Layer</p></th>
+<th class="head"><p>Drawn by</p></th>
+<th class="head"><p>Default <code class="docutils literal notranslate"><span class="pre">zorder</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Heatmaps</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.tripcolor" title="ternary_diagram.TernaryDiagram.tripcolor"><code class="xref py py-meth docutils literal notranslate"><span class="pre">tripcolor()</span></code></a>, <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.heatmapf" title="ternary_diagram.TernaryDiagram.heatmapf"><code class="xref py py-meth docutils literal notranslate"><span class="pre">heatmapf()</span></code></a></p></td>
+<td><p>-1</p></td>
+</tr>
+<tr class="row-odd"><td><p>Contour maps</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.contour" title="ternary_diagram.TernaryDiagram.contour"><code class="xref py py-meth docutils literal notranslate"><span class="pre">contour()</span></code></a></p></td>
+<td><p>0</p></td>
+</tr>
+<tr class="row-even"><td><p>Phase regions</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.fill" title="ternary_diagram.TernaryDiagram.fill"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fill()</span></code></a></p></td>
+<td><p>0.5</p></td>
+</tr>
+<tr class="row-odd"><td><p>Grid and border</p></td>
+<td><p>the diagram (<a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.set_grid" title="ternary_diagram.TernaryDiagram.set_grid"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_grid()</span></code></a>, <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.set_border" title="ternary_diagram.TernaryDiagram.set_border"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_border()</span></code></a>)</p></td>
+<td><p>1</p></td>
+</tr>
+<tr class="row-even"><td><p>Lines, such as tie lines</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.plot" title="ternary_diagram.TernaryDiagram.plot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">plot()</span></code></a></p></td>
+<td><p>2</p></td>
+</tr>
+<tr class="row-odd"><td><p>Points</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.scatter" title="ternary_diagram.TernaryDiagram.scatter"><code class="xref py py-meth docutils literal notranslate"><span class="pre">scatter()</span></code></a></p></td>
+<td><p>3</p></td>
+</tr>
+<tr class="row-even"><td><p>Annotations, tick labels, axis titles and vertex labels</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.annotate" title="ternary_diagram.TernaryDiagram.annotate"><code class="xref py py-meth docutils literal notranslate"><span class="pre">annotate()</span></code></a> and the diagram</p></td>
+<td><p>3 (matplotlib’s default for texts)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Texts</p></td>
+<td><p><a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.text" title="ternary_diagram.TernaryDiagram.text"><code class="xref py py-meth docutils literal notranslate"><span class="pre">text()</span></code></a></p></td>
+<td><p>4</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>So by default a phase region covers a contour map but stays behind the grid, the tie lines, the points and the labels.
+A region is opaque by default and hides what is behind it.
+Pass <code class="docutils literal notranslate"><span class="pre">alpha</span></code> to make it translucent and <code class="docutils literal notranslate"><span class="pre">zorder</span></code> to move it to another layer.</p>
+<p>In the next figure, the left diagram uses the defaults: the grid and the points are drawn over the region.
+On the right, <code class="docutils literal notranslate"><span class="pre">zorder=3.5</span></code> moves the region in front of the grid and the points, and <code class="docutils literal notranslate"><span class="pre">alpha=0.5</span></code> keeps them visible through it; the text, with <code class="docutils literal notranslate"><span class="pre">zorder</span></code> 4, stays in front of the region.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">measured</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">dirichlet</span><span class="p">([</span><span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">styles</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;Defaults&quot;</span><span class="p">:</span> <span class="p">{},</span>
+    <span class="s2">&quot;alpha=0.5, zorder=3.5&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;alpha&quot;</span><span class="p">:</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s2">&quot;zorder&quot;</span><span class="p">:</span> <span class="mf">3.5</span><span class="p">},</span>
+<span class="p">}</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">axes</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">),</span> <span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">ax</span><span class="p">,</span> <span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">style</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">axes</span><span class="p">,</span> <span class="n">styles</span><span class="o">.</span><span class="n">items</span><span class="p">()):</span>
+    <span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+    <span class="n">polygons</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="n">regions</span><span class="p">[</span><span class="s2">&quot;Liquid&quot;</span><span class="p">],</span> <span class="o">**</span><span class="n">style</span><span class="p">)</span>
+    <span class="n">points</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">measured</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="s2">&quot;Liquid&quot;</span><span class="p">,</span> <span class="n">label_positions</span><span class="p">[</span><span class="s2">&quot;Liquid&quot;</span><span class="p">],</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+    <span class="n">ax_title</span> <span class="o">=</span> <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">24</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="Two ternary diagrams of Li2O, La2O3 and TiO2 side by side, each with the same blue region near the Li2O vertex labeled Liquid and the same 30 black points scattered over the triangle. On the left, titled Defaults, the region is opaque and the grid lines and the points are drawn over it. On the right, titled alpha=0.5, zorder=3.5, the translucent region is drawn over the grid lines and the points, which show through it tinted by the region, and the label Liquid is drawn over the region." src="../_images/763a965d2ce2e91f8118a9224125e521e0fe941ff683b8a53b01989dd72d3e11.png" />
+</div>
+</div>
+<p>Regions are drawn over a contour map by default; give them an <code class="docutils literal notranslate"><span class="pre">alpha</span></code> so that the contours show through.
+A <code class="docutils literal notranslate"><span class="pre">zorder</span></code> below 0, such as <code class="docutils literal notranslate"><span class="pre">zorder=-0.5</span></code>, puts a region behind the contours, which helps only with contour lines (<code class="docutils literal notranslate"><span class="pre">contour(...,</span> <span class="pre">fill=False)</span></code>) or translucent filled contours, because opaque filled contours hide the region.</p>
+</section>
+<section id="phase-diagrams-not-by-color">
+<span id="not-by-color-alone"></span><h2>Not by color alone<a class="headerlink" href="#phase-diagrams-not-by-color" title="Link to this heading">#</a></h2>
+<p>Colors alone do not tell the regions apart for every reader: some readers do not see the difference between some colors, and the colors are lost when the figure is printed in grayscale.
+The diagram in <a class="reference internal" href="#phase-diagrams-labeling">Labeling regions</a> therefore names each region twice, in the legend and with a text label inside the region, so it can be read without the colors.</p>
+<p>Hatching gives each region a pattern in addition, and works even without colors.
+<code class="docutils literal notranslate"><span class="pre">hatch</span></code> is a property of the polygon; the patterns are drawn in the <code class="docutils literal notranslate"><span class="pre">edgecolor</span></code>.</p>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">hatches</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;Liquid&quot;</span><span class="p">:</span> <span class="s2">&quot;///&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3 ss&quot;</span><span class="p">:</span> <span class="s2">&quot;..&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2 + Li2TiO3&quot;</span><span class="p">:</span> <span class="s2">&quot;xx&quot;</span><span class="p">}</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">layout</span><span class="o">=</span><span class="s2">&quot;constrained&quot;</span><span class="p">)</span>
+<span class="n">td</span> <span class="o">=</span> <span class="n">TernaryDiagram</span><span class="p">([</span><span class="s2">&quot;Li2O&quot;</span><span class="p">,</span> <span class="s2">&quot;La2O3&quot;</span><span class="p">,</span> <span class="s2">&quot;TiO2&quot;</span><span class="p">],</span> <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">)</span>
+<span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">vertices</span> <span class="ow">in</span> <span class="n">regions</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">polygons</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span>
+        <span class="n">vertices</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="n">to_latex_notation</span><span class="p">(</span><span class="n">name</span><span class="p">),</span>
+        <span class="n">facecolor</span><span class="o">=</span><span class="s2">&quot;white&quot;</span><span class="p">,</span>
+        <span class="n">edgecolor</span><span class="o">=</span><span class="s2">&quot;0.4&quot;</span><span class="p">,</span>
+        <span class="n">hatch</span><span class="o">=</span><span class="n">hatches</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">text</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot; + &quot;</span><span class="p">,</span> <span class="s2">&quot; +</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">label</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+        <span class="n">text</span><span class="p">,</span>
+        <span class="n">label_positions</span><span class="p">[</span><span class="n">name</span><span class="p">],</span>
+        <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+        <span class="n">bbox</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;boxstyle&quot;</span><span class="p">:</span> <span class="s2">&quot;round&quot;</span><span class="p">,</span> <span class="s2">&quot;fc&quot;</span><span class="p">:</span> <span class="s2">&quot;white&quot;</span><span class="p">,</span> <span class="s2">&quot;ec&quot;</span><span class="p">:</span> <span class="s2">&quot;none&quot;</span><span class="p">},</span>
+    <span class="p">)</span>
+<span class="n">legend</span> <span class="o">=</span> <span class="n">td</span><span class="o">.</span><span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;upper left&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="cell_output docutils container">
+<img alt="The same three regions on a ternary diagram of Li2O, La2O3 and TiO2, drawn in black and white with different hatch patterns and a text label in each region. The top region, labeled Liquid, has diagonal lines; the bottom left region, labeled La2O3 ss, has dots; and the bottom right region, labeled TiO2 + Li2TiO3, has crossed lines. A legend in the upper left corner shows the three patterns with the same names." src="../_images/7248484fe711cc3d33f0e39e7622ec5bd64fdd23ec2df43f3f3526d43900863c.png" />
+</div>
+</div>
+<p>The white box behind each text label keeps it readable over the pattern.</p>
+</section>
+<section id="phase-diagrams-contour-fill">
+<span id="contour-fill-vs-fill"></span><h2><code class="docutils literal notranslate"><span class="pre">contour(fill=...)</span></code> vs <code class="docutils literal notranslate"><span class="pre">fill()</span></code><a class="headerlink" href="#phase-diagrams-contour-fill" title="Link to this heading">#</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">fill</span></code> argument of <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.contour" title="ternary_diagram.TernaryDiagram.contour"><code class="xref py py-meth docutils literal notranslate"><span class="pre">contour()</span></code></a> and the <a class="reference internal" href="../ternary_diagram.html#ternary_diagram.TernaryDiagram.fill" title="ternary_diagram.TernaryDiagram.fill"><code class="xref py py-meth docutils literal notranslate"><span class="pre">fill()</span></code></a> method are unrelated.
+<code class="docutils literal notranslate"><span class="pre">contour(vector,</span> <span class="pre">z,</span> <span class="pre">fill=True)</span></code> (the default) fills the areas between the contour levels of values <code class="docutils literal notranslate"><span class="pre">z</span></code> interpolated between compositions, and <code class="docutils literal notranslate"><span class="pre">fill=False</span></code> draws only the contour lines.
+<code class="docutils literal notranslate"><span class="pre">fill(vector)</span></code> fills one polygon whose vertices are the compositions in <code class="docutils literal notranslate"><span class="pre">vector</span></code>, with no values and no interpolation.
+Use <code class="docutils literal notranslate"><span class="pre">fill()</span></code> for phase regions and <code class="docutils literal notranslate"><span class="pre">contour</span></code> for maps of a value; see <a class="reference internal" href="heatmaps_and_contours.html"><span class="std std-doc">Heatmaps and contour maps</span></a>.</p>
+</div>
+</section>
+<section id="see-also">
+<h2>See also<a class="headerlink" href="#see-also" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><a class="reference internal" href="getting_started.html"><span class="std std-doc">Getting started</span></a> explains how to pass compositions and how the chemical formulas of the labels are formatted.</p></li>
+<li><p><a class="reference internal" href="customizing.html"><span class="std std-doc">Customizing the diagram</span></a> explains how to change the grid, the border and the labels that the regions are drawn with.</p></li>
+<li><p><a class="reference internal" href="heatmaps_and_contours.html"><span class="std std-doc">Heatmaps and contour maps</span></a> explains how to draw values that vary with the composition.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="customizing.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">Customizing the diagram</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="heatmaps_and_contours.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">Heatmaps and contour maps</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item"><div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> Contents
+  </div>
+  <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="pst-show_toc_level nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-filling">Filling phase regions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-vertex-order">Vertex order</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-labeling">Labeling regions</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-layering">Layering and transparency</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-not-by-color">Not by color alone</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#phase-diagrams-contour-fill"><code class="docutils literal notranslate"><span class="pre">contour(fill=...)</span></code> vs <code class="docutils literal notranslate"><span class="pre">fill()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#see-also">See also</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+<div class="bd-footer-content__inner container">
+  
+  <div class="footer-item">
+    
+<p class="component-author">
+By yu9824
+</p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+
+  <p class="copyright">
+    
+      © Copyright 2024, yu9824.
+      <br/>
+    
+  </p>
+
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+  <div class="footer-item">
+    
+  </div>
+  
+</div>
+          </footer>
+        
+
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=90905a2f556bf617f1a9"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=90905a2f556bf617f1a9"></script>
+
+
+  <footer class="bd-footer">
+  </footer>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9540875478695820"
+    crossorigin="anonymous"></script>
+
+  </body>
+</html>
