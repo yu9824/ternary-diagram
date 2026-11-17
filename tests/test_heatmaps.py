@@ -7,6 +7,8 @@ recorded coordinates. Tests that check a layout create the diagram on the
 spot; the others use the ``td`` fixture (``tight_layout=True``).
 """
 
+from __future__ import annotations
+
 import warnings
 
 import matplotlib.pyplot as plt
