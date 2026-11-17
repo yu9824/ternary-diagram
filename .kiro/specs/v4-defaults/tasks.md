@@ -44,7 +44,7 @@
   - _Depends: 2.1_
   - _Requirements: 9.1, 9.2, 8.3_
 
-- [ ] 4.2 予告の段の全体の検証
+- [x] 4.2 予告の段の全体の検証
   - テスト一式（`-W error::FutureWarning`）、`mypy src`、`ruff check` と `ruff format --check`、ドキュメントのビルドを実行し、すべてエラー・警告 0 件で通る
   - 既存の描画のテスト（座標・色・zorder・カラーバー・レイアウト）と、既定値の変更の FutureWarning のテストが、位置引数のテスト以外は変更なしで通ることを確かめる
   - `flag_cbar` の非推奨の扱い（FutureWarning、`colorbar` との同時指定で `ValueError`）が v3.3.0 と同じであることを既存のテストで確かめる
