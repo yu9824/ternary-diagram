@@ -12,17 +12,23 @@ This module imports no other module of the package.
 
 from __future__ import annotations
 
+import functools
+import inspect
 import re
 import sys
 import warnings
+from collections.abc import Sequence
 from types import FrameType
-from typing import Any, Final
+from typing import Any, Callable, Final, TypeVar
 
 __all__ = (
     "FUTURE_VERSION",
     "UNSET",
+    "deprecate_positional",
     "format_default_change",
+    "format_positional_deprecation",
     "format_renamed_parameter",
+    "positional_options",
     "resolve_renamed_parameter",
     "warn_external",
 )
@@ -224,3 +230,131 @@ def resolve_renamed_parameter(
         format_renamed_parameter(func=func, old=old, new=new, version=version)
     )
     return old_value
+
+
+F = TypeVar("F", bound=Callable[..., Any])
+
+
+def positional_options(
+    parameters: Sequence[str], n_data: int, n_positional: int
+) -> tuple[str, ...]:
+    """Return the names of the options passed by position.
+
+    Parameters
+    ----------
+    parameters : Sequence[str]
+        Names of the parameters that can be passed by position, in order,
+        without ``self``.
+    n_data : int
+        Number of leading parameters that may stay positional (the data).
+    n_positional : int
+        Number of arguments passed by position, without ``self``.
+
+    Returns
+    -------
+    tuple[str, ...]
+        The names of the parameters after the first `n_data` that received
+        a positional argument. Empty when `n_positional` is at most
+        `n_data`.
+    """
+    return tuple(parameters[n_data:n_positional])
+
+
+def _join_names(names: Sequence[str]) -> str:
+    """Join names as "`a`", "`a` and `b`" or "`a`, `b` and `c`"."""
+    quoted = [f"`{name}`" for name in names]
+    if len(quoted) == 1:
+        return quoted[0]
+    return f"{', '.join(quoted[:-1])} and {quoted[-1]}"
+
+
+def format_positional_deprecation(
+    func: str, names: Sequence[str], version: str = FUTURE_VERSION
+) -> str:
+    """Build the message announcing that options become keyword-only.
+
+    Parameters
+    ----------
+    func : str
+        Name of the function or method that has the parameters, as the user
+        calls it.
+    names : Sequence[str]
+        Names of the parameters passed by position. It must not be empty.
+    version : str, optional
+        Version that makes the parameters keyword-only, by default
+        FUTURE_VERSION
+
+    Returns
+    -------
+    str
+        The message telling the parameters passed by position, the version
+        that makes them keyword-only and an example of the call with them
+        passed by keyword, in this order.
+    """
+    pronoun = "it" if len(names) == 1 else "they"
+    pronoun_object = "it" if len(names) == 1 else "them"
+    example = ", ".join(f"{name}=..." for name in names)
+    return (
+        f"Passing {_join_names(names)} of `{func}` by position is "
+        f"deprecated. In ternary-diagram {version}, {pronoun} will be "
+        f"keyword-only. Pass {pronoun_object} by keyword instead, as in "
+        f"`{func}(..., {example})`."
+    )
+
+
+def deprecate_positional(
+    func_name: str,
+    n_data: int,
+    *,
+    once: Callable[[Any, str], bool] | None = None,
+) -> Callable[[F], F]:
+    """Warn when options of a method are passed by position.
+
+    The decorated method is called with the arguments as they are, so the
+    values keep their meaning. Its signature and docstring stay those of
+    the method.
+
+    Parameters
+    ----------
+    func_name : str
+        Name of the method as the user calls it, shown in the message. It
+        also makes the key ``"positional.<func_name>"`` passed to `once`.
+    n_data : int
+        Number of parameters after ``self`` that may stay positional.
+    once : Callable[[Any, str], bool] or None, optional
+        Called with ``self`` and the key before warning. The warning is
+        issued only when it returns True. When None, the warning is issued
+        at every call, by default None
+
+    Returns
+    -------
+    Callable[[F], F]
+        Decorator for a method whose first parameter is ``self``.
+    """
+    key = f"positional.{func_name}"
+
+    def decorator(method: F) -> F:
+        positional_kinds = (
+            inspect.Parameter.POSITIONAL_ONLY,
+            inspect.Parameter.POSITIONAL_OR_KEYWORD,
+        )
+        parameters = [
+            parameter.name
+            for parameter in inspect.signature(method).parameters.values()
+            if parameter.kind in positional_kinds
+        ][1:]  # without ``self``
+
+        @functools.wraps(method)
+        def wrapper(self: Any, *args: Any, **kwargs: Any) -> Any:
+            # Too many arguments: let the method raise its TypeError.
+            if n_data < len(args) <= len(parameters):
+                names = positional_options(parameters, n_data, len(args))
+                if once is None or once(self, key):
+                    warn_external(
+                        format_positional_deprecation(func_name, names)
+                    )
+            return method(self, *args, **kwargs)
+
+        return wrapper  # type: ignore[return-value]
+
+    return decorator

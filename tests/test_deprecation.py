@@ -11,8 +11,11 @@ from ternary_diagram import _deprecation
 from ternary_diagram._deprecation import (
     FUTURE_VERSION,
     UNSET,
+    deprecate_positional,
     format_default_change,
+    format_positional_deprecation,
     format_renamed_parameter,
+    positional_options,
     resolve_renamed_parameter,
     warn_external,
 )
@@ -266,3 +269,140 @@ def test_module_imports_nothing_from_the_package():
             continue
         for name in names:
             assert name.split(".")[0] != "ternary_diagram"
+
+
+# --- positional options -------------------------------------------------
+
+PARAMS = ("vector", "z", "z_min", "z_max", "annotations", "colorbar")
+
+
+@pytest.mark.parametrize("n_positional", [0, 1, 2])
+def test_positional_options_none_within_data(n_positional):
+    assert positional_options(PARAMS, 2, n_positional) == ()
+
+
+@pytest.mark.parametrize(
+    "n_positional, expected",
+    [
+        (3, ("z_min",)),
+        (4, ("z_min", "z_max")),
+        (6, ("z_min", "z_max", "annotations", "colorbar")),
+    ],
+)
+def test_positional_options_after_data(n_positional, expected):
+    assert positional_options(PARAMS, 2, n_positional) == expected
+
+
+def test_positional_options_caps_at_parameters():
+    assert positional_options(("a", "b"), 1, 5) == ("b",)
+
+
+def test_format_positional_deprecation_one_name():
+    message = format_positional_deprecation("TernaryDiagram", ["ax"])
+
+    assert "`ax` of `TernaryDiagram`" in message
+    assert "by position is deprecated" in message
+    assert f"ternary-diagram {FUTURE_VERSION}" in message
+    assert "keyword-only" in message
+    assert "`TernaryDiagram(..., ax=...)`" in message
+
+
+def test_format_positional_deprecation_several_names():
+    message = format_positional_deprecation(
+        "scatter", ["z_min", "z_max", "annotations"]
+    )
+
+    assert "`z_min`, `z_max` and `annotations` of `scatter`" in message
+    assert "`scatter(..., z_min=..., z_max=..., annotations=...)`" in message
+
+
+class _Target:
+    """Methods decorated in the tests, with a record of ``once``."""
+
+    def __init__(self, answer=True):
+        self.answer = answer
+        self.keys = []
+
+    def _once(self, key):
+        self.keys.append(key)
+        return self.answer
+
+    @deprecate_positional("method", 2, once=_once)
+    def method(self, a, b=None, c=None, d=None, *, e=None):
+        """Docstring of method."""
+        return (a, b, c, d, e)
+
+    @deprecate_positional("always", 1)
+    def always(self, a, b=None):
+        return (a, b)
+
+
+def test_deprecate_positional_warns_and_calls_with_same_arguments():
+    target = _Target()
+
+    with pytest.warns(FutureWarning, match="`c` and `d` of `method`") as rec:
+        lineno = _next_lineno()
+        result = target.method(1, 2, 3, 4, e=5)
+
+    assert result == (1, 2, 3, 4, 5)
+    assert rec[0].filename == __file__
+    assert rec[0].lineno == lineno
+    assert target.keys == ["positional.method"]
+
+
+def test_deprecate_positional_skips_when_once_is_false():
+    target = _Target(answer=False)
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        result = target.method(1, 2, 3)
+
+    assert result == (1, 2, 3, None, None)
+    assert target.keys == ["positional.method"]
+
+
+@pytest.mark.parametrize(
+    "args, kwargs",
+    [((1,), {}), ((1, 2), {}), ((1, 2), {"c": 3, "d": 4}), ((), {"a": 1})],
+)
+def test_deprecate_positional_silent_for_data_and_keywords(args, kwargs):
+    target = _Target()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        target.method(*args, **kwargs)
+
+    assert target.keys == []
+
+
+def test_deprecate_positional_without_once_warns_every_time():
+    target = _Target()
+
+    for _ in range(2):
+        with pytest.warns(FutureWarning, match="`b` of `always`"):
+            assert target.always(1, 2) == (1, 2)
+
+
+def test_deprecate_positional_too_many_arguments_raises_without_warning():
+    target = _Target()
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(TypeError):
+            target.method(1, 2, 3, 4, 5)
+
+
+def test_deprecate_positional_keeps_signature_and_docstring():
+    method = _Target.method
+
+    assert method.__doc__ == "Docstring of method."
+    assert method.__name__ == "method"
+    assert inspect.signature(method) == inspect.signature(method.__wrapped__)
+    assert list(inspect.signature(method).parameters) == [
+        "self",
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+    ]
