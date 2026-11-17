@@ -294,61 +294,6 @@ class TernaryDiagram:
     ``axis_label_kw``    :meth:`set_axis_labels`    `axis_labels_`
     ``vertex_label_kw``  :meth:`set_vertex_labels`  `vertex_labels_`
     ===================  =========================  ==================
-
-    Notes
-    -----
-    The materials are given counterclockwise from the top vertex. The
-    ticks of each material are on one edge, and along that edge its value
-    increases counterclockwise, from 0 to 1 at the vertex of the material
-    (0 to 100 with the default format):
-
-    - The 1st material (top vertex): on the right edge, increasing from
-      the bottom right vertex to the top vertex.
-    - The 2nd material (bottom left vertex): on the left edge, increasing
-      from the top vertex to the bottom left vertex.
-    - The 3rd material (bottom right vertex): on the bottom edge,
-      increasing from the bottom left vertex to the bottom right vertex.
-
-    The grid line of a value starts at that value on the tick edge of the
-    material and runs parallel to the edge opposite to the vertex of the
-    material: the points on it have that value. With ``endpoints=True``
-    (see :meth:`set_ticks`), the labels of the values 0 and 1 are also
-    drawn, and the label of 1 of the 2nd material and that of 0 of the 3rd
-    material come close to each other at the bottom left vertex.
-
-    A change method removes all the artists that its part drew before and
-    draws new ones. The other parts, the artists drawn by the user
-    (scatter points, contours, lines, annotations, ...) and the position
-    and size of the Axes are not changed. Settings not given keep their
-    previous values: a named item (such as ``step``) given as ``None``,
-    and a matplotlib property left out. A part hidden with
-    ``visible=False`` keeps its settings and is drawn with them again
-    with ``visible=True``. If a change raises an error, the part keeps its
-    previous settings and artists. Artists of a part that are no longer on
-    the Axes, because they were removed with ``Artist.remove`` or the Axes
-    was cleared, are left as they are by the change methods.
-
-    The matplotlib properties given to a part apply to all its artists
-    and override the defaults of the part, including those that differ by
-    edge or by vertex (the rotation and the alignments of the labels).
-    Once such a property is given, the defaults of the edges or the
-    vertices cannot be restored. The ``*_kw`` arguments and the change
-    methods take only the named items of the part and the properties of
-    its artists (:class:`matplotlib.lines.Line2D` or
-    :class:`matplotlib.text.Text`), not the other arguments of
-    ``Axes.plot`` and ``Axes.text``, such as ``scalex`` or ``fontdict``:
-    pass the items of a ``fontdict`` as keywords (``**fontdict``).
-
-    A redrawn part keeps its zorder unless ``zorder`` is given: 1 for the
-    border and the grid, and the default of matplotlib for the labels (3
-    for text). With the same zorder, the border is always drawn over the
-    grid. Among artists with the same zorder, the one added to the Axes
-    later is drawn on top, so a redrawn part is drawn over the artists
-    with the same zorder that were drawn before the change: for example,
-    the labels over scatter points (zorder 3 by default) and, after a
-    change of the grid, the grid and the border over lines drawn with
-    ``zorder=1``. Give ``zorder`` to the change method or to your own
-    artists to choose the order.
     """
 
     def _first_time(self, key: str) -> bool:
@@ -469,6 +414,61 @@ class TernaryDiagram:
         y_ : dict of str to list of numpy.ndarray
             The y coordinates of the points drawn by the plotting methods,
             in the same form as `x_`.
+
+        Notes
+        -----
+        The materials are given counterclockwise from the top vertex. The
+        ticks of each material are on one edge, and along that edge its value
+        increases counterclockwise, from 0 to 1 at the vertex of the material
+        (0 to 100 with the default format):
+
+        - The 1st material (top vertex): on the right edge, increasing from
+          the bottom right vertex to the top vertex.
+        - The 2nd material (bottom left vertex): on the left edge, increasing
+          from the top vertex to the bottom left vertex.
+        - The 3rd material (bottom right vertex): on the bottom edge,
+          increasing from the bottom left vertex to the bottom right vertex.
+
+        The grid line of a value starts at that value on the tick edge of the
+        material and runs parallel to the edge opposite to the vertex of the
+        material: the points on it have that value. With ``endpoints=True``
+        (see :meth:`set_ticks`), the labels of the values 0 and 1 are also
+        drawn, and the label of 1 of the 2nd material and that of 0 of the 3rd
+        material come close to each other at the bottom left vertex.
+
+        A change method removes all the artists that its part drew before and
+        draws new ones. The other parts, the artists drawn by the user
+        (scatter points, contours, lines, annotations, ...) and the position
+        and size of the Axes are not changed. Settings not given keep their
+        previous values: a named item (such as ``step``) given as ``None``,
+        and a matplotlib property left out. A part hidden with
+        ``visible=False`` keeps its settings and is drawn with them again
+        with ``visible=True``. If a change raises an error, the part keeps its
+        previous settings and artists. Artists of a part that are no longer on
+        the Axes, because they were removed with ``Artist.remove`` or the Axes
+        was cleared, are left as they are by the change methods.
+
+        The matplotlib properties given to a part apply to all its artists
+        and override the defaults of the part, including those that differ by
+        edge or by vertex (the rotation and the alignments of the labels).
+        Once such a property is given, the defaults of the edges or the
+        vertices cannot be restored. The ``*_kw`` arguments and the change
+        methods take only the named items of the part and the properties of
+        its artists (:class:`matplotlib.lines.Line2D` or
+        :class:`matplotlib.text.Text`), not the other arguments of
+        ``Axes.plot`` and ``Axes.text``, such as ``scalex`` or ``fontdict``:
+        pass the items of a ``fontdict`` as keywords (``**fontdict``).
+
+        A redrawn part keeps its zorder unless ``zorder`` is given: 1 for the
+        border and the grid, and the default of matplotlib for the labels (3
+        for text). With the same zorder, the border is always drawn over the
+        grid. Among artists with the same zorder, the one added to the Axes
+        later is drawn on top, so a redrawn part is drawn over the artists
+        with the same zorder that were drawn before the change: for example,
+        the labels over scatter points (zorder 3 by default) and, after a
+        change of the grid, the grid and the border over lines drawn with
+        ``zorder=1``. Give ``zorder`` to the change method or to your own
+        artists to choose the order.
 
         Examples
         --------
