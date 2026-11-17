@@ -743,3 +743,26 @@ def test_part_kw_are_checked_before_drawing_any_part(ax):
         )
 
     _assert_untouched(ax)
+
+
+# --- aspect of the Axes ---------------------------------------------------
+# ternary-diagram 3.x keeps the aspect by widening the data limits. 4.0.0
+# will shrink the Axes box instead; users can try it now by changing the
+# setting after construction, which the diagram must not undo.
+
+
+def test_aspect_is_equal_with_adjustable_datalim(td):
+    assert td.ax.get_aspect() in ("equal", 1.0)
+    assert td.ax.get_adjustable() == "datalim"
+
+
+def test_aspect_changed_by_the_user_is_kept(td):
+    td.ax.set_aspect("equal", adjustable="box")
+
+    td.scatter(VECTOR, z=Z, colorbar=False)
+    td.contour(VECTOR, z=Z, colorbar=False)
+    td.set_grid(step=0.2)
+    td.set_ticks(step=0.2)
+
+    assert td.ax.get_aspect() in ("equal", 1.0)
+    assert td.ax.get_adjustable() == "box"

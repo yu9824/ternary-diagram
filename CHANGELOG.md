@@ -8,6 +8,15 @@ See [GitHub Releases](https://github.com/yu9824/ternary-diagram/releases) for th
 
 - `TernaryDiagram.colorbar` chooses the direction of the colorbar from `location` when `orientation` is not given, so `location="bottom"` or `"top"` alone draws a horizontal colorbar instead of raising `TypeError`. The default colorbar stays vertical on the right.
 
+### Deprecations
+
+- Passing the options of the following methods by position is deprecated, and they will be keyword-only in 4.0.0. A `FutureWarning` is emitted, once per diagram for each method (every time for `TernaryDiagram` itself), and the values keep their meaning. Pass them by keyword, as in `td.scatter(vector, z, z_min=0, z_max=1)`.
+  - `TernaryDiagram`: `ax` and `auto_latex_notation` (`materials` stays positional).
+  - `scatter`: `z_min`, `z_max`, `annotations` and `colorbar` (`vector` and `z` stay positional).
+  - `contour`: `z_min`, `z_max`, `fill` and `colorbar` (`vector` and `z` stay positional).
+  - `colorbar`: `shrink`, `format`, `label`, `orientation` and `location` (`mappable` stays positional).
+- In 4.0.0, `TernaryDiagram` will keep the aspect of the Axes by shrinking the box of the Axes to the triangle (`adjustable="box"`) instead of widening the data limits (`adjustable="datalim"`). The vertex labels then stay inside the figure with a layout engine and a colorbar, which matplotlib 3.11 can clip now. The box can become smaller than the space given to the Axes, so legends placed with `loc` can move closer to the triangle, and on a figure with a layout engine the colorbars added automatically can become shorter (with `layout="compressed"`, down to about the height of the triangle); without a layout engine their length does not change. No warning is emitted for this change; call `td.ax.set_aspect("equal", adjustable="box")` after creating the diagram to try it now.
+
 ## v3.3.0
 
 ### Breaking changes

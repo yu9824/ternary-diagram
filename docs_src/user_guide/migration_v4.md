@@ -11,9 +11,9 @@ kernelspec:
 
 # Migrating to v4.0.0
 
-ternary-diagram 4.0.0 will change some defaults and remove a deprecated argument.
+ternary-diagram 4.0.0 will change some defaults, make the options of the older methods keyword-only, change how the aspect of the Axes is kept, and remove a deprecated argument.
 This page lists each change, the `FutureWarning` that announces it in v3.x, the calls that emit it, and how to keep the current behavior or adopt the new one now.
-Code that follows the advice in the warnings runs without warnings in v3.x and draws the same figure in v3.x and v4.0.0.
+Code that follows the advice in the warnings runs without warnings in v3.x and draws the same figure in v3.x and v4.0.0, except for the change of the aspect, which emits no warning and is described in [its own section](#migration-v4-aspect).
 
 Each section shows the code that emits the warning in a static block, followed by the warning that the code emits when this page is built with the current version of ternary-diagram.
 Expand "Show code cell source" above that output to see how the warning is caught: the code of the block runs unchanged between the `Begin` and `End` comments inside `warnings.catch_warnings`, and the caught warnings are printed, wrapped at spaces to fit the page.
@@ -56,9 +56,13 @@ The [changelog](https://github.com/yu9824/ternary-diagram/blob/main/CHANGELOG.md
 | [Colorbar on a diagram that already has one](#migration-v4-colorbar) (`colorbar` of `scatter`, `contour`, `tripcolor` and `heatmapf`) | Adds another colorbar | Adds none | `colorbar=True` | `colorbar=False` |
 | [`flag_cbar`](#migration-v4-flag-cbar) of `scatter` and `contour` | Deprecated name of `colorbar` | Removed | `colorbar=...` with the same value | `colorbar=...` with the same value |
 | [Formatting of annotations](#migration-v4-annotations) (`auto_latex_notation` of `annotate` and of `scatter` with `annotations`) | Writes every number as a subscript (`"Sample 1"` is shown as `"Sample $_{1}$"`), whatever the setting of the diagram | Follows `auto_latex_notation` of `TernaryDiagram`, and formats only the words that look like chemical formulas | The text formatted with `get_label`, and `auto_latex_notation=False` | `auto_latex_notation=True` to format the chemical formulas, or `False` to show the text as it is |
+| [Options passed by position](#migration-v4-keyword-only) (`TernaryDiagram`, `scatter`, `contour` and `colorbar`) | Accepted, with a `FutureWarning` since 3.4.0 | Raises a `TypeError` | Not possible | Pass the options by keyword, as in `td.scatter(vector, z, z_min=0, z_max=1)` |
+| [Aspect of the Axes](#migration-v4-aspect) | Kept by widening the data limits (`adjustable="datalim"`) | Kept by shrinking the box of the Axes to the triangle (`adjustable="box"`) | `td.ax.set_aspect("equal", adjustable="datalim")` in v4.0.0 | `td.ax.set_aspect("equal", adjustable="box")` in v3.x |
 
 The warnings about the defaults are emitted at most once per diagram for each change, and only when the call would give a different result in v4.0.0.
 The warning about `flag_cbar` is emitted by every call that passes it.
+The warning about the options passed by position is emitted once per diagram for each method, and by every call of `TernaryDiagram` itself, which creates a new diagram.
+The change of the aspect emits no warning.
 Each warning points at the line of your code that made the call.
 Since later calls on the same diagram do not warn again, fix every call of the same kind, not only the first one; [Finding affected code](#migration-v4-finding) shows how to find them all.
 
@@ -373,10 +377,103 @@ formula = td.annotate(
 For `scatter`, the same applies to the texts given by `annotations`: pass `[get_label(text) for text in texts]` with `auto_latex_notation=False` to keep the current behavior, or pass `auto_latex_notation=True` or `False` to adopt the new one.
 {ref}`Chemical formula labels <getting-started-formula-labels>` in Getting started explains which words count as chemical formulas.
 
+(migration-v4-keyword-only)=
+## Options passed by position
+
+In 4.0.0, the methods that existed before 3.3.0 will accept only their data by position, like the newer methods such as {py:meth}`~ternary_diagram.TernaryDiagram.tripcolor` and {py:meth}`~ternary_diagram.TernaryDiagram.heatmapf` already do.
+The options after the data will be keyword-only:
+
+| Method | Stays positional | Becomes keyword-only |
+|---|---|---|
+| {py:class}`~ternary_diagram.TernaryDiagram` | `materials` | `ax`, `auto_latex_notation` |
+| {py:meth}`~ternary_diagram.TernaryDiagram.scatter` | `vector`, `z` | `z_min`, `z_max`, `annotations`, `colorbar` |
+| {py:meth}`~ternary_diagram.TernaryDiagram.contour` | `vector`, `z` | `z_min`, `z_max`, `fill`, `colorbar` |
+| {py:meth}`~ternary_diagram.TernaryDiagram.colorbar` | `mappable` | `shrink`, `format`, `label`, `orientation`, `location` |
+
+Since 3.4.0, passing any of them by position emits this warning, which names the options passed by position; their values keep their meaning.
+Passing them by position will raise a `TypeError` in 4.0.0.
+
+Code that emits the warning, once for `TernaryDiagram` and once for `scatter`:
+
+```python
+fig, ax = plt.subplots(layout="constrained")
+td = TernaryDiagram(materials, ax)
+points = td.scatter(compositions, values, 0.2, 0.8)
+```
+
+```{code-cell} ipython3
+---
+tags: [hide-input]
+---
+import textwrap
+import warnings
+
+with warnings.catch_warnings(record=True) as caught:
+    warnings.simplefilter("always")
+    # Begin: the code of the block above, unchanged.
+    fig, ax = plt.subplots(layout="constrained")
+    td = TernaryDiagram(materials, ax)
+    points = td.scatter(compositions, values, 0.2, 0.8)
+    # End
+plt.close("all")
+for w in caught:
+    text = f"{w.category.__name__}: {w.message}"
+    # Wrap at spaces only, so the text of the warning is unchanged.
+    print(
+        textwrap.fill(
+            text, 79, break_long_words=False, break_on_hyphens=False
+        )
+    )
+```
+
+Pass the options by keyword.
+The code below draws the same figure in v3.x and v4.0.0:
+
+```{code-cell} ipython3
+---
+mystnb:
+  image:
+    alt: A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property, with the color range limited to 0.2 to 0.8, so the points near 50 % Li2O, 30 % La2O3 and 20 % TiO2 are red and the far ones purple, and a colorbar from 0.2 to 0.8 on the right.
+---
+fig, ax = plt.subplots(layout="constrained")
+td = TernaryDiagram(materials, ax=ax)
+points = td.scatter(compositions, values, z_min=0.2, z_max=0.8)
+```
+
+(migration-v4-aspect)=
+## Aspect of the Axes
+
+`TernaryDiagram` keeps the aspect of its Axes equal, so that the triangle is equilateral.
+In v3.x, it does so by widening the data limits (`adjustable="datalim"`): the Axes keeps the space given to it, and the triangle is drawn in the middle of it.
+In 4.0.0, it will shrink the box of the Axes to the triangle instead (`adjustable="box"`).
+With a layout engine and a colorbar, the vertex labels then stay inside the figure, which matplotlib 3.11 can clip now.
+
+This change emits no warning, but it changes how some figures look:
+
+- A legend placed with `loc` is placed in the box of the Axes, so it can move closer to the triangle.
+- On a figure with a layout engine, a colorbar added automatically can become shorter; with `layout="compressed"`, it can shrink to about the height of the triangle. Without a layout engine, its length does not change.
+
+To see how your figures will look in 4.0.0, change the setting after creating the diagram:
+
+```{code-cell} ipython3
+---
+mystnb:
+  image:
+    alt: A ternary diagram of Li2O, La2O3 and TiO2 with 40 points colored in the rainbow colormap by the made-up property and a colorbar from about 0 to 1 on the right, drawn with the box of the Axes shrunk to the triangle.
+---
+fig, ax = plt.subplots(layout="constrained")
+td = TernaryDiagram(materials, ax=ax)
+td.ax.set_aspect("equal", adjustable="box")
+points = td.scatter(compositions, z=values)
+```
+
+The diagram never changes this setting after its creation, so the plotting calls and the `set_*` methods keep it.
+In 4.0.0, call `td.ax.set_aspect("equal", adjustable="datalim")` in the same place to keep the v3.x look.
+
 (migration-v4-finding)=
 ## Finding affected code
 
-Since the warnings about the defaults are emitted only once per diagram, and Python shows a warning from the same line of code only once by default, the warnings that you see may not show every call that needs a change.
+Since the warnings about the defaults and about the options passed by position are emitted only once per diagram, and Python shows a warning from the same line of code only once by default, the warnings that you see may not show every call that needs a change.
 Turn `FutureWarning` into an error, so that the first affected call stops the run with a traceback that points at it, fix that call, and run again until no error is raised.
 
 To run a script:
@@ -400,6 +497,8 @@ warnings.simplefilter("error", FutureWarning)
 ```
 
 These settings also turn the `FutureWarning` of other libraries into errors, which shows what else your code needs to update.
+
+The change of the [aspect of the Axes](#migration-v4-aspect) emits no warning, so look at the figures that have a legend, or a colorbar on a figure with a layout engine, to check them.
 
 ## See also
 

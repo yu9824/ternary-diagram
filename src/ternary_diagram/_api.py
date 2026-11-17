@@ -32,6 +32,7 @@ from numpy.typing import ArrayLike
 
 from ternary_diagram._deprecation import (
     UNSET,
+    deprecate_positional,
     format_default_change,
     resolve_renamed_parameter,
     warn_external,
@@ -249,7 +250,13 @@ class TernaryDiagram:
     Axes, so it can be one panel of a figure made with
     ``plt.subplots``. At construction, it sets the aspect of the Axes to
     equal, hides the ticks and the spines of the Axes and draws the
-    skeleton of the diagram.
+    skeleton of the diagram. The aspect is kept by widening the data
+    limits (``adjustable="datalim"``); from ternary-diagram 4.0.0, the box
+    of the Axes is shrunk to the triangle instead (``adjustable="box"``),
+    which can move legends placed with ``loc`` and, on a figure with a
+    layout engine, shorten the colorbars added automatically. Call
+    ``td.ax.set_aspect("equal", adjustable="box")`` after construction to
+    try it now.
 
     The plotting methods draw on the Axes of the diagram and return the
     matplotlib objects that they create. Those that take compositions
@@ -344,6 +351,15 @@ class TernaryDiagram:
     artists to choose the order.
     """
 
+    def _first_time(self, key: str) -> bool:
+        """Tell whether `key` is received for the first time by this diagram.
+
+        It records `key`, so that the warnings announcing that options
+        become keyword-only are issued once per diagram and method.
+        """
+        return self.__post_draw_context.first_time(key)
+
+    @deprecate_positional("TernaryDiagram", 1)
     def __init__(
         self,
         materials: tuple[str, str, str],
@@ -374,7 +390,9 @@ class TernaryDiagram:
             Axes to draw the diagram on. If None, the current Axes
             (``plt.gca()``) is used, which creates a figure and an Axes if
             there are none. Anything other than an Axes or None raises a
-            TypeError, by default None
+            TypeError. Pass it by keyword: passing it by position is
+            deprecated since 3.4.0 and emits a FutureWarning, and it will
+            be keyword-only in ternary-diagram 4.0.0, by default None
 
         auto_latex_notation : bool, optional
             Whether to write the numbers in the vertex labels as
@@ -385,7 +403,9 @@ class TernaryDiagram:
             is also the setting that :meth:`text` follows by default and,
             from ternary-diagram 4.0.0, :meth:`annotate` and the
             annotations of :meth:`scatter`; see those methods for their
-            rules, by default True
+            rules. Pass it by keyword: passing it by position is
+            deprecated since 3.4.0 and emits a FutureWarning, and it will
+            be keyword-only in ternary-diagram 4.0.0, by default True
 
         tight_layout : bool or None, optional
             Whether to adjust the figure margins with
@@ -1305,6 +1325,7 @@ class TernaryDiagram:
             ),
         )
 
+    @deprecate_positional("scatter", 2, once=_first_time)
     def scatter(
         self,
         vector: ArrayLike,
@@ -1320,6 +1341,10 @@ class TernaryDiagram:
         """Plot compositions as scatter points.
 
         This is a wrapper of `matplotlib.pyplot.scatter`.
+
+        Pass the parameters after `z` by keyword. Passing them by
+        position is deprecated since 3.4.0 and emits a FutureWarning; they
+        will be keyword-only in ternary-diagram 4.0.0.
 
         See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.scatter.html
 
@@ -1473,6 +1498,7 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    @deprecate_positional("contour", 2, once=_first_time)
     def contour(
         self,
         vector: ArrayLike,
@@ -1489,6 +1515,10 @@ class TernaryDiagram:
         interpolated between them. This is a wrapper of
         `matplotlib.pyplot.tricontourf` with ``fill=True`` and of
         `matplotlib.pyplot.tricontour` with ``fill=False``.
+
+        Pass the parameters after `z` by keyword. Passing them by
+        position is deprecated since 3.4.0 and emits a FutureWarning; they
+        will be keyword-only in ternary-diagram 4.0.0.
 
         See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontourf.html
         and https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.tricontour.html
@@ -2459,6 +2489,7 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    @deprecate_positional("colorbar", 1, once=_first_time)
     def colorbar(
         self,
         mappable,
@@ -2475,6 +2506,10 @@ class TernaryDiagram:
         to add a colorbar with your own settings to a plot drawn with
         ``colorbar=False``. This is a wrapper of
         `matplotlib.pyplot.colorbar`, called on the figure of the diagram.
+
+        Pass the parameters after `mappable` by keyword. Passing them by
+        position is deprecated since 3.4.0 and emits a FutureWarning; they
+        will be keyword-only in ternary-diagram 4.0.0.
 
         See https://matplotlib.org/stable/api/_as_gen/matplotlib.pyplot.colorbar.html
 
