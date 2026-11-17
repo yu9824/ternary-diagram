@@ -1,3 +1,4 @@
+from __future__ import annotations
 import inspect
 from collections import Counter
 from itertools import combinations

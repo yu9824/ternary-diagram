@@ -3,6 +3,24 @@ indent-width = 4
 
 [lint]
 unfixable = ["F401"]
+# Keep annotations in one style: postponed evaluation with built-in
+# generics and `X | None` (PEP 563, 585, 604).
+extend-select = [
+    "I002",  # missing `from __future__ import annotations`
+    "UP006", # `List[int]` -> `list[int]`
+    "UP007", # `Union[X, Y]` -> `X | Y`
+    "UP035", # deprecated `typing` imports
+    "UP037", # quoted annotations
+    "UP045", # `Optional[X]` -> `X | None`
+]
+
+[lint.per-file-ignores]
+# Notebooks and the Sphinx config are read by users, not type-checked.
+"example/**" = ["I002"]
+"docs_src/**" = ["I002"]
+
+[lint.isort]
+required-imports = ["from __future__ import annotations"]
 
 [lint.pydocstyle]
 convention = "numpy"

@@ -1,5 +1,7 @@
 """Unit tests of ``ternary_diagram._mesh`` (no figure is created)."""
 
+from __future__ import annotations
+
 import typing
 
 import matplotlib.collections

@@ -20,8 +20,8 @@ matplotlib の薄いラッパーとして作られた純 Python ライブラリ�
 
 ### Compatibility
 
-- 既存コードは Python 3.8 時代の名残で `typing.Tuple` / `typing.List` を `# isort: skip` 付きでファイル先頭に置いている。3.9+ になったので組み込みジェネリクスも使えるが、1 ファイルの中ではどちらかに揃える
-- 新しく作るモジュールは `from __future__ import annotations` を付け、注釈には組み込みジェネリクス（`list[int]`）と `X | None` を使う
+- `src` と `tests` のモジュールはすべて `from __future__ import annotations` を付け、注釈には組み込みジェネリクス（`list[int]`）と `X | None` を使う。Ruff（`I002` と pyupgrade の `UP006` / `UP007` / `UP035` / `UP037` / `UP045`）が強制する。`example/` のノートブックと `docs_src/` は対象外
+- 注釈は評価されないので 3.9 でも `X | None` が書けるが、実行時に評価される式（モジュールの型の別名、`cast` の第 1 引数、`get_args` に渡す `Literal`）は 3.9 で動く書き方にする。型どうしの `|` は使わず `Union[...]` を、`list[...]` などの組み込みジェネリクスはそのまま使ってよい
 - matplotlib のバージョン差異はモジュール冒頭の分岐で吸収する
 
 ```python
@@ -35,7 +35,7 @@ else:
 ### Type Safety
 
 - 公開 API には型ヒントを付ける。配列入力は `numpy.typing.ArrayLike` で受け、内部で `np.ndarray` に変換する
-- mypy（`ignore_missing_imports = True`）。`mypy src` のエラー 0 件を保つ。解消しきれない箇所は `# type: ignore[...]` に理由のコメントを添えて明示する。matplotlib の新しい版にしかない型（`SubFigure` など）は文字列の注釈にして、古い版での import を壊さない
+- mypy（`ignore_missing_imports = True`）。`mypy src` のエラー 0 件を保つ。解消しきれない箇所は `# type: ignore[...]` に理由のコメントを添えて明示する。matplotlib の新しい版にしかない型（`SubFigure` など）は注釈にだけ書く（注釈は評価されないので、古い版での import を壊さない）
 
 ### Code Quality
 
@@ -115,3 +115,4 @@ _updated_at: 2026-11-08 — diagram-customization（土台の部品化 `_skeleto
 _updated_at: 2026-11-09 — region-plots（`fill` / `text` の zorder）と annotate-plain-text（`utils.to_latex_notation`）を反映_
 _updated_at: 2026-11-10 — heatmaps（`tripcolor` / `heatmapf`、`_mesh.py`、`utils.get_triangular_lattice`）を反映_
 _updated_at: 2026-11-16 — user-guide-docs（使い方ページの実行、`autoclass_content`）を反映_
+_updated_at: 2026-11-17 — future annotations への統一（Ruff の I002 / UP ルールで強制）を反映_

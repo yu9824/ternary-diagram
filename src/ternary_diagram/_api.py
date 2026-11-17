@@ -2,14 +2,13 @@
 Copyright © 2021 yu9824
 """
 
-# deprecated from python>=3.9
-from typing import DefaultDict, Tuple, List  # isort: skip
+from __future__ import annotations
 
 from abc import abstractmethod
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from numbers import Number
-from typing import Any, Optional, Union, cast
+from typing import Any, cast
 
 import matplotlib
 import matplotlib.axes
@@ -142,7 +141,7 @@ def _latex_notation_warning_message(
 
 def _resolve_annotation_text(
     text: object,
-    auto_latex_notation: Optional[bool],
+    auto_latex_notation: bool | None,
     *,
     default: bool,
     func: str,
@@ -162,7 +161,7 @@ def _resolve_annotation_text(
     ----------
     text : object
         Text given by the user.
-    auto_latex_notation : Optional[bool]
+    auto_latex_notation : bool or None
         Value passed by the user, already checked. None means that it was
         not specified.
     default : bool
@@ -192,8 +191,8 @@ def _resolve_annotation_text(
 
 
 def _resolve_colorbar_arg(
-    func: str, colorbar: Optional[bool], kwargs: dict
-) -> Optional[bool]:
+    func: str, colorbar: bool | None, kwargs: dict
+) -> bool | None:
     """Remove `flag_cbar` from `kwargs` and return the colorbar request.
 
     `flag_cbar` is the deprecated name of `colorbar`. When it is passed, it
@@ -205,7 +204,7 @@ def _resolve_colorbar_arg(
     ----------
     func : str
         Name of the plotting method, shown in the messages.
-    colorbar : Optional[bool]
+    colorbar : bool or None
         Value passed as `colorbar`. None means that it was not specified.
     kwargs : dict
         Keyword arguments of the plotting method. `flag_cbar` is removed
@@ -213,7 +212,7 @@ def _resolve_colorbar_arg(
 
     Returns
     -------
-    Optional[bool]
+    bool or None
         ``bool(flag_cbar)`` when `flag_cbar` is passed, otherwise
         `colorbar` as the built-in ``bool``, or None when it was not
         specified.
@@ -347,16 +346,16 @@ class TernaryDiagram:
 
     def __init__(
         self,
-        materials: Tuple[str, str, str],
-        ax: Optional[matplotlib.axes.Axes] = None,
+        materials: tuple[str, str, str],
+        ax: matplotlib.axes.Axes | None = None,
         auto_latex_notation: bool = True,
         *,
-        tight_layout: Optional[bool] = None,
-        border_kw: Optional[Mapping[str, Any]] = None,
-        grid_kw: Optional[Mapping[str, Any]] = None,
-        tick_kw: Optional[Mapping[str, Any]] = None,
-        axis_label_kw: Optional[Mapping[str, Any]] = None,
-        vertex_label_kw: Optional[Mapping[str, Any]] = None,
+        tight_layout: bool | None = None,
+        border_kw: Mapping[str, Any] | None = None,
+        grid_kw: Mapping[str, Any] | None = None,
+        tick_kw: Mapping[str, Any] | None = None,
+        axis_label_kw: Mapping[str, Any] | None = None,
+        vertex_label_kw: Mapping[str, Any] | None = None,
     ) -> None:
         """Draw the skeleton of a ternary diagram on an Axes.
 
@@ -556,8 +555,8 @@ class TernaryDiagram:
         self.__auto_latex_notation = bool(auto_latex_notation)
 
         # 二次元に変換したデータを保存しておく (Save the data converted to two dimensions)
-        self.x_: DefaultDict[str, List[np.ndarray]] = defaultdict(list)
-        self.y_: DefaultDict[str, List[np.ndarray]] = defaultdict(list)
+        self.x_: defaultdict[str, list[np.ndarray]] = defaultdict(list)
+        self.y_: defaultdict[str, list[np.ndarray]] = defaultdict(list)
 
     @property
     def ax(self) -> matplotlib.axes.Axes:
@@ -581,7 +580,7 @@ class TernaryDiagram:
     @property
     def fig(
         self,
-    ) -> "Union[matplotlib.figure.Figure, matplotlib.figure.SubFigure]":
+    ) -> matplotlib.figure.Figure | matplotlib.figure.SubFigure:
         """Figure that contains the Axes of the diagram.
 
         It is ``ax.figure`` at construction: the figure of the Axes, or
@@ -596,7 +595,7 @@ class TernaryDiagram:
         return self.__fig
 
     @property
-    def border_lines_(self) -> List[matplotlib.lines.Line2D]:
+    def border_lines_(self) -> list[matplotlib.lines.Line2D]:
         """Lines of the border drawn now.
 
         Use them to adjust a single edge. Each access returns a new list.
@@ -606,7 +605,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the bottom, left and right edges, empty while the
             border is hidden.
 
@@ -622,7 +621,7 @@ class TernaryDiagram:
         ('tab:blue', 'black')
         """
         return cast(
-            List[matplotlib.lines.Line2D], self.__skeleton.artists("border")
+            list[matplotlib.lines.Line2D], self.__skeleton.artists("border")
         )
 
     @border_lines_.setter
@@ -630,7 +629,7 @@ class TernaryDiagram:
         raise AttributeError("border_lines_ is read-only")
 
     @property
-    def grid_lines_(self) -> List[matplotlib.lines.Line2D]:
+    def grid_lines_(self) -> list[matplotlib.lines.Line2D]:
         """Lines of the grid drawn now.
 
         Use them to adjust single grid lines. Each access returns a new
@@ -640,7 +639,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the lines of the 1st, 2nd and 3rd materials in
             this order, each in ascending order of value, empty while the
             grid is hidden.
@@ -657,7 +656,7 @@ class TernaryDiagram:
         >>> lines[4].set_linestyle("--")  # 0.5 of the 1st material
         """
         return cast(
-            List[matplotlib.lines.Line2D], self.__skeleton.artists("grid")
+            list[matplotlib.lines.Line2D], self.__skeleton.artists("grid")
         )
 
     @grid_lines_.setter
@@ -665,7 +664,7 @@ class TernaryDiagram:
         raise AttributeError("grid_lines_ is read-only")
 
     @property
-    def tick_labels_(self) -> List[matplotlib.text.Text]:
+    def tick_labels_(self) -> list[matplotlib.text.Text]:
         """Tick labels drawn now.
 
         Use them to adjust single labels, such as one of the labels that
@@ -677,7 +676,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the tick labels in ascending order of value, each
             value for the 1st, 2nd and 3rd materials in this order, empty
             while the tick labels are hidden.
@@ -696,7 +695,7 @@ class TernaryDiagram:
         >>> labels[12].set_color("tab:red")  # 0.5 of the 1st material
         """
         return cast(
-            List[matplotlib.text.Text], self.__skeleton.artists("ticks")
+            list[matplotlib.text.Text], self.__skeleton.artists("ticks")
         )
 
     @tick_labels_.setter
@@ -704,7 +703,7 @@ class TernaryDiagram:
         raise AttributeError("tick_labels_ is read-only")
 
     @property
-    def axis_labels_(self) -> List[matplotlib.text.Text]:
+    def axis_labels_(self) -> list[matplotlib.text.Text]:
         """Axis titles drawn now.
 
         Use them to adjust a single title. Each access returns a new list.
@@ -714,7 +713,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the drawn axis titles in the order of the
             materials, without the materials that have no title, empty
             while the axis titles are hidden. No titles are drawn by
@@ -733,7 +732,7 @@ class TernaryDiagram:
         ['TiO2 / mol%']
         """
         return cast(
-            List[matplotlib.text.Text], self.__skeleton.artists("axis_labels")
+            list[matplotlib.text.Text], self.__skeleton.artists("axis_labels")
         )
 
     @axis_labels_.setter
@@ -741,7 +740,7 @@ class TernaryDiagram:
         raise AttributeError("axis_labels_ is read-only")
 
     @property
-    def vertex_labels_(self) -> List[matplotlib.text.Text]:
+    def vertex_labels_(self) -> list[matplotlib.text.Text]:
         """Vertex labels drawn now.
 
         Use them to adjust a single label. Each access returns a new list.
@@ -751,7 +750,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the labels of the top, bottom left and bottom
             right vertices, empty while the vertex labels are hidden.
 
@@ -767,7 +766,7 @@ class TernaryDiagram:
         >>> top.set_color("tab:red")
         """
         return cast(
-            List[matplotlib.text.Text],
+            list[matplotlib.text.Text],
             self.__skeleton.artists("vertex_labels"),
         )
 
@@ -776,8 +775,8 @@ class TernaryDiagram:
         raise AttributeError("vertex_labels_ is read-only")
 
     def set_border(
-        self, visible: Optional[bool] = None, **kwargs: Any
-    ) -> List[matplotlib.lines.Line2D]:
+        self, visible: bool | None = None, **kwargs: Any
+    ) -> list[matplotlib.lines.Line2D]:
         """Redraw the border of the triangle with new settings.
 
         The lines of the border are removed and drawn again with the
@@ -802,7 +801,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the border lines drawn by this call (the bottom,
             left and right edges), the same lines as `border_lines_`. It is
             empty when the border is hidden.
@@ -844,17 +843,17 @@ class TernaryDiagram:
         (3, 1.0)
         """
         return cast(
-            List[matplotlib.lines.Line2D],
+            list[matplotlib.lines.Line2D],
             self.__skeleton.update("border", visible=visible, **kwargs),
         )
 
     def set_grid(
         self,
-        visible: Optional[bool] = None,
+        visible: bool | None = None,
         *,
-        step: Optional[float] = None,
+        step: float | None = None,
         **kwargs: Any,
-    ) -> List[matplotlib.lines.Line2D]:
+    ) -> list[matplotlib.lines.Line2D]:
         """Redraw the grid with new settings.
 
         The grid lines are drawn for each material at the multiples of
@@ -890,7 +889,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the grid lines drawn by this call, the same lines
             as `grid_lines_`. It is empty when the grid is hidden.
 
@@ -931,7 +930,7 @@ class TernaryDiagram:
         57
         """
         return cast(
-            List[matplotlib.lines.Line2D],
+            list[matplotlib.lines.Line2D],
             self.__skeleton.update(
                 "grid", visible=visible, step=step, **kwargs
             ),
@@ -939,13 +938,13 @@ class TernaryDiagram:
 
     def set_ticks(
         self,
-        visible: Optional[bool] = None,
+        visible: bool | None = None,
         *,
-        step: Optional[float] = None,
-        fmt: Optional[TickFormat] = None,
-        endpoints: Optional[bool] = None,
+        step: float | None = None,
+        fmt: TickFormat | None = None,
+        endpoints: bool | None = None,
         **kwargs: Any,
-    ) -> List[matplotlib.text.Text]:
+    ) -> list[matplotlib.text.Text]:
         """Redraw the tick labels with new settings.
 
         The tick labels of the 1st material (top vertex) are on the right
@@ -1002,7 +1001,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the tick labels drawn by this call, the same
             labels as `tick_labels_`. It is empty when the tick labels are
             hidden.
@@ -1063,7 +1062,7 @@ class TernaryDiagram:
         ['25%', '50%', '75%']
         """
         return cast(
-            List[matplotlib.text.Text],
+            list[matplotlib.text.Text],
             self.__skeleton.update(
                 "ticks",
                 visible=visible,
@@ -1076,12 +1075,12 @@ class TernaryDiagram:
 
     def set_axis_labels(
         self,
-        labels: Optional[Sequence[Optional[str]]] = None,
+        labels: Sequence[str | None] | None = None,
         *,
-        visible: Optional[bool] = None,
-        pad: Optional[float] = None,
+        visible: bool | None = None,
+        pad: float | None = None,
         **kwargs: Any,
-    ) -> List[matplotlib.text.Text]:
+    ) -> list[matplotlib.text.Text]:
         """Redraw the axis titles with new settings.
 
         The title of a material is drawn outside the middle of the edge
@@ -1130,7 +1129,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the axis titles drawn by this call in the order
             of the materials, the same titles as `axis_labels_`. It is
             empty when the axis titles are hidden or none is given.
@@ -1176,7 +1175,7 @@ class TernaryDiagram:
         ['Li2O / mol%', 'La2O3 / mol%', 'TiO2 / mol%']
         """
         return cast(
-            List[matplotlib.text.Text],
+            list[matplotlib.text.Text],
             self.__skeleton.update(
                 "axis_labels",
                 labels=labels,
@@ -1188,12 +1187,12 @@ class TernaryDiagram:
 
     def set_vertex_labels(
         self,
-        labels: Optional[Sequence[str]] = None,
+        labels: Sequence[str] | None = None,
         *,
-        visible: Optional[bool] = None,
-        offsets: Optional[Sequence[Tuple[float, float]]] = None,
+        visible: bool | None = None,
+        offsets: Sequence[tuple[float, float]] | None = None,
         **kwargs: Any,
-    ) -> List[matplotlib.text.Text]:
+    ) -> list[matplotlib.text.Text]:
         """Redraw the vertex labels with new settings.
 
         The labels are drawn next to the top, bottom left and bottom right
@@ -1241,7 +1240,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the vertex labels drawn by this call (the top,
             bottom left and bottom right vertices), the same labels as
             `vertex_labels_`. It is empty when the vertex labels are
@@ -1296,7 +1295,7 @@ class TernaryDiagram:
         ((-0.02, -0.04), 12.0)
         """
         return cast(
-            List[matplotlib.text.Text],
+            list[matplotlib.text.Text],
             self.__skeleton.update(
                 "vertex_labels",
                 labels=labels,
@@ -1309,13 +1308,13 @@ class TernaryDiagram:
     def scatter(
         self,
         vector: ArrayLike,
-        z: Optional[ArrayLike] = None,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
-        annotations: Optional[List[str]] = None,
-        colorbar: Optional[bool] = None,
+        z: ArrayLike | None = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
+        annotations: list[str] | None = None,
+        colorbar: bool | None = None,
         *,
-        auto_latex_notation: Optional[bool] = None,
+        auto_latex_notation: bool | None = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
         """Plot compositions as scatter points.
@@ -1477,11 +1476,11 @@ class TernaryDiagram:
     def contour(
         self,
         vector: ArrayLike,
-        z: Optional[ArrayLike] = None,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        z: ArrayLike | None = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         fill: bool = True,
-        colorbar: Optional[bool] = None,
+        colorbar: bool | None = None,
         **kwargs,
     ) -> TriContourSet:
         """Draw a contour map of values given at compositions.
@@ -1662,7 +1661,7 @@ class TernaryDiagram:
 
     def plot(
         self, vector: ArrayLike, **kwargs
-    ) -> List[matplotlib.lines.Line2D]:
+    ) -> list[matplotlib.lines.Line2D]:
         """Draw a line that joins compositions, such as a tie line.
 
         The compositions are joined by straight segments in the order of
@@ -1747,7 +1746,7 @@ class TernaryDiagram:
         text: str,
         vector: ArrayLike,
         *,
-        auto_latex_notation: Optional[bool] = None,
+        auto_latex_notation: bool | None = None,
         **kwargs,
     ) -> matplotlib.text.Annotation:
         """Annotate a composition with a text.
@@ -1857,7 +1856,7 @@ class TernaryDiagram:
 
     def fill(
         self, vector: ArrayLike, **kwargs: Any
-    ) -> List[matplotlib.patches.Polygon]:
+    ) -> list[matplotlib.patches.Polygon]:
         """Fill a polygon whose vertices are given as compositions.
 
         This is a wrapper of `matplotlib.pyplot.fill`.
@@ -1936,7 +1935,7 @@ class TernaryDiagram:
         text: str,
         vector: ArrayLike,
         *,
-        auto_latex_notation: Optional[bool] = None,
+        auto_latex_notation: bool | None = None,
         **kwargs: Any,
     ) -> matplotlib.text.Text:
         """Place a text at a composition.
@@ -2063,10 +2062,10 @@ class TernaryDiagram:
         vector: ArrayLike,
         z: ArrayLike,
         *,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         shading: Shading = "flat",
-        colorbar: Optional[bool] = None,
+        colorbar: bool | None = None,
         **kwargs: Any,
     ) -> MeshCollection:
         """Paint the triangles joining the compositions with their values.
@@ -2237,10 +2236,10 @@ class TernaryDiagram:
         func: HeatmapFunc,
         *,
         scale: int = DEFAULT_HEATMAPF_SCALE,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         shading: Shading = "flat",
-        colorbar: Optional[bool] = None,
+        colorbar: bool | None = None,
         **kwargs: Any,
     ) -> MeshCollection:
         """Paint a function of the composition over the whole diagram.
@@ -2466,7 +2465,7 @@ class TernaryDiagram:
         shrink: float = 0.8,
         format="%.1f",
         label: str = "",
-        orientation: Optional[str] = None,
+        orientation: str | None = None,
         location: str = "right",
         **kwargs,
     ) -> matplotlib.colorbar.Colorbar:
@@ -2621,34 +2620,40 @@ class _BasePlotter:
     def __init__(
         self,
         vector: ArrayLike,
-        ax: Optional[matplotlib.axes.Axes] = None,
-        z: Optional[ArrayLike] = None,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        ax: matplotlib.axes.Axes | None = None,
+        z: ArrayLike | None = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         *,
         post_draw_context: PostDrawContext,
         **kwargs,
     ):
-        """
-        This is a base class for the wrapper of `matplotlib.pyplot.` functions.
+        """Validate the compositions and convert them to 2D coordinates.
+
+        This is the base class of the plotters, each of which wraps one
+        drawing method of `matplotlib.axes.Axes`. A subclass draws in its
+        ``__init__`` after calling this one, and then calls ``_post_draw``
+        exactly once.
 
         Parameters
         ----------
-        vector : ArrayLike
-            vector
-
-        ax : Optional[matplotlib.axes.Axes], optional
-            , by default None
-
-        z : Optional[ArrayLike], optional
-            , by default None
-
-        z_min : Optional[Number], optional
-            , by default None
-
-        z_max : Optional[Number], optional
-            , by default None
-
+        vector : array-like of shape (n, 3)
+            Compositions, one row per point. Each row is normalized to sum
+            to 1 and converted to the coordinates ``x_`` and ``y_``.
+        ax : matplotlib.axes.Axes, optional
+            Axes to draw on. The current Axes is used when it is not given.
+        z : array-like of shape (n,), optional
+            Values of the compositions, which color the plot. It is
+            flattened to 1-d. Not given for a plot that is not colored by
+            values.
+        z_min : float, optional
+            Lower limit of the color scale. It is kept only when `z` is
+            given. Each subclass decides what not giving it means (such as
+            the minimum of `z`), and the subclasses that accept the
+            matplotlib alias ``vmin`` merge it with ``_merge_alias``.
+        z_max : float, optional
+            Upper limit of the color scale, handled in the same way as
+            `z_min` (the alias is ``vmax``).
         post_draw_context : PostDrawContext
             State of the processing after drawing, shared by all the plots
             of the ternary diagram. ``_post_draw`` reads and updates it.
@@ -2711,7 +2716,7 @@ class _BasePlotter:
 
     @property
     def x_(self) -> np.ndarray:
-        # TODO: docstring
+        """x coordinates of the compositions on the ternary diagram."""
         return self.__x
 
     @x_.setter
@@ -2720,7 +2725,7 @@ class _BasePlotter:
 
     @property
     def y_(self) -> np.ndarray:
-        # TODO: docstring
+        """y coordinates of the compositions on the ternary diagram."""
         return self.__y
 
     @y_.setter
@@ -2743,13 +2748,13 @@ class _BasePlotter:
 
     @staticmethod
     def colorbar(
-        mappable: Optional[Union[matplotlib.cm.ScalarMappable, Any]] = None,
+        mappable: matplotlib.cm.ScalarMappable | Any | None = None,
         shrink: float = 0.8,
         format="%.1f",
         label: str = "",
         orientation: str = "vertical",
         location: str = "right",
-        ax: Optional[matplotlib.axes.Axes] = None,
+        ax: matplotlib.axes.Axes | None = None,
         **kwargs,
     ) -> matplotlib.colorbar.Colorbar:
         """Draw a colorbar.
@@ -2760,7 +2765,7 @@ class _BasePlotter:
 
         Parameters
         ----------
-        mappable : Optional[Union[matplotlib.cm.ScalarMappable, Any]]
+        mappable : matplotlib.cm.ScalarMappable, optional
             The object that contains the colorbar data.
 
         shrink : float, optional
@@ -2778,7 +2783,7 @@ class _BasePlotter:
         location : str, optional
             location, by default 'right'
 
-        ax : Optional[matplotlib.axes.Axes], optional
+        ax : matplotlib.axes.Axes, optional
             axes object, by default None
 
         kwargs : parameter of `matplotlib.pyplot.colorbar`, optional
@@ -2809,9 +2814,9 @@ class _BasePlotter:
     def _post_draw(
         self,
         *,
-        mappable: Optional[matplotlib.cm.ScalarMappable] = None,
-        colorbar: Optional[bool] = None,
-    ) -> Optional[matplotlib.colorbar.Colorbar]:
+        mappable: matplotlib.cm.ScalarMappable | None = None,
+        colorbar: bool | None = None,
+    ) -> matplotlib.colorbar.Colorbar | None:
         """Run the processing after drawing, in one place for all plotters.
 
         Every plotter calls this exactly once, at the end of ``__init__``.
@@ -2824,17 +2829,17 @@ class _BasePlotter:
 
         Parameters
         ----------
-        mappable : Optional[matplotlib.cm.ScalarMappable], optional
+        mappable : matplotlib.cm.ScalarMappable or None, optional
             The plot colored by values, which a colorbar describes. None
             for a plot that is not colored by values, which never gets a
             colorbar, by default None
-        colorbar : Optional[bool], optional
+        colorbar : bool or None, optional
             Whether the user asked to add a colorbar. None means that it
             was not specified, by default None
 
         Returns
         -------
-        Optional[matplotlib.colorbar.Colorbar]
+        matplotlib.colorbar.Colorbar or None
             The colorbar added and registered to the ternary diagram, or
             None when no colorbar is added.
         """
@@ -2877,10 +2882,10 @@ class _ScatterPlotter(_BasePlotter):
         z_min=None,
         z_max=None,
         annotations=None,
-        colorbar: Optional[bool] = None,
+        colorbar: bool | None = None,
         *,
         post_draw_context: PostDrawContext,
-        auto_latex_notation: Optional[bool] = None,
+        auto_latex_notation: bool | None = None,
         default_auto_latex_notation: bool = True,
         **kwargs,
     ):
@@ -2964,7 +2969,7 @@ class _ContourPlotter(_BasePlotter):
         z_min=None,
         z_max=None,
         fill: bool = True,
-        colorbar: Optional[bool] = None,
+        colorbar: bool | None = None,
         *,
         post_draw_context: PostDrawContext,
         **kwargs,
@@ -3067,7 +3072,7 @@ class _LinePlotter(_BasePlotter):
         )
 
         # plot
-        self.collection_: List[matplotlib.lines.Line2D] = self.ax.plot(
+        self.collection_: list[matplotlib.lines.Line2D] = self.ax.plot(
             self.x_, self.y_, **self.kwargs
         )
         self._post_draw()
@@ -3085,7 +3090,7 @@ class _AnnotatePlotter(_BasePlotter):
         ax=None,
         *,
         post_draw_context: PostDrawContext,
-        auto_latex_notation: Optional[bool] = None,
+        auto_latex_notation: bool | None = None,
         default_auto_latex_notation: bool = True,
         **kwargs,
     ):
@@ -3128,7 +3133,7 @@ class _FillPlotter(_BasePlotter):
     def __init__(
         self,
         vector: ArrayLike,
-        ax: Optional[matplotlib.axes.Axes] = None,
+        ax: matplotlib.axes.Axes | None = None,
         *,
         post_draw_context: PostDrawContext,
         **kwargs: Any,
@@ -3157,7 +3162,7 @@ class _FillPlotter(_BasePlotter):
         )
 
         # fill
-        self.collection_: List[matplotlib.patches.Polygon] = self.ax.fill(
+        self.collection_: list[matplotlib.patches.Polygon] = self.ax.fill(
             self.x_, self.y_, **self.kwargs
         )
         self._post_draw()
@@ -3170,7 +3175,7 @@ class _FillPlotter(_BasePlotter):
 #: Default alignment of ``text``: (canonical name, alias, value). Each value
 #: is set only when neither the canonical name nor the alias is given in
 #: the kwargs or in ``fontdict``.
-_TEXT_ALIGNMENT_DEFAULTS: Tuple[Tuple[str, str, str], ...] = (
+_TEXT_ALIGNMENT_DEFAULTS: tuple[tuple[str, str, str], ...] = (
     ("horizontalalignment", "ha", "center"),
     ("verticalalignment", "va", "center"),
 )
@@ -3181,7 +3186,7 @@ class _TextPlotter(_BasePlotter):
         self,
         text: str,
         vector: ArrayLike,
-        ax: Optional[matplotlib.axes.Axes] = None,
+        ax: matplotlib.axes.Axes | None = None,
         *,
         auto_latex_notation: bool,  # resolved by TernaryDiagram.text
         post_draw_context: PostDrawContext,
@@ -3310,12 +3315,12 @@ class _TripcolorPlotter(_MeshPlotter):
     def __init__(
         self,
         vector: ArrayLike,
-        ax: Optional[matplotlib.axes.Axes] = None,
-        z: Optional[ArrayLike] = None,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        ax: matplotlib.axes.Axes | None = None,
+        z: ArrayLike | None = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         shading: Shading = "flat",
-        colorbar: Optional[bool] = None,  # checked by TernaryDiagram
+        colorbar: bool | None = None,  # checked by TernaryDiagram
         *,
         post_draw_context: PostDrawContext,
         **kwargs: Any,
@@ -3375,12 +3380,12 @@ class _HeatmapfPlotter(_MeshPlotter):
     def __init__(
         self,
         func: HeatmapFunc,
-        ax: Optional[matplotlib.axes.Axes] = None,
+        ax: matplotlib.axes.Axes | None = None,
         scale: int = DEFAULT_HEATMAPF_SCALE,
-        z_min: Optional[Number] = None,
-        z_max: Optional[Number] = None,
+        z_min: Number | None = None,
+        z_max: Number | None = None,
         shading: Shading = "flat",
-        colorbar: Optional[bool] = None,  # checked by TernaryDiagram
+        colorbar: bool | None = None,  # checked by TernaryDiagram
         *,
         post_draw_context: PostDrawContext,
         **kwargs: Any,

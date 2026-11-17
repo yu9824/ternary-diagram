@@ -6,6 +6,8 @@ create the diagram without ``tight_layout``; the others pass it explicitly
 or use the ``td`` fixture.
 """
 
+from __future__ import annotations
+
 import inspect
 import warnings
 

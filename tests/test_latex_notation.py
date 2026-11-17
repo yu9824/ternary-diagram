@@ -5,6 +5,8 @@
 announces the texts whose display will change.
 """
 
+from __future__ import annotations
+
 import warnings
 
 import pytest

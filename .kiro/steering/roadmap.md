@@ -79,14 +79,14 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 - [x] annotate-plain-text -- `annotate` と `scatter(annotations=...)` が普通の文字列まで化学式として変換する（`"Sample 1"` → `"Sample $_{1}$"`）。化学式とみなす条件を絞るか、変換の有無を引数で選べるようにする小さな修正。`region-plots` の `text` と `user-guide-docs` の説明が同じ判定を前提にするので、それより前に入れる。既存ユーザーの `annotate` の表示を v3.x で黙って変えないこと（変えるなら FutureWarning を出す）。`region-plots` の `text` は新しい API なので、呼び出しごとの `auto_latex_notation=None` で `TernaryDiagram` の設定を引き継ぐ
   - 実装結果: 整形の入口は `utils.to_latex_notation`（空白で区切った語のうち、`utils.is_chemical_formula` が化学式とみなすものだけを `get_label` で整形する。`$` を含む文字列はそのまま）。`annotate` と `scatter` の切り替え引数は `auto_latex_notation: bool | None = None`（キーワード専用）。`None` は v3.x の表示を保ち、表示が変わる文字列にだけ FutureWarning を出す（三角図ごとに 1 回）。`TernaryDiagram.__auto_latex_notation` は本件が `__init__` に足した。`region-plots` の `text` は `None` を三角図の設定で解決し、`to_latex_notation` を呼ぶ（警告の経路は通らない）
 - [x] typing-cleanup -- `TernaryDiagram.x_` / `y_` に残っている `# FIXME: mypy` を型注釈で解消する。`fig` の型注釈を、subfigure の Axes で返る `SubFigure` も含む形にする。挙動は変えない
-  - 実装結果（2026-11-16）: 残っていた 7 件をすべて解消し、`mypy src` のエラーは 0 件。`fig` の戻り値は文字列の注釈 `"Union[Figure, SubFigure]"`（`SubFigure` は matplotlib 3.4 から）
+  - 実装結果（2026-11-16）: 残っていた 7 件をすべて解消し、`mypy src` のエラーは 0 件。`fig` の戻り値は文字列の注釈 `"Union[Figure, SubFigure]"`（`SubFigure` は matplotlib 3.4 から）。その後（2026-11-17）、全モジュールを `from __future__ import annotations` に揃え、`fig` の戻り値も `Figure | SubFigure` の注釈にした
 
 ## Follow-ups (v3.x)
 
 ロードマップの spec の実装中に見つかった、小さな改善の候補。v3.x のうちに直接実装で扱ってよい。
 
 - [x] `TernaryDiagram.colorbar(location="bottom")` だけを渡すと、既定の `orientation="vertical"` と食い違って matplotlib が TypeError を出す。`location` から向きを決める — 実装済み（2026-11-16、`orientation` の既定を `None` にした。自動で付くカラーバーは変わらない）
-- matplotlib 3.11 で、constrained layout にカラーバーが付く図では、左下の頂点ラベルが図の左端から約 3px はみ出す（三角図の `adjustable="datalim"` と constrained layout の組み合わせ。README の画像は matplotlib 3.10 で作った）
+- [x] matplotlib 3.11 で、constrained layout にカラーバーが付く図では、左下の頂点ラベルが図の左端から約 3px はみ出す（三角図の `adjustable="datalim"` と constrained layout の組み合わせ。README の画像は matplotlib 3.10 で作った） — 調査済み（2026-11-17）。直すと既存の図の見た目が変わるので、「Deferred to v4.0.0」の `adjustable="box"` への切り替えで扱う
 - [x] docstring の書き方の残り: `fill` の Returns の `List[...]`（他は `list of ...`）、`text` の `vector` の型の行の `(1, 3)`（`annotate` は説明文に書く）、上流の項目の `bool or None` / `dict or None`（本 spec の担当分は None を説明文に書く） — 実装済み（2026-11-16）。`fill` と `text` は揃えた。`bool or None` / `dict or None` は、None が「指定なし」という独自の意味を持つ三択の引数なので、型の行に None を残す方針にした
 - `autoclass_content = "both"` で、クラスの Notes 節が `__init__` の Parameters より前に表示される。並びを変えるなら Notes 節を `__init__` 側に移すか、クラスの説明に溶かす
 
