@@ -23,7 +23,7 @@
   - _Depends: 1_
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 8.1, 8.3_
 
-- [ ] 2.2 予告を docstring に書く
+- [x] 2.2 予告を docstring に書く
   - `scatter`・`contour`・`colorbar` の説明に、データの後の引数を位置引数で渡すのは 3.4.0 から非推奨で 4.0.0 でキーワード専用になることを書く。`TernaryDiagram` は `ax` と `auto_latex_notation` の項目に書く
   - クラスの docstring の縦横比の説明に、4.0.0 で Axes の枠を三角形に合わせて縮める方法に変わることを書く
   - docstring の例はキーワードで渡す書き方のままで、共通の doctest のランナーが FutureWarning を出さずに通る。docstring の静的テストが通る
