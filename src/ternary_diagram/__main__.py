@@ -1,18 +1,15 @@
+from __future__ import annotations
+
 import argparse
 import sys
-from typing import Optional
-
-if sys.version_info >= (3, 9):
-    from collections.abc import Sequence
-else:
-    from typing import Sequence
+from collections.abc import Sequence
 
 from . import __version__
 
 __all__ = ("main",)
 
 
-def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
+def main(cli_args: Sequence[str], prog: str | None = None) -> None:
     parser = argparse.ArgumentParser(
         prog=prog,
         description="Draw beautiful ternary diagrams with matplotlib.",

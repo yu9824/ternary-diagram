@@ -1,3 +1,4 @@
+from __future__ import annotations
 from pathlib import Path
 
 _version_file = Path(__file__).parent / "_version.py"

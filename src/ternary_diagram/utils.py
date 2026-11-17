@@ -1,10 +1,9 @@
-# deprecated in python>=3.9
-from typing import Tuple  # isort: skip
+from __future__ import annotations
 
 import re
 from math import isfinite, sqrt
 from numbers import Integral, Real
-from typing import Callable, Optional, Union
+from typing import Callable, Union
 
 import matplotlib.axes
 import matplotlib.pyplot as plt
@@ -17,7 +16,7 @@ from numpy.typing import ArrayLike
 TickFormat = Union[str, Callable[[float], str]]
 
 
-def check_ax(ax: Optional[matplotlib.axes.Axes]) -> matplotlib.axes.Axes:
+def check_ax(ax: matplotlib.axes.Axes | None) -> matplotlib.axes.Axes:
     """Return the Axes to draw on.
 
     Parameters
@@ -159,7 +158,7 @@ def check_1d_vector(vector: ArrayLike, scale: bool = True) -> np.ndarray:
         raise ValueError("`vector`'s length must be 3.")
 
 
-def check_optional_bool(value: object, name: str) -> Optional[bool]:
+def check_optional_bool(value: object, name: str) -> bool | None:
     """Check that a value is None, True or False.
 
     Parameters
@@ -249,7 +248,7 @@ def check_bool(value: object, name: str) -> bool:
     raise TypeError(f"`{name}` must be True or False, but got {value!r}.")
 
 
-def three2two(vector: ArrayLike) -> Tuple[np.ndarray, np.ndarray]:
+def three2two(vector: ArrayLike) -> tuple[np.ndarray, np.ndarray]:
     """Convert compositions to 2D coordinates on the ternary diagram.
 
     The triangle has the vertices top ``(0.5, sqrt(3) / 2)``, bottom-left
@@ -562,7 +561,7 @@ def _iso_compositions(
 
 def get_edge_points(
     values: ArrayLike, component: int
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the points for values on the edge of a component's ticks.
 
     The ticks of component ``k`` are on the edge where component
@@ -616,7 +615,7 @@ def get_edge_points(
 
 def get_grid_segments(
     values: ArrayLike, component: int
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray]:
     """Return the end points of the iso-composition lines of a component.
 
     The line where `component` (``k``) equals a value runs between two
@@ -668,7 +667,7 @@ def get_grid_segments(
 
 def get_axis_label_position(
     component: int, pad: float
-) -> Tuple[float, float, float]:
+) -> tuple[float, float, float]:
     """Return the position and rotation of the axis title of a component.
 
     The title is placed outside the edge that carries the ticks of
@@ -829,7 +828,7 @@ def get_tick_formatter(fmt: TickFormat) -> Callable[[float], str]:
     return lambda value: fmt.format(float(value), x=float(value))
 
 
-def _lattice_indices(scale: int) -> Tuple[np.ndarray, np.ndarray]:
+def _lattice_indices(scale: int) -> tuple[np.ndarray, np.ndarray]:
     """Return ``(i, j)`` of the points with ``i + j + k = scale``.
 
     The points are in descending ``i``, then descending ``j``. Both arrays
@@ -842,7 +841,7 @@ def _lattice_indices(scale: int) -> Tuple[np.ndarray, np.ndarray]:
     return scale - row, row - k
 
 
-def get_triangular_lattice(scale: int) -> Tuple[np.ndarray, np.ndarray]:
+def get_triangular_lattice(scale: int) -> tuple[np.ndarray, np.ndarray]:
     """Return a regular triangular lattice with `scale` parts on each edge.
 
     The lattice points are all the compositions whose components are
