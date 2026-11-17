@@ -2628,26 +2628,32 @@ class _BasePlotter:
         post_draw_context: PostDrawContext,
         **kwargs,
     ):
-        """
-        This is a base class for the wrapper of `matplotlib.pyplot.` functions.
+        """Validate the compositions and convert them to 2D coordinates.
+
+        This is the base class of the plotters, each of which wraps one
+        drawing method of `matplotlib.axes.Axes`. A subclass draws in its
+        ``__init__`` after calling this one, and then calls ``_post_draw``
+        exactly once.
 
         Parameters
         ----------
         vector : array-like of shape (n, 3)
-            vector
-
+            Compositions, one row per point. Each row is normalized to sum
+            to 1 and converted to the coordinates ``x_`` and ``y_``.
         ax : matplotlib.axes.Axes, optional
-            , by default None
-
+            Axes to draw on. The current Axes is used when it is not given.
         z : array-like of shape (n,), optional
-            , by default None
-
+            Values of the compositions, which color the plot. It is
+            flattened to 1-d. Not given for a plot that is not colored by
+            values.
         z_min : float, optional
-            , by default None
-
+            Lower limit of the color scale. It is kept only when `z` is
+            given. Each subclass decides what not giving it means (such as
+            the minimum of `z`), and the subclasses that accept the
+            matplotlib alias ``vmin`` merge it with ``_merge_alias``.
         z_max : float, optional
-            , by default None
-
+            Upper limit of the color scale, handled in the same way as
+            `z_min` (the alias is ``vmax``).
         post_draw_context : PostDrawContext
             State of the processing after drawing, shared by all the plots
             of the ternary diagram. ``_post_draw`` reads and updates it.
@@ -2710,7 +2716,7 @@ class _BasePlotter:
 
     @property
     def x_(self) -> np.ndarray:
-        # TODO: docstring
+        """x coordinates of the compositions on the ternary diagram."""
         return self.__x
 
     @x_.setter
@@ -2719,7 +2725,7 @@ class _BasePlotter:
 
     @property
     def y_(self) -> np.ndarray:
-        # TODO: docstring
+        """y coordinates of the compositions on the ternary diagram."""
         return self.__y
 
     @y_.setter
