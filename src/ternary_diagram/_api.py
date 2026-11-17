@@ -2464,7 +2464,7 @@ class TernaryDiagram:
         shrink: float = 0.8,
         format="%.1f",
         label: str = "",
-        orientation: str = "vertical",
+        orientation: Optional[str] = None,
         location: str = "right",
         **kwargs,
     ) -> matplotlib.colorbar.Colorbar:
@@ -2500,16 +2500,15 @@ class TernaryDiagram:
 
         orientation : str, optional
             Direction of the colorbar, ``"vertical"`` or ``"horizontal"``.
-            It must agree with `location`, or matplotlib raises a
-            TypeError: a horizontal colorbar needs ``location="bottom"`` or
-            ``"top"``, by default 'vertical'
+            If None, it follows `location`: vertical on the right or the
+            left, horizontal at the top or the bottom. A given direction
+            must agree with `location`, or matplotlib raises a TypeError,
+            by default None
 
         location : str, optional
             Side of the Axes of the diagram where the colorbar is placed,
-            ``"right"``, ``"left"``, ``"top"`` or ``"bottom"``. It must
-            agree with `orientation` (``"right"`` and ``"left"`` are
-            vertical, ``"top"`` and ``"bottom"`` are horizontal), or
-            matplotlib raises a TypeError, by default 'right'
+            ``"right"``, ``"left"``, ``"top"`` or ``"bottom"``,
+            by default 'right'
 
         **kwargs
             Other arguments of `matplotlib.pyplot.colorbar` (as
@@ -2558,8 +2557,8 @@ class TernaryDiagram:
         >>> len(fig.axes)
         2
 
-        Place a horizontal colorbar below the diagram, with two decimal
-        places in the tick labels.
+        Place a colorbar below the diagram, which makes it horizontal,
+        with two decimal places in the tick labels.
 
         >>> import matplotlib.pyplot as plt
         >>> from ternary_diagram import TernaryDiagram
@@ -2570,15 +2569,17 @@ class TernaryDiagram:
         ...     z=[0.2, 0.5, 0.8],
         ...     colorbar=False,
         ... )
-        >>> cbar = td.colorbar(
-        ...     points,
-        ...     format="%.2f",
-        ...     orientation="horizontal",
-        ...     location="bottom",
-        ... )
+        >>> cbar = td.colorbar(points, format="%.2f", location="bottom")
         >>> cbar.orientation
         'horizontal'
         """  # noqa: E501
+
+        if orientation is None:
+            # The direction that matplotlib requires for each location.
+            if location in ("top", "bottom"):
+                orientation = "horizontal"
+            else:
+                orientation = "vertical"
 
         # draw colorbar
         cbar = _BasePlotter.colorbar(

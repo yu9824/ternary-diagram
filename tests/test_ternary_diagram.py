@@ -146,6 +146,39 @@ def test_colorbar_horizontal(td):
     assert cbar.orientation == "horizontal"
 
 
+def test_colorbar_defaults_to_a_vertical_colorbar_on_the_right(td):
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
+
+    cbar = td.colorbar(collection)
+
+    assert cbar.orientation == "vertical"
+    assert cbar.ax.get_position().x0 > td.ax.get_position().x1
+
+
+@pytest.mark.parametrize(
+    ("location", "orientation"),
+    [
+        ("right", "vertical"),
+        ("left", "vertical"),
+        ("top", "horizontal"),
+        ("bottom", "horizontal"),
+    ],
+)
+def test_colorbar_orientation_follows_location(td, location, orientation):
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
+
+    cbar = td.colorbar(collection, location=location)
+
+    assert cbar.orientation == orientation
+
+
+def test_colorbar_rejects_orientation_that_disagrees_with_location(td):
+    collection = td.scatter(VECTOR, z=Z, colorbar=False)
+
+    with pytest.raises(TypeError):
+        td.colorbar(collection, orientation="vertical", location="bottom")
+
+
 def _post_draw_context(td: TernaryDiagram):
     # The design keeps the per-diagram state in a name-mangled private
     # attribute without a public accessor.

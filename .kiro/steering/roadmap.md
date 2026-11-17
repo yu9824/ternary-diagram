@@ -85,7 +85,7 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 
 ロードマップの spec の実装中に見つかった、小さな改善の候補。v3.x のうちに直接実装で扱ってよい。
 
-- `TernaryDiagram.colorbar(location="bottom")` だけを渡すと、既定の `orientation="vertical"` と食い違って matplotlib が TypeError を出す。`location` から向きを決める（docstring と使い方ページは今の挙動を説明している）
+- [x] `TernaryDiagram.colorbar(location="bottom")` だけを渡すと、既定の `orientation="vertical"` と食い違って matplotlib が TypeError を出す。`location` から向きを決める — 実装済み（2026-11-16、`orientation` の既定を `None` にした。自動で付くカラーバーは変わらない）
 - matplotlib 3.11 で、constrained layout にカラーバーが付く図では、左下の頂点ラベルが図の左端から約 3px はみ出す（三角図の `adjustable="datalim"` と constrained layout の組み合わせ。README の画像は matplotlib 3.10 で作った）
 - docstring の書き方の残り: `fill` の Returns の `List[...]`（他は `list of ...`）、`text` の `vector` の型の行の `(1, 3)`（`annotate` は説明文に書く）、上流の項目の `bool or None` / `dict or None`（本 spec の担当分は None を説明文に書く）
 - `autoclass_content = "both"` で、クラスの Notes 節が `__init__` の Parameters より前に表示される。並びを変えるなら Notes 節を `__init__` 側に移すか、クラスの説明に溶かす
