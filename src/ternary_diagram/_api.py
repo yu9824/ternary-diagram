@@ -253,8 +253,8 @@ class TernaryDiagram:
     skeleton of the diagram. The aspect is kept by widening the data
     limits (``adjustable="datalim"``); from ternary-diagram 4.0.0, the box
     of the Axes is shrunk to the triangle instead (``adjustable="box"``),
-    which moves legends placed with ``loc`` and changes the length of the
-    colorbars added automatically. Call
+    which can move legends placed with ``loc`` and, on a figure with a
+    layout engine, shorten the colorbars added automatically. Call
     ``td.ax.set_aspect("equal", adjustable="box")`` after construction to
     try it now.
 
