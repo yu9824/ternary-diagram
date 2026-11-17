@@ -3,7 +3,7 @@ Copyright © 2021 yu9824
 """
 
 # deprecated from python>=3.9
-from typing import Tuple, List  # isort: skip
+from typing import DefaultDict, Tuple, List  # isort: skip
 
 from abc import abstractmethod
 from collections import defaultdict
@@ -26,8 +26,9 @@ import numpy as np
 if tuple(map(int, matplotlib.__version__.split(".")[:2])) >= (3, 7):
     from matplotlib.tri import Triangulation, TriContourSet
 else:
-    from matplotlib.tri.triangulation import Triangulation
-    from matplotlib.tri.tricontour import TriContourSet
+    # matplotlib < 3.7; mypy checks both branches and sees the names twice.
+    from matplotlib.tri.triangulation import Triangulation  # type: ignore[no-redef]
+    from matplotlib.tri.tricontour import TriContourSet  # type: ignore[no-redef]
 from numpy.typing import ArrayLike
 
 from ternary_diagram._deprecation import (
@@ -554,10 +555,9 @@ class TernaryDiagram:
         # the plotting methods that take `auto_latex_notation=None`.
         self.__auto_latex_notation = bool(auto_latex_notation)
 
-        # FIXME: mypy
         # 二次元に変換したデータを保存しておく (Save the data converted to two dimensions)
-        self.x_ = defaultdict(list)
-        self.y_ = defaultdict(list)
+        self.x_: DefaultDict[str, List[np.ndarray]] = defaultdict(list)
+        self.y_: DefaultDict[str, List[np.ndarray]] = defaultdict(list)
 
     @property
     def ax(self) -> matplotlib.axes.Axes:
@@ -579,7 +579,9 @@ class TernaryDiagram:
         raise AttributeError("ax is read-only")
 
     @property
-    def fig(self) -> matplotlib.figure.Figure:
+    def fig(
+        self,
+    ) -> "Union[matplotlib.figure.Figure, matplotlib.figure.SubFigure]":
         """Figure that contains the Axes of the diagram.
 
         It is ``ax.figure`` at construction: the figure of the Axes, or
@@ -2788,9 +2790,10 @@ class _BasePlotter:
         # check `ax`
         ax = check_ax(ax)
 
-        # draw colorbar
+        # draw colorbar. `mappable` is None only when it is called by mistake,
+        # and matplotlib then raises as it did before.
         return ax.figure.colorbar(
-            mappable,
+            mappable,  # type: ignore[arg-type]
             ax=ax,
             shrink=shrink,
             format=format,
@@ -2852,7 +2855,8 @@ class _BasePlotter:
             context.tight_layout, get_layout_state(self.fig)
         )
         if layout_action is not LayoutAction.SKIP:
-            self.fig.tight_layout()
+            # decide_layout skips subfigures, so this is a Figure.
+            cast(matplotlib.figure.Figure, self.fig).tight_layout()
         if layout_action is LayoutAction.APPLY_AND_WARN and (
             context.first_time(LAYOUT_WARNING_KEY)
         ):

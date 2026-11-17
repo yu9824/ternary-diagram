@@ -35,7 +35,7 @@ else:
 ### Type Safety
 
 - 公開 API には型ヒントを付ける。配列入力は `numpy.typing.ArrayLike` で受け、内部で `np.ndarray` に変換する
-- mypy（`ignore_missing_imports = True`）。解消しきれない箇所は `# FIXME: mypy` や `# type: ignore[...]` で明示する
+- mypy（`ignore_missing_imports = True`）。`mypy src` のエラー 0 件を保つ。解消しきれない箇所は `# type: ignore[...]` に理由のコメントを添えて明示する。matplotlib の新しい版にしかない型（`SubFigure` など）は文字列の注釈にして、古い版での import を壊さない
 
 ### Code Quality
 

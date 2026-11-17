@@ -78,7 +78,8 @@ spec の依存とは別に、`_api.py` での衝突を避けるため、実装�
 
 - [x] annotate-plain-text -- `annotate` と `scatter(annotations=...)` が普通の文字列まで化学式として変換する（`"Sample 1"` → `"Sample $_{1}$"`）。化学式とみなす条件を絞るか、変換の有無を引数で選べるようにする小さな修正。`region-plots` の `text` と `user-guide-docs` の説明が同じ判定を前提にするので、それより前に入れる。既存ユーザーの `annotate` の表示を v3.x で黙って変えないこと（変えるなら FutureWarning を出す）。`region-plots` の `text` は新しい API なので、呼び出しごとの `auto_latex_notation=None` で `TernaryDiagram` の設定を引き継ぐ
   - 実装結果: 整形の入口は `utils.to_latex_notation`（空白で区切った語のうち、`utils.is_chemical_formula` が化学式とみなすものだけを `get_label` で整形する。`$` を含む文字列はそのまま）。`annotate` と `scatter` の切り替え引数は `auto_latex_notation: bool | None = None`（キーワード専用）。`None` は v3.x の表示を保ち、表示が変わる文字列にだけ FutureWarning を出す（三角図ごとに 1 回）。`TernaryDiagram.__auto_latex_notation` は本件が `__init__` に足した。`region-plots` の `text` は `None` を三角図の設定で解決し、`to_latex_notation` を呼ぶ（警告の経路は通らない）
-- [ ] typing-cleanup -- `TernaryDiagram.x_` / `y_` に残っている `# FIXME: mypy` を型注釈で解消する。`fig` の型注釈を、subfigure の Axes で返る `SubFigure` も含む形にする。挙動は変えない
+- [x] typing-cleanup -- `TernaryDiagram.x_` / `y_` に残っている `# FIXME: mypy` を型注釈で解消する。`fig` の型注釈を、subfigure の Axes で返る `SubFigure` も含む形にする。挙動は変えない
+  - 実装結果（2026-11-16）: 残っていた 7 件をすべて解消し、`mypy src` のエラーは 0 件。`fig` の戻り値は文字列の注釈 `"Union[Figure, SubFigure]"`（`SubFigure` は matplotlib 3.4 から）
 
 ## Follow-ups (v3.x)
 
