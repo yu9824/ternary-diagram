@@ -97,6 +97,7 @@ v3.x では直さず、v4.0.0 の準備で扱う項目。
 - 既定値の切り替えと `flag_cbar` の削除（CHANGELOG の Deprecations のとおり）
 - `PostDrawContext.has_colorbar` の判定を直す。登録済みのカラーバーと同じ mappable に利用者が `fig.colorbar` で別のカラーバーを足すと、登録済みのものが削除済みと判定される。v3.x では重複の FutureWarning が出ないだけだが、v4.0.0 の既定（既存ありなら自動追加しない）では 1 本余分に付く
 - `scatter` / `contour` の `colorbar` をキーワード専用にする（候補）。6 番目の位置引数は v3.2.1 から意味が変わった（`0` / `1` は `TypeError`、`None` は未指定）。v3.x で位置引数での指定に FutureWarning を出すかは、v4.0.0 の準備で決める
+- 三角図の縦横比の固定を `adjustable="datalim"` から `adjustable="box"` に変える。Follow-ups の頂点ラベルがはみ出す件の対処。README の例の図（144 dpi）で左の余白は、`datalim` では matplotlib 3.10 で 3px、3.11 で 0px（はみ出す）、`box` ではどちらも 8〜9px で左右が均等になり、`layout="compressed"` も効く。Axes の枠が三角形まで縮むので、凡例の `loc` の位置と自動で付くカラーバーの長さが変わる。そのため v3.x では変えない
 
 ## Specs (dependency order)
 
