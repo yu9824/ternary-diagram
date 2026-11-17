@@ -11,7 +11,7 @@ table in the design of user-guide-docs, and nothing else:
 
 Entries and sections owned by upstream specs (``tight_layout``, the
 ``*_kw`` entries, ``colorbar`` / ``flag_cbar``, the switches added by
-annotate-plain-text, the Notes section of the class, and the methods and
+annotate-plain-text, the Notes section of ``__init__``, and the methods and
 functions added upstream) are never read here, so the result of these
 tests does not depend on them. The examples are not run here: the shared
 doctest runner (``tests/test_doctests.py``) runs them.
@@ -111,7 +111,7 @@ UPSTREAM_ENTRIES: dict[str, tuple[str, ...]] = {
 
 # Docstrings written entirely by upstream specs (no owned section).
 UPSTREAM_TARGETS: tuple[str, ...] = (
-    "TernaryDiagram",  # the Notes section of the class
+    "TernaryDiagram",  # the summary of the class, no owned section
     "TernaryDiagram.set_border",
     "TernaryDiagram.set_grid",
     "TernaryDiagram.set_ticks",
