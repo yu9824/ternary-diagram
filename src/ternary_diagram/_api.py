@@ -161,7 +161,7 @@ def _resolve_annotation_text(
     ----------
     text : object
         Text given by the user.
-    auto_latex_notation : Optional[bool]
+    auto_latex_notation : bool or None
         Value passed by the user, already checked. None means that it was
         not specified.
     default : bool
@@ -204,7 +204,7 @@ def _resolve_colorbar_arg(
     ----------
     func : str
         Name of the plotting method, shown in the messages.
-    colorbar : Optional[bool]
+    colorbar : bool or None
         Value passed as `colorbar`. None means that it was not specified.
     kwargs : dict
         Keyword arguments of the plotting method. `flag_cbar` is removed
@@ -212,7 +212,7 @@ def _resolve_colorbar_arg(
 
     Returns
     -------
-    Optional[bool]
+    bool or None
         ``bool(flag_cbar)`` when `flag_cbar` is passed, otherwise
         `colorbar` as the built-in ``bool``, or None when it was not
         specified.
@@ -605,7 +605,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the bottom, left and right edges, empty while the
             border is hidden.
 
@@ -639,7 +639,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the lines of the 1st, 2nd and 3rd materials in
             this order, each in ascending order of value, empty while the
             grid is hidden.
@@ -676,7 +676,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the tick labels in ascending order of value, each
             value for the 1st, 2nd and 3rd materials in this order, empty
             while the tick labels are hidden.
@@ -713,7 +713,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the drawn axis titles in the order of the
             materials, without the materials that have no title, empty
             while the axis titles are hidden. No titles are drawn by
@@ -750,7 +750,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the labels of the top, bottom left and bottom
             right vertices, empty while the vertex labels are hidden.
 
@@ -801,7 +801,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the border lines drawn by this call (the bottom,
             left and right edges), the same lines as `border_lines_`. It is
             empty when the border is hidden.
@@ -889,7 +889,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.lines.Line2D]
+        list of matplotlib.lines.Line2D
             A new list of the grid lines drawn by this call, the same lines
             as `grid_lines_`. It is empty when the grid is hidden.
 
@@ -1001,7 +1001,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the tick labels drawn by this call, the same
             labels as `tick_labels_`. It is empty when the tick labels are
             hidden.
@@ -1129,7 +1129,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the axis titles drawn by this call in the order
             of the materials, the same titles as `axis_labels_`. It is
             empty when the axis titles are hidden or none is given.
@@ -1240,7 +1240,7 @@ class TernaryDiagram:
 
         Returns
         -------
-        List[matplotlib.text.Text]
+        list of matplotlib.text.Text
             A new list of the vertex labels drawn by this call (the top,
             bottom left and bottom right vertices), the same labels as
             `vertex_labels_`. It is empty when the vertex labels are
@@ -2633,19 +2633,19 @@ class _BasePlotter:
 
         Parameters
         ----------
-        vector : ArrayLike
+        vector : array-like of shape (n, 3)
             vector
 
-        ax : Optional[matplotlib.axes.Axes], optional
+        ax : matplotlib.axes.Axes, optional
             , by default None
 
-        z : Optional[ArrayLike], optional
+        z : array-like of shape (n,), optional
             , by default None
 
-        z_min : Optional[Number], optional
+        z_min : float, optional
             , by default None
 
-        z_max : Optional[Number], optional
+        z_max : float, optional
             , by default None
 
         post_draw_context : PostDrawContext
@@ -2759,7 +2759,7 @@ class _BasePlotter:
 
         Parameters
         ----------
-        mappable : Optional[Union[matplotlib.cm.ScalarMappable, Any]]
+        mappable : matplotlib.cm.ScalarMappable, optional
             The object that contains the colorbar data.
 
         shrink : float, optional
@@ -2777,7 +2777,7 @@ class _BasePlotter:
         location : str, optional
             location, by default 'right'
 
-        ax : Optional[matplotlib.axes.Axes], optional
+        ax : matplotlib.axes.Axes, optional
             axes object, by default None
 
         kwargs : parameter of `matplotlib.pyplot.colorbar`, optional
@@ -2823,17 +2823,17 @@ class _BasePlotter:
 
         Parameters
         ----------
-        mappable : Optional[matplotlib.cm.ScalarMappable], optional
+        mappable : matplotlib.cm.ScalarMappable or None, optional
             The plot colored by values, which a colorbar describes. None
             for a plot that is not colored by values, which never gets a
             colorbar, by default None
-        colorbar : Optional[bool], optional
+        colorbar : bool or None, optional
             Whether the user asked to add a colorbar. None means that it
             was not specified, by default None
 
         Returns
         -------
-        Optional[matplotlib.colorbar.Colorbar]
+        matplotlib.colorbar.Colorbar or None
             The colorbar added and registered to the ternary diagram, or
             None when no colorbar is added.
         """
