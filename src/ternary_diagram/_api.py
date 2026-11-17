@@ -32,6 +32,7 @@ from numpy.typing import ArrayLike
 
 from ternary_diagram._deprecation import (
     UNSET,
+    deprecate_positional,
     format_default_change,
     resolve_renamed_parameter,
     warn_external,
@@ -344,6 +345,15 @@ class TernaryDiagram:
     artists to choose the order.
     """
 
+    def _first_time(self, key: str) -> bool:
+        """Tell whether `key` is received for the first time by this diagram.
+
+        It records `key`, so that the warnings announcing that options
+        become keyword-only are issued once per diagram and method.
+        """
+        return self.__post_draw_context.first_time(key)
+
+    @deprecate_positional("TernaryDiagram", 1)
     def __init__(
         self,
         materials: tuple[str, str, str],
@@ -1305,6 +1315,7 @@ class TernaryDiagram:
             ),
         )
 
+    @deprecate_positional("scatter", 2, once=_first_time)
     def scatter(
         self,
         vector: ArrayLike,
@@ -1473,6 +1484,7 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    @deprecate_positional("contour", 2, once=_first_time)
     def contour(
         self,
         vector: ArrayLike,
@@ -2459,6 +2471,7 @@ class TernaryDiagram:
         self._append_x_y(plotter)
         return plotter.collection_
 
+    @deprecate_positional("colorbar", 1, once=_first_time)
     def colorbar(
         self,
         mappable,

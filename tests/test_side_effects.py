@@ -402,11 +402,24 @@ def tight_td(ax) -> TernaryDiagram:
     return TernaryDiagram(MATERIALS, ax=ax, tight_layout=True)
 
 
+# Passing the options by position is deprecated since 3.4.0; that warning
+# is tested in test_keyword_arguments.py and ignored here.
+POSITIONAL_DEPRECATION = r"Passing .* by position is deprecated"
+
+
 def _draw_with_positional_colorbar(td, method, value, **kwargs):
-    """Call `method` of `td` with `value` as the sixth positional argument."""
-    return getattr(td, method)(
-        VECTOR, Z, *BEFORE_COLORBAR[method], value, **kwargs
-    )
+    """Call `method` of `td` with `value` as the sixth positional argument.
+
+    Only the warning about the options passed by position is ignored; the
+    other warnings still reach the caller.
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message=POSITIONAL_DEPRECATION, category=FutureWarning
+        )
+        return getattr(td, method)(
+            VECTOR, Z, *BEFORE_COLORBAR[method], value, **kwargs
+        )
 
 
 def _parameter_entries(func) -> dict:
